@@ -37,6 +37,9 @@
     .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
     .muted { color: var(--text-muted); font-size: 12px; }
     .header-actions { display: flex; gap: 8px; margin: 10px 0 0; }
+    .notice { display: none; margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 13px; }
+    .notice--success { display: block; background: rgba(16,185,129,0.12); color: #065f46; border: 1px solid rgba(16,185,129,0.3); }
+    .notice--error { display: block; background: rgba(239,68,68,0.12); color: #7f1d1d; border: 1px solid rgba(239,68,68,0.3); }
     @media (max-width: 860px) {
       .layout { grid-template-columns: 1fr; }
       .color-row__grid { grid-template-columns: 1fr; }
@@ -59,6 +62,7 @@
     </div>
     <div class="card">
       <form id="produtoForm">
+        <div id="saveNotice" class="notice"></div>
         <input type="hidden" id="prodId" />
         <label>Nome</label>
         <input type="text" id="prodNome" required />
@@ -116,6 +120,7 @@
     const btnRecarregar = document.getElementById('btnRecarregar');
     const btnAddColor = document.getElementById('btnAddColor');
     const colorsList = document.getElementById('colorsList');
+    const saveNotice = document.getElementById('saveNotice');
 
     const fields = {
       id: document.getElementById('prodId'),
@@ -135,6 +140,16 @@
     function formatMoney(value){
       const n = Number(value || 0);
       return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+    function showNotice(message, type = 'success'){
+      if (!saveNotice) return;
+      saveNotice.textContent = message;
+      saveNotice.className = `notice notice--${type}`;
+      clearTimeout(showNotice._t);
+      showNotice._t = setTimeout(() => {
+        saveNotice.className = 'notice';
+        saveNotice.textContent = '';
+      }, 2400);
     }
 
     function setForm(prod){
@@ -199,12 +214,13 @@
         const img = firstColor
           ? (Array.isArray(firstColor.imagens) && firstColor.imagens[0] ? firstColor.imagens[0] : (firstColor.imagem || ''))
           : '';
+        const imgSrc = img ? (img.startsWith('http') ? img : (img.startsWith('/') ? img : '/' + img)) : '';
         const status = p.soldOut ? 'Esgotado' : 'Disponível';
         return `
           <div class="product-card ${isActive ? 'active' : ''}" data-id="${p.id}">
-          <div class="product-card__media">
-              ${img ? `<img src="${img.startsWith('/') ? img : '/' + img}" alt="${p.nome}">` : '<span class="muted">Sem imagem</span>'}
-          </div>
+            <div class="product-card__media">
+              ${imgSrc ? `<img src="${imgSrc}" alt="${p.nome}">` : '<span class="muted">Sem imagem</span>'}
+            </div>
             <div class="product-card__body">
               <div class="product-card__name">${p.nome}</div>
               <div class="product-card__meta">${p.categoria} • ${formatMoney(p.preco)}</div>
@@ -245,6 +261,9 @@
       const imgPath = cor.imagem || imgs[0] || '';
       const imgPath2 = imgs[1] || '';
       const imgPath3 = imgs[2] || '';
+      const imgSrc1 = imgPath ? (imgPath.startsWith('http') ? imgPath : '/' + imgPath) : '';
+      const imgSrc2 = imgPath2 ? (imgPath2.startsWith('http') ? imgPath2 : '/' + imgPath2) : '';
+      const imgSrc3 = imgPath3 ? (imgPath3.startsWith('http') ? imgPath3 : '/' + imgPath3) : '';
       row.dataset.imagePath1 = imgPath;
       row.dataset.imagePath2 = imgPath2;
       row.dataset.imagePath3 = imgPath3;
@@ -264,7 +283,7 @@
             <label>Imagem 1 (principal)</label>
             <input type="file" data-color-file="1" accept="image/jpeg,image/png" />
             <div class="color-row__preview">
-              <img data-color-preview="1" src="${imgPath ? '/' + imgPath : ''}" alt="" style="${imgPath ? '' : 'display:none;'}" />
+              <img data-color-preview="1" src="${imgSrc1}" alt="" style="${imgPath ? '' : 'display:none;'}" />
               <span class="muted" data-color-path="1">${imgPath || 'Sem imagem'}</span>
             </div>
           </div>
@@ -272,7 +291,7 @@
             <label>Imagem 2 (opcional)</label>
             <input type="file" data-color-file="2" accept="image/jpeg,image/png" />
             <div class="color-row__preview">
-              <img data-color-preview="2" src="${imgPath2 ? '/' + imgPath2 : ''}" alt="" style="${imgPath2 ? '' : 'display:none;'}" />
+              <img data-color-preview="2" src="${imgSrc2}" alt="" style="${imgPath2 ? '' : 'display:none;'}" />
               <span class="muted" data-color-path="2">${imgPath2 || 'Sem imagem'}</span>
             </div>
           </div>
@@ -282,7 +301,7 @@
             <label>Imagem 3 (opcional)</label>
             <input type="file" data-color-file="3" accept="image/jpeg,image/png" />
             <div class="color-row__preview">
-              <img data-color-preview="3" src="${imgPath3 ? '/' + imgPath3 : ''}" alt="" style="${imgPath3 ? '' : 'display:none;'}" />
+              <img data-color-preview="3" src="${imgSrc3}" alt="" style="${imgPath3 ? '' : 'display:none;'}" />
               <span class="muted" data-color-path="3">${imgPath3 || 'Sem imagem'}</span>
             </div>
           </div>
@@ -432,6 +451,7 @@
       await loadProdutos();
       setFormEnabled(false);
       setEditMode(false);
+      showNotice('Produto removido.', 'success');
     });
 
     btnRecarregar.addEventListener('click', loadProdutos);
@@ -473,6 +493,7 @@
       }
       setFormEnabled(true);
       setEditMode(Boolean(activeId));
+      showNotice('Produto salvo com sucesso.', 'success');
     });
 
     setFormEnabled(false);

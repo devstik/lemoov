@@ -444,12 +444,19 @@ function formatDescricaoHTML(desc){
 }
 
 /* ===== Helpers de disponibilidade por cor/tamanho ===== */
+function resolveImagePath(path){
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path) || path.startsWith("data:")) return path;
+  if (path.startsWith("/") && API_BASE) return `${API_BASE}${path}`;
+  if (API_BASE) return `${API_BASE}/${path}`;
+  return path;
+}
 function getColorImages(cor){
   if (!cor) return [];
   if (Array.isArray(cor.imagens) && cor.imagens.length) {
-    return cor.imagens.filter(Boolean);
+    return cor.imagens.filter(Boolean).map(resolveImagePath);
   }
-  if (cor.imagem) return [cor.imagem];
+  if (cor.imagem) return [resolveImagePath(cor.imagem)];
   return [];
 }
 function getColorImage(cor){
