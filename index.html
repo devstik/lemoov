@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lemoov | Catálogo Fitness</title>
+  <meta name="description" content="Catálogo Lemoov de moda fitness premium com peças tecnológicas e entrega local via Moto Uber, com compra via WhatsApp." />
+  <meta property="og:title" content="Lemoov | Catálogo Fitness" />
+  <meta property="og:description" content="Catálogo Lemoov de moda fitness premium com peças tecnológicas e entrega local via Moto Uber, com compra via WhatsApp." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Lemoov Fitness" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:image" content="image/Conjunto_Calca/verde_pavao2.jpg" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    window.LEMOOV_GA_ID = window.LEMOOV_GA_ID || 'G-XXXXXXXXXXXX';
+    window.LEMOOV_PIXEL_ID = window.LEMOOV_PIXEL_ID || '000000000000000';
+    window.LEMOOV_API_BASE = window.LEMOOV_API_BASE || 'https://srv-d5e155be5dus739n6ucg.onrender.com';
+  </script>
+
+  <!-- Ajuste visual: tamanhos indisponíveis (borrado/desativado) e botão desabilitado -->
+  <style>
+    .size[aria-disabled="true"]{
+      filter: blur(0.8px) grayscale(80%);
+      opacity: 0.45;
+      pointer-events: none;
+      cursor: not-allowed;
+      border-color: #ddd !important;
+      box-shadow: none !important;
+    }
+    .btn[disabled], .btn[disabled]:hover{
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="container header__wrap">
+        <!-- Logo centralizado -->
+        <h1 class="logo">
+          <a href="index.html">Lemoov <span>Fitness</span></a>
+        </h1>
+
+        <!-- Icons de usuário/carrinho -->
+        <nav class="nav">
+          <button id="openCart" class="btn-icon" aria-label="Abrir carrinho">
+            <i id="cartIcon" class="fas fa-shopping-cart"></i>
+            <span id="cartCount" class="badge">0</span>
+          </button>
+        </nav>
+    </div>
+  </header>
+  <!-- Hero -->
+  <section class="hero hero--split">
+    <div class="hero__media" aria-label="Coleção Lemoov em movimento">
+      <div class="hero__carousel" id="heroCarousel">
+        <div class="hero__slides">
+          <figure class="hero__slide is-active" data-color="Verde">
+            <img src="image/Conjunto_Calca/verde_pavao2.jpg" alt="Look verde pavão Lemoov" loading="eager" decoding="async" fetchpriority="high">
+          </figure>
+          <figure class="hero__slide" data-color="Verde Floresta">
+            <img src="image/Conjunto_Calca/verde1.jpg" alt="Look verde floresta Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Cacau">
+            <img src="image/Conjunto_Short/cacau1.jpeg" alt="Look cacau Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Manteiga">
+            <img src="image/Conjunto_Short/Manteiga2.jpeg" alt="Look manteiga Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Chocolate">
+            <img src="image/Conjunto_Short/sunmov_chocolate1.jpg" alt="Look chocolate Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Terracota">
+            <img src="image/Conjunto_Calca/terracota2.jpg" alt="Look terracota Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Terracota">
+            <img src="image/Conjunto_Calca/terracota1.jpg" alt="Look terracota Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Verde Pavão">
+            <img src="image/Conjunto_Calca/verde_pavao1.jpg" alt="Look verde pavão Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Verde Pavão">
+            <img src="image/Conjunto_Calca/verde_pavao2.jpg" alt="Look verde pavão Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Fucsia">
+            <img src="image/Macaquinho/fucsia1.jpg" alt="Look fúcsia Lemoov" loading="lazy" decoding="async">
+          </figure>
+        </div>
+      </div>
+      <div class="hero__badge is-hidden" aria-hidden="true">Nova coleção • High Performance</div>
+    </div>
+      <div class="hero__content">
+        <p class="hero__eyebrow">Moda Fitness Premium</p>
+        <div class="hero__micro" aria-live="polite">
+          <span id="heroMicroCopy">Compressão inteligente para treinos intensos</span>
+        </div>
+        <h2>Liberdade para treinar com estilo e tecnologia.</h2>
+      <p>
+        Peças com tecidos tecnológicos, proteção UV50+ e acabamentos impecáveis para acompanhar
+        seus treinos dentro e fora do box. Viva o conforto inteligente que impulsiona pessoas em todos os níveis de movimento.
+      </p>
+      <div class="hero__actions">
+        <a href="#grid" class="btn btn--primary">Comprar agora</a>
+        <a href="#colecoes" class="btn btn--ghost hero__btn-collections">Ver coleções</a>
+      </div>
+    </div>
+  </section>
+  <!-- Benefits -->
+  <section class="benefits">
+    <div class="container benefits__wrap">
+      <article>
+        <span class="benefits__icon"><i class="fas fa-bolt"></i></span>
+        <h4>Performance</h4>
+        <p>Tecidos que respiram, modelagem compressiva e suporte ideal para qualquer treino.</p>
+      </article>
+      <article>
+        <span class="benefits__icon"><i class="fas fa-globe-americas"></i></span>
+        <h4>Entrega local via Moto Uber</h4>
+        <p>Receba rápido em Fortaleza e região, com valor combinado no WhatsApp.</p>
+      </article>
+      <article>
+        <span class="benefits__icon"><i class="fas fa-star"></i></span>
+        <h4>Acabamento premium</h4>
+        <p>Peças desenhadas com costuras reforçadas e detalhes exclusivos Lemoov.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="social-proof" id="depoimentos">
+    <div class="container">
+      <p class="section-eyebrow">Prova social</p>
+      <h3>Clientes reais, resultados reais.</h3>
+      <div class="social-proof__grid" aria-live="polite">
+        <p class="social-proof__tip">Passe o mouse ou arraste para ver mais histórias reais</p>
+        <p class="social-proof__tip">passe o mouse ou toque nas fotos para mudar o look</p>
+        <article>
+          <span class="social-proof__stars">★★★★★</span>
+          <p>“Oieee, boa noite! Passando pra dizer que amei meu conjunto na cor manteiga! Vocês se superam a cada coleção, por isso não perco um lançamento hahaha. Que vocês possam sempre entregar essa qualidade, conforto e beleza que amo! Sou apaixonada 🥹❤️”</p>
+          <strong>Beatriz Flôres</strong>
+          <small>@biaflorespersonal • Fortaleza/CE</small>
+        </article>
+        <article>
+          <span class="social-proof__stars">★★★★★</span>
+          <p>“Bom dia! Passando pra elogiar essa peça maravilhosa! Vestiu maravilhosamente bem, o tecido é coisa de outro mundo, eu não tava nem acreditando no que eu tava pegando. Com certeza comprarei mais.”</p>
+          <strong>Maria Alice</strong>
+          <small>@marialicetabosa • Fortaleza/CE</small>
+        </article>
+        <article>
+          <span class="social-proof__stars">★★★★★</span>
+          <p>“Passando para falar sobre o conjuntinho... muito perfeito. Além de bonito, a qualidade da compressão dele é muito muito boa! Ontem suei bastante e ele permaneceu no mesmo lugar! Não enrolou, nem nada. Excelente!”</p>
+          <strong>Jessica</strong>
+          <small>@jessica.mulher • Fortaleza/CE</small>
+        </article>
+        <article>
+          <span class="social-proof__stars">★★★★★</span>
+          <p>“O tanto que essa legging é perfeita... vocês não têm noção! Dica pra quem quer roupa fitness de ótima qualidade! 😅”</p>
+          <strong>Fisioposture</strong>
+          <small>@fisioposturi • Fortaleza/CE</small>
+        </article>
+        <article>
+          <span class="social-proof__stars">★★★★★</span>
+          <p>“Sabe aquele modelinho de short que você passa o treino todo desenrolando!? Pois bem... não é o caso desse. @lemoov_fitness entrou pra minha lista de favoritos. Qualidade impecável.”</p>
+          <strong>Glausa Saldanha</strong>
+          <small>@glausaldanha20 • Fortaleza/CE</small>
+        </article>
+      </div>
+    </div>
+  </section>
+  <section class="trust-block" id="faq">
+    <div class="container trust-block__grid">
+      <article class="trust-card trust-card--faq">
+        <p class="section-eyebrow">FAQ rápido</p>
+        <details open>
+          <summary>Qual o prazo para trocar?</summary>
+          <p>Você tem até 7 dias corridos após receber a peça para solicitar.</p>
+        </details>
+        <details>
+          <summary>Como deve estar a peça?</summary>
+          <p>Sem uso, odores ou manchas, com etiqueta intacta. Peças claras não entram na troca.</p>
+        </details>
+        <details>
+          <summary>Como inicio a troca?</summary>
+          <p>Fale no WhatsApp e informe nome, pedido e motivo. Orientamos cada passo.</p>
+        </details>
+        <details>
+          <summary>Quem paga o frete?</summary>
+          <p>Preferência/tamanho: cliente envia. Defeito: frete por nossa conta.</p>
+        </details>
+      </article>
+      <article class="trust-card trust-card--actions">
+        <p class="section-eyebrow">Políticas</p>
+        <p>Acesse versões completas sempre que quiser:</p>
+        <div class="policy-links">
+          <a class="policy-link" href="trocas.html" target="_blank" rel="noopener">Trocas</a>
+          <a class="policy-link" href="privacidade.html" target="_blank" rel="noopener">Privacidade</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Toolbar -->
+  <section class="toolbar">
+    <div class="container toolbar__wrap">
+      <button class="btn btn--ghost toolbar__filterBtn" id="openFilters">Filtros</button>
+      <div class="toolbar__right">
+        <span id="productCount" class="toolbar__count"></span>
+        <label class="toolbar__sort"></label>
+      </div>
+    </div>
+  </section>
+
+  <div class="container layout layout--single">
+    <main class="content" style="position:relative;">
+      <section class="filters-cards">
+        <div id="filters" class="filters-cards__grid"></div>
+      </section>
+      <section class="buy-cta" aria-label="Compra rápida">
+        <div class="buy-cta__wrap">
+          <div>
+            <p class="buy-cta__eyebrow">Compra rápida</p>
+            <h3>Escolha a peça e finalize no WhatsApp.</h3>
+            <p>Frete local via Moto Uber ou SEDEX informado no atendimento.</p>
+          </div>
+          <div class="buy-cta__actions">
+            <button class="btn btn--primary" id="openCartCta">Abrir carrinho</button>
+            <a class="btn btn--ghost" href="#grid">Ver produtos</a>
+          </div>
+        </div>
+      </section>
+      <div class="floating-toggle-group">
+        <button class="floating-toggle floating-toggle--whats" id="toggleWhats"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+      </div>
+      <!-- os botões de navegação do carrossel são injetados aqui (.grid-controls) -->
+      <section id="grid" class="grid"></section>
+    </main>
+  </div>
+
+  <section class="blog-preview" id="conteudo">
+    <div class="container blog-preview__grid">
+      <article>
+        <p class="section-eyebrow">Guia</p>
+        <h4>Como escolher o macacão certo para seu treino?</h4>
+        <p>Comece identificando o nível de compressão desejado, cheque as medidas que passamos via WhatsApp, faça a prova virtual com nosso atendimento e teste looks sobrepostos com as peças sugeridas aqui.</p>
+      </article>
+      <article>
+        <p class="section-eyebrow">Conteúdo</p>
+        <h4>3 looks certeiros com o Conjunto Lia</h4>
+        <p>Short azul com top preto para treinos de força, short preto com camiseta básica para day off e short azul + colete para corridas leves. Fale com nosso time para sugerirmos combinações.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="social-feed" id="social">
+    <div class="container">
+      <p class="section-eyebrow">No Instagram</p>
+      <h3>@lemoovfitness em movimento</h3>
+      <div class="social-feed__grid">
+        <a href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener"><img src="image/Conjunto_Calca/verde1.jpg" alt="Look 1 Lemoov" loading="lazy" decoding="async"></a>
+        <a href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener"><img src="image/Macaquinho/terracota1.jpg" alt="Look 2 Lemoov" loading="lazy" decoding="async"></a>
+        <a href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener"><img src="image/Conjunto_Short/verde_agua2.jpg" alt="Look 3 Lemoov" loading="lazy" decoding="async"></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal Produto -->
+  <dialog id="modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalNome" aria-describedby="modalDesc">
+    <div class="modal__header">
+      <button class="modal__close" id="closeModal" aria-label="Fechar">✕</button>
+    </div>
+    <article class="modal__content">
+      <section class="modal__info">
+        <h2 id="modalNome"></h2>
+        <p id="modalDesc" class="muted"></p>
+        <section class="modal__options">
+          <fieldset class="modal__colors">
+            <legend>Cor:</legend>
+            <ul id="modalColors" class="swatches"></ul>
+          </fieldset>
+          <fieldset class="modal__sizes">
+            <legend>Tamanho:</legend>
+            <ul id="modalSizes" class="sizes__wrap"></ul>
+          </fieldset>
+        </section>
+        <p id="modalPreco" class="price"></p>
+      </section>
+      <div class="modal__mediaWrap">
+        <figure class="modal__media">
+          <img id="modalImg" src="" alt="Produto" />
+        </figure>
+        <div class="modal__cta">
+          <button id="btnAdd" class="btn btn--primary">Adicionar ao carrinho</button>
+        </div>
+      </div>
+    </article>
+  </dialog>
+
+  <!-- Drawer Carrinho (modal central) -->
+  <aside id="cart" class="cart" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cartTitle" tabindex="-1">
+    <div class="cart__header">
+      <h3 id="cartTitle">Seu Carrinho</h3>
+      <button class="cart__close" id="closeCart" aria-label="Fechar">✕</button>
+    </div>
+    <ul id="cartList" class="cart__list"></ul>
+    <div class="cart__footer">
+      <!-- A UI de CEP/Localização do frete e o botão "Finalizar compra" são injetados pelo JS -->
+      <div class="cart__total">
+        <span>Total:</span>
+        <strong id="cartTotal">R$ 0,00</strong>
+      </div>
+      <a id="btnWhats" class="btn btn--whats" target="_blank" rel="noopener">Finalizar no WhatsApp</a>
+    </div>
+  </aside>
+  <div id="cartBackdrop" class="backdrop"></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <img src="image/logo lemoov_semfundo.png" alt="Lemoov Logo" class="footer__logo" loading="lazy" decoding="async">
+          <p class="footer__tagline">Moda fitness premium criada em Fortaleza para todas as pessoas em movimento.</p>
+        </div>
+
+        <div class="footer__block">
+          <h4 class="footer__title">Atendimento</h4>
+          <ul class="footer__list">
+            <li>
+              <span>WhatsApp</span>
+              <a href="https://wa.me/558587408457" target="_blank" rel="noopener">+55 (85) 8740-8457</a>
+            </li>
+            <li>
+              <span>E-mail</span>
+              <a href="mailto:lemoovfitnes@gmail.com">lemoovfitnes@gmail.com</a>
+            </li>
+            <li>
+              <span>Horário</span>
+              <p>Seg a Sex • 9h às 18h</p>
+            </li>
+          </ul>
+        </div>
+
+        <div class="footer__block">
+          <h4 class="footer__title">Políticas</h4>
+          <ul class="footer__list">
+            <li><a href="privacidade.html">Termos de privacidade</a></li>
+            <li><a href="trocas.html">Trocas e devoluções</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer__bottom">
+        <div class="footer__socials">
+          <a href="https://www.facebook.com" target="_blank" rel="noopener" aria-label="Facebook" data-network="facebook"><i class="fab fa-facebook-f"></i></a>
+          <a href="https://www.instagram.com" target="_blank" rel="noopener" aria-label="Instagram" data-network="instagram"><i class="fab fa-instagram"></i></a>
+          <a href="https://www.WhatsApp.com" target="_blank" rel="noopener" aria-label="WhatsApp" data-network="whatsapp"><i class="fab fa-whatsapp"></i></a>
+          <a href="https://srv-d5e155be5dus739n6ucg.onrender.com/api/produtos-admin" target="_blank" rel="noopener" aria-label="Admin" data-network="admin"><i class="fas fa-user-shield"></i></a>
+        </div>
+        <p class="footer__copyright">© <span id="year"></span> Lemoov Moda Fitness. Todos os direitos reservados.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+  <div class="cookie-banner" id="cookieBanner" role="region" aria-label="Aviso de cookies">
+    <p>Usamos cookies e registramos IP/cidade para personalizar frete e ofertas. Veja nossa <a href="privacidade.html" target="_blank" rel="noopener">Política de privacidade</a>.</p>
+    <button class="btn btn--primary" id="btnAcceptCookies">Aceitar e continuar</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

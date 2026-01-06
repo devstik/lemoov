@@ -1,0 +1,110 @@
+{
+  "AC": {
+    "precoPorKg": 14.9,
+    "minimo": 35.0
+  },
+  "AL": {
+    "precoPorKg": 9.9,
+    "minimo": 25.0
+  },
+  "AM": {
+    "precoPorKg": 15.9,
+    "minimo": 39.0
+  },
+  "AP": {
+    "precoPorKg": 15.5,
+    "minimo": 39.0
+  },
+  "BA": {
+    "precoPorKg": 9.5,
+    "minimo": 24.0
+  },
+  "CE": {
+    "precoPorKg": 8.5,
+    "minimo": 18.0
+  },
+  "DF": {
+    "precoPorKg": 10.9,
+    "minimo": 28.0
+  },
+  "ES": {
+    "precoPorKg": 11.9,
+    "minimo": 29.0
+  },
+  "GO": {
+    "precoPorKg": 10.5,
+    "minimo": 27.0
+  },
+  "MA": {
+    "precoPorKg": 11.9,
+    "minimo": 29.0
+  },
+  "MG": {
+    "precoPorKg": 10.5,
+    "minimo": 27.0
+  },
+  "MS": {
+    "precoPorKg": 11.9,
+    "minimo": 29.0
+  },
+  "MT": {
+    "precoPorKg": 12.9,
+    "minimo": 31.0
+  },
+  "PA": {
+    "precoPorKg": 13.9,
+    "minimo": 33.0
+  },
+  "PB": {
+    "precoPorKg": 9.9,
+    "minimo": 25.0
+  },
+  "PE": {
+    "precoPorKg": 9.9,
+    "minimo": 25.0
+  },
+  "PI": {
+    "precoPorKg": 10.5,
+    "minimo": 27.0
+  },
+  "PR": {
+    "precoPorKg": 11.5,
+    "minimo": 28.0
+  },
+  "RJ": {
+    "precoPorKg": 11.9,
+    "minimo": 29.0
+  },
+  "RN": {
+    "precoPorKg": 9.9,
+    "minimo": 25.0
+  },
+  "RO": {
+    "precoPorKg": 14.5,
+    "minimo": 35.0
+  },
+  "RR": {
+    "precoPorKg": 15.9,
+    "minimo": 39.0
+  },
+  "RS": {
+    "precoPorKg": 12.5,
+    "minimo": 31.0
+  },
+  "SC": {
+    "precoPorKg": 12.0,
+    "minimo": 30.0
+  },
+  "SE": {
+    "precoPorKg": 9.9,
+    "minimo": 25.0
+  },
+  "SP": {
+    "precoPorKg": 10.9,
+    "minimo": 28.0
+  },
+  "TO": {
+    "precoPorKg": 12.5,
+    "minimo": 31.0
+  }
+}

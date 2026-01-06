@@ -1,0 +1,1312 @@
+[
+  {
+    "nome": "Macacão Pri",
+    "categoria": "Macacão",
+    "preco": 169.9,
+    "tamanhos": [
+      "G",
+      "GG"
+    ],
+    "precoPromo": 135.92,
+    "soldOut": true,
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "extras": [
+        "Bolsos laterais",
+        "busto forrado",
+        "toque macio",
+        "alças reguláveis"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Azul",
+        "imagem": "image/macacao/azul1.jpg",
+        "tamanhos": [
+          "G"
+        ],
+        "precoPromo": 135.92,
+        "soldOut": true
+      },
+      {
+        "nome": "Azul",
+        "imagem": "image/macacao/azul2.jpg",
+        "tamanhos": [
+          "G"
+        ],
+        "precoPromo": 135.92,
+        "soldOut": true
+      },
+      {
+        "nome": "Cinza",
+        "imagem": "image/macacao/cinza1.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Cinza",
+        "imagem": "image/macacao/cinza2.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Grafite",
+        "imagem": "image/macacao/grafite1.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Grafite",
+        "imagem": "image/macacao/grafite2.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/macacao/preto.jpg",
+        "tamanhos": [
+          "G",
+          "GG"
+        ],
+        "soldOut": true
+      }
+    ],
+    "id": 1
+  },
+  {
+    "nome": "Macaquinho Clara",
+    "categoria": "Macaquinho",
+    "preco": 94.9,
+    "tamanhos": [
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "extras": [
+        "Bolsos laterais",
+        "peça forrada",
+        "toque macio",
+        "alças reguláveis"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Verde Agua",
+        "imagem": "image/Macaquinho/verde_agua1.jpg",
+        "tamanhos": [
+          "G"
+        ]
+      },
+      {
+        "nome": "Verde Agua",
+        "imagem": "image/Macaquinho/verde_agua2.jpg",
+        "tamanhos": [
+          "G"
+        ]
+      },
+      {
+        "nome": "Verde Suzy",
+        "imagem": "image/Macaquinho/verde_suzy1.jpg",
+        "tamanhos": [
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Verde Suzy",
+        "imagem": "image/Macaquinho/verde_suzy2.jpg",
+        "tamanhos": [
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Fucsia",
+        "imagem": "image/Macaquinho/fucsia1.jpg",
+        "tamanhos": [
+          "G"
+        ],
+        "descontoPct": 10,
+        "soldOut": true
+      },
+      {
+        "nome": "Fucsia",
+        "imagem": "image/Macaquinho/fucsia2.jpg",
+        "tamanhos": [
+          "G"
+        ],
+        "soldOut": true
+      }
+    ],
+    "id": 2
+  },
+  {
+    "nome": "Macaquinho Laura",
+    "categoria": "Macaquinho",
+    "preco": 94.9,
+    "tamanhos": [
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Alta",
+      "transparencia": "Zero",
+      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "extras": [
+        "Bolsos laterais",
+        "busto forrado",
+        "toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Verde Agua",
+        "imagem": "image/Macaquinho/verde_pavao1.jpg",
+        "tamanhos": [
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Verde Agua",
+        "imagem": "image/Macaquinho/verde_pavao2.jpg",
+        "tamanhos": [
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "TerraCota",
+        "imagem": "image/Macaquinho/terracota1.jpg",
+        "tamanhos": [
+          "M"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "TerraCota",
+        "imagem": "image/Macaquinho/terracota2.jpg",
+        "tamanhos": [
+          "M"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Macaquinho/preto.jpg",
+        "tamanhos": [
+          "M"
+        ],
+        "soldOut": true,
+        "desc": {
+          "tecido": "Poliamida com elastano",
+          "tecnologias": [
+            "UPF 50+",
+            "4-way stretch",
+            "secagem rápida",
+            "antiodor"
+          ],
+          "compressao": "Média",
+          "transparencia": "Zero",
+          "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+          "extras": [
+            "Bolsos laterais",
+            "busto forrado",
+            "toque macio"
+          ],
+          "indicacao": [
+            "treino",
+            "corrida",
+            "yoga",
+            "dia a dia"
+          ]
+        }
+      }
+    ],
+    "id": 3
+  },
+  {
+    "nome": "Top e Legging Paty",
+    "categoria": "Conjunto Legging",
+    "preco": 149.9,
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "soldOut": true,
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "extras": [
+        "Bolsos laterais",
+        "busto forrado",
+        "toque macio",
+        "alças reguláveis"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Azul",
+        "imagem": "image/Conjunto_Calca/azul1.jpg",
+        "tamanhos": [
+          "P"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Azul",
+        "imagem": "image/Conjunto_Calca/azul2.jpg",
+        "tamanhos": [
+          "P"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Cinza",
+        "imagem": "image/Conjunto_Calca/cinza1.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "GG"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Cinza",
+        "imagem": "image/Conjunto_Calca/cinza2.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "GG"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Grafite",
+        "imagem": "image/Conjunto_Calca/grafite1.jpg",
+        "tamanhos": [
+          "P",
+          "M"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Grafite",
+        "imagem": "image/Conjunto_Calca/grafite2.jpg",
+        "tamanhos": [
+          "P",
+          "M"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Verde",
+        "imagem": "image/Conjunto_Calca/verde1.jpg",
+        "tamanhos": [
+          "P",
+          "GG"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Verde",
+        "imagem": "image/Conjunto_Calca/verde2.jpg",
+        "tamanhos": [
+          "P",
+          "GG"
+        ],
+        "soldOut": true
+      }
+    ],
+    "id": 4
+  },
+  {
+    "nome": "Top e Legging Layla",
+    "categoria": "Conjunto Legging",
+    "preco": 149.9,
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Alta",
+      "transparencia": "Zero",
+      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "extras": [
+        "Bolsos laterais",
+        "busto forrado",
+        "toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "TerraCota",
+        "imagem": "image/Conjunto_Calca/terracota1.jpg",
+        "tamanhos": [
+          "M"
+        ]
+      },
+      {
+        "nome": "TerraCota",
+        "imagem": "image/Conjunto_Calca/terracota2.jpg",
+        "tamanhos": [
+          "M"
+        ]
+      },
+      {
+        "nome": "Verde Pavão",
+        "imagem": "image/Conjunto_Calca/verde_pavao1.jpg",
+        "tamanhos": [
+          "M",
+          "G",
+          "GG"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Verde Pavão",
+        "imagem": "image/Conjunto_Calca/verde_pavao2.jpg",
+        "tamanhos": [
+          "M",
+          "G",
+          "GG"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Grafite",
+        "imagem": "image/Conjunto_Calca/preto1.jpg",
+        "tamanhos": [
+          "M",
+          "G",
+          "GG"
+        ],
+        "soldOut": true,
+        "desc": {
+          "tecido": "Poliamida com elastano",
+          "tecnologias": [
+            "UPF 50+",
+            "4-way stretch",
+            "secagem rápida",
+            "antiodor"
+          ],
+          "compressao": "Média",
+          "transparencia": "Zero",
+          "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+          "extras": [
+            "Bolsos laterais",
+            "busto forrado",
+            "toque macio"
+          ],
+          "indicacao": [
+            "treino",
+            "corrida",
+            "yoga",
+            "dia a dia"
+          ]
+        }
+      },
+      {
+        "nome": "Grafite",
+        "imagem": "image/Conjunto_Calca/preto2.jpg",
+        "tamanhos": [
+          "M",
+          "G",
+          "GG"
+        ],
+        "soldOut": true,
+        "desc": {
+          "tecido": "Poliamida com elastano",
+          "tecnologias": [
+            "UPF 50+",
+            "4-way stretch",
+            "secagem rápida",
+            "antiodor"
+          ],
+          "compressao": "Média",
+          "transparencia": "Zero",
+          "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+          "extras": [
+            "Bolsos laterais",
+            "busto forrado",
+            "toque macio"
+          ],
+          "indicacao": [
+            "treino",
+            "corrida",
+            "yoga",
+            "dia a dia"
+          ]
+        }
+      }
+    ],
+    "id": 5
+  },
+  {
+    "nome": "Legging Sem Costura",
+    "categoria": "Conjunto Legging",
+    "preco": 139.9,
+    "precoPromo": 85,
+    "tamanhos": [
+      "P",
+      "M"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "toque geladinho",
+        "secagem rápida"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Sem costura lateral para máximo conforto",
+      "extras": [
+        "Cintura média",
+        "Modelagem que abraça o corpo"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Preto",
+        "imagem": "image/calca/calca_semcostura_preto.png",
+        "tamanhos": [
+          "P",
+          "M"
+        ]
+      },
+      {
+        "nome": "Azul Escuro",
+        "imagem": "image/calca/calca_semcostura_azul.png",
+        "tamanhos": [
+          "P",
+          "M"
+        ]
+      }
+    ],
+    "id": 6,
+    "soldOut": false
+  },
+  {
+    "nome": "Top e Short Sófia",
+    "categoria": "Conjunto Short",
+    "preco": 129.9,
+    "tamanhos": [
+      "P",
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "extras": [
+        "Bolsos laterais",
+        "busto forrado",
+        "toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Verde Água",
+        "imagem": "image/Conjunto_Short/verde_agua1.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Verde Água",
+        "imagem": "image/Conjunto_Short/verde_agua2.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Verde Água",
+        "imagem": "image/Conjunto_Short/verde_agua3.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      }
+    ],
+    "id": 7
+  },
+  {
+    "nome": "Top e Short Paty",
+    "categoria": "Conjunto Short",
+    "preco": 129.9,
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "extras": [
+        "Bolsos laterais",
+        "busto forrado",
+        "alças reguláveis",
+        "toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Cinza",
+        "imagem": "image/Conjunto_Short/cinza1.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Cinza",
+        "imagem": "image/Conjunto_Short/cinza2.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/preto1.jpg",
+        "tamanhos": [
+          "G",
+          "GG"
+        ],
+        "desc": {
+          "tecido": "Poliamida com elastano",
+          "tecnologias": [
+            "UPF 50+",
+            "4-way stretch",
+            "secagem rápida",
+            "antiodor"
+          ],
+          "compressao": "Alta",
+          "transparencia": "Zero",
+          "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+          "extras": [
+            "Bolsos laterais",
+            "busto forrado",
+            "alças reguláveis",
+            "toque macio",
+            "Peso ~315 g (G/GG)"
+          ],
+          "indicacao": [
+            "treino",
+            "corrida",
+            "yoga",
+            "dia a dia"
+          ]
+        }
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/preto2.jpg",
+        "tamanhos": [
+          "G",
+          "GG"
+        ],
+        "desc": {
+          "tecido": "Poliamida com elastano",
+          "tecnologias": [
+            "UPF 50+",
+            "4-way stretch",
+            "secagem rápida",
+            "antiodor"
+          ],
+          "compressao": "Alta",
+          "transparencia": "Zero",
+          "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+          "extras": [
+            "Bolsos laterais",
+            "busto forrado",
+            "alças reguláveis",
+            "toque macio",
+            "Peso ~315 g (G/GG)"
+          ],
+          "indicacao": [
+            "treino",
+            "corrida",
+            "yoga",
+            "dia a dia"
+          ]
+        }
+      }
+    ],
+    "id": 8
+  },
+  {
+    "nome": "Top e Short Sun Moov",
+    "categoria": "Conjunto Short",
+    "preco": 129.9,
+    "tamanhos": [
+      "P",
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "extras": [
+        "Bolso interno",
+        "toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Chocolate",
+        "imagem": "image/Conjunto_Short/sunmov_chocolate1.jpg",
+        "tamanhos": [
+          "M"
+        ]
+      },
+      {
+        "nome": "Chocolate",
+        "imagem": "image/Conjunto_Short/sunmov_chocolate2.jpg",
+        "tamanhos": [
+          "M"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/sunmov_preto1.jpg",
+        "tamanhos": [
+          "M"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/sunmov_preto2.jpg",
+        "tamanhos": [
+          "M"
+        ]
+      }
+    ],
+    "id": 9
+  },
+  {
+    "nome": "Conjunto Manteiga",
+    "categoria": "Conjunto Short",
+    "preco": 129.9,
+    "precoPromo": 90.9,
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Cós alto estruturado com costuras reforçadas",
+      "extras": [
+        "Top com alças reguláveis",
+        "Top forrado com entrada para bojo",
+        "Short forrado",
+        "Cós alto"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Manteiga",
+        "imagem": "image/Conjunto_Short/Manteiga1.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      },
+      {
+        "nome": "Manteiga",
+        "imagem": "image/Conjunto_Short/Manteiga2.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      },
+      {
+        "nome": "Manteiga",
+        "imagem": "image/Conjunto_Short/Manteiga3.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      }
+    ],
+    "id": 10,
+    "soldOut": false
+  },
+  {
+    "nome": "Conjunto Cacau",
+    "categoria": "Conjunto Short",
+    "preco": 129.9,
+    "precoPromo": 123.41,
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Cós alto estruturado com costuras reforçadas",
+      "extras": [
+        "Top com alças reguláveis",
+        "Top forrado com entrada para bojo",
+        "Short forrado",
+        "Cós alto"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Cacau",
+        "imagem": "image/Conjunto_Short/cacau1.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      },
+      {
+        "nome": "Cacau",
+        "imagem": "image/Conjunto_Short/cacau2.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      },
+      {
+        "nome": "Cacau",
+        "imagem": "image/Conjunto_Short/cacau3.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      }
+    ],
+    "id": 11
+  },
+  {
+    "nome": "Conjunto Sun Moov Rosa",
+    "categoria": "Conjunto Short",
+    "preco": 129.9,
+    "precoPromo": 123.41,
+    "tamanhos": [
+      "M",
+      "G"
+    ],
+    "soldOut": true,
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Cós alto estruturado com costuras reforçadas",
+      "extras": [
+        "Top com alças reguláveis",
+        "Top forrado com entrada para bojo",
+        "Short forrado",
+        "Cós alto"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Sun Moov Rosa",
+        "imagem": "image/Conjunto_Short/sunmoov_rosa1.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Sun Moov Rosa",
+        "imagem": "image/Conjunto_Short/sunmoov_rosa2.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Sun Moov Rosa",
+        "imagem": "image/Conjunto_Short/sunmoov_rosa3.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      }
+    ],
+    "id": 12
+  },
+  {
+    "nome": "Conjunto Aurora",
+    "categoria": "Conjunto Short",
+    "preco": 129.9,
+    "precoPromo": 123.41,
+    "tamanhos": [
+      "M",
+      "G"
+    ],
+    "soldOut": true,
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Cós alto estruturado com costuras reforçadas",
+      "extras": [
+        "Top com alças reguláveis",
+        "Top forrado com entrada para bojo",
+        "Short forrado",
+        "Cós alto"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Aurora",
+        "imagem": "image/Conjunto_Short/conjunto_aurora1.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Aurora",
+        "imagem": "image/Conjunto_Short/conjunto_aurora2.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      }
+    ],
+    "id": 13
+  },
+  {
+    "nome": "Conjunto Lia",
+    "categoria": "Conjunto Short",
+    "preco": 149.9,
+    "precoPromo": 119.9,
+    "tamanhos": [
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short duplo com bolsos laterais",
+      "extras": [
+        "Top forrado",
+        "Entrada para bojo",
+        "Alças ajustáveis"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Azul",
+        "imagem": "image/Conjunto_Short/conjunto_lia_azul01.jpeg",
+        "tamanhos": [
+          "G"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/conjunto_lia_preto01.jpeg",
+        "tamanhos": [
+          "G"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/conjunto_lia_preto02.jpeg",
+        "tamanhos": [
+          "G"
+        ]
+      }
+    ],
+    "id": 14
+  },
+  {
+    "nome": "Top Layla",
+    "categoria": "Conjunto Short",
+    "preco": 59.9,
+    "precoPromo": 39.9,
+    "tamanhos": [
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Modelagem que abraça sem apertar",
+      "extras": [
+        "Top forrado",
+        "Entrada para bojo",
+        "Alças ajustáveis"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Verde Pavão",
+        "imagem": "image/Top/top_verde_pavao.jpeg",
+        "tamanhos": [
+          "M"
+        ]
+      },
+      {
+        "nome": "Terracota",
+        "imagem": "image/Top/top_terracota.jpeg",
+        "tamanhos": [
+          "M"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Top/top_preto.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      }
+    ],
+    "id": 15
+  },
+  {
+    "nome": "Blusa Tela",
+    "categoria": "Blusa",
+    "preco": 42.9,
+    "tamanhos": [
+      "P",
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "secagem rápida",
+        "antiodor",
+        "respirável"
+      ],
+      "compressao": null,
+      "transparencia": null,
+      "recortes": "Costuras reforçadas",
+      "extras": [],
+      "indicacao": [
+        "treino",
+        "corrida"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Preto",
+        "imagem": "image/Blusa/blusa_preto1.jpg",
+        "tamanhos": [
+          "P",
+          "M"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Blusa/blusa_preto2.jpg",
+        "tamanhos": [
+          "P",
+          "M"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Blusa/blusa_preto3.jpg",
+        "tamanhos": [
+          "P",
+          "M"
+        ]
+      }
+    ],
+    "id": 16
+  },
+  {
+    "nome": "Colete",
+    "categoria": "Blusa",
+    "preco": 71.9,
+    "tamanhos": [
+      "36",
+      "38",
+      "40",
+      "42"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "secagem rápida",
+        "antiodor",
+        "respirável"
+      ],
+      "compressao": null,
+      "transparencia": null,
+      "recortes": "Costuras reforçadas",
+      "extras": [
+        "Bolsos laterais",
+        "zíper frontal"
+      ],
+      "indicacao": [
+        "treino",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Preto",
+        "imagem": "image/Blusa/colete_preto1.jpg"
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Blusa/colete_preto2.jpg"
+      }
+    ],
+    "id": 17
+  },
+  {
+    "nome": "Blusa Básica em Poliéster",
+    "categoria": "Blusa",
+    "preco": 18.9,
+    "tamanhos": [
+      "P",
+      "M"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "secagem rápida"
+      ],
+      "compressao": null,
+      "transparencia": "Zero",
+      "recortes": "Modelagem básica com caimento reto",
+      "extras": [
+        "Confortável para o dia a dia"
+      ],
+      "indicacao": [
+        "treino leve",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Branco",
+        "imagem": "image/Blusa/blusa_branca.jpeg",
+        "tamanhos": [
+          "P",
+          "M"
+        ]
+      }
+    ],
+    "id": 18
+  }
+]

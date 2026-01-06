@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relatório Lemoov</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #10202b; }
+    h1 { margin: 0 0 12px; }
+    .kpis { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+    .kpi { background: #f1f5f9; border-radius: 12px; padding: 12px 16px; min-width: 160px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 24px; }
+    .card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; }
+    .muted { color: #64748b; }
+  </style>
+</head>
+<body>
+  <h1>Relatório de regiões</h1>
+  <div class="kpis">
+    <div class="kpi"><strong>Pedidos</strong><div id="kpiPedidos">0</div></div>
+    <div class="kpi"><strong>Itens</strong><div id="kpiItens">0</div></div>
+    <div class="kpi"><strong>Valor</strong><div id="kpiValor">R$ 0,00</div></div>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <h3>Por UF</h3>
+      <table>
+        <thead><tr><th>UF</th><th>Pedidos</th></tr></thead>
+        <tbody id="tableUf"><tr><td class="muted">—</td><td>0</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Por cidade</h3>
+      <table>
+        <thead><tr><th>Cidade</th><th>Pedidos</th></tr></thead>
+        <tbody id="tableCity"><tr><td class="muted">—</td><td>0</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function formatBRL(value){
+      return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+    function sum(arr, key){
+      return arr.reduce((acc, item) => acc + (Number(item[key]) || 0), 0);
+    }
+    function toRows(obj){
+      const entries = Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+      if (!entries.length) return '<tr><td class="muted">—</td><td>0</td></tr>';
+      return entries.map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+    }
+    async function loadReport(){
+      const res = await fetch('/api/pedidos');
+      if (!res.ok) return;
+      const pedidos = await res.json();
+      document.getElementById('kpiPedidos').textContent = pedidos.length;
+      document.getElementById('kpiItens').textContent = sum(pedidos, 'item_count');
+      document.getElementById('kpiValor').textContent = formatBRL(sum(pedidos, 'total'));
+
+      const byUf = {};
+      const byCity = {};
+      pedidos.forEach((p) => {
+        const uf = (p.uf || p.visitor_region || '—').toUpperCase();
+        const city = p.cidade || p.visitor_city || '—';
+        byUf[uf] = (byUf[uf] || 0) + 1;
+        const cityKey = `${city} / ${uf}`;
+        byCity[cityKey] = (byCity[cityKey] || 0) + 1;
+      });
+      document.getElementById('tableUf').innerHTML = toRows(byUf);
+      document.getElementById('tableCity').innerHTML = toRows(byCity);
+    }
+    loadReport();
+  </script>
+</body>
+</html>

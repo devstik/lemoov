@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login | Lemoov</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; background: #f7fafc; }
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .login-card {
+      width: min(480px, 100%);
+      background: #fff;
+      border-radius: 24px;
+      border: 1px solid rgba(9,24,33,0.12);
+      box-shadow: 0 24px 48px rgba(5,17,30,0.12);
+      padding: 28px;
+    }
+    .login-card h1 { margin: 0 0 6px; }
+    .login-card p { margin: 0 0 18px; color: var(--text-muted); }
+    .login-card label { display:block; font-size: 13px; margin: 12px 0 6px; color:#334155; }
+    .login-card input { width:100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(9,24,33,0.2); }
+    .login-actions { display:flex; gap: 10px; margin-top: 16px; align-items:center; }
+    .error { color: #b91c1c; font-size: 13px; margin-top: 8px; display:none; }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <p class="section-eyebrow">Acesso restrito</p>
+      <h1>Entrar</h1>
+      <p>Use seu usuário e senha para acessar o painel.</p>
+      <form id="loginForm">
+        <label>Usuário</label>
+        <input type="text" id="loginUser" required />
+        <label>Senha</label>
+        <input type="password" id="loginPass" required />
+        <div class="login-actions">
+          <button class="btn btn--primary" type="submit">Entrar</button>
+          <a class="btn btn--ghost" href="/">Voltar ao site</a>
+        </div>
+        <div class="error" id="loginError">Usuário ou senha inválidos.</div>
+      </form>
+    </div>
+  </div>
+  <script>
+    const form = document.getElementById('loginForm');
+    const err = document.getElementById('loginError');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.style.display = 'none';
+      const user = document.getElementById('loginUser').value.trim();
+      const pass = document.getElementById('loginPass').value;
+      const params = new URLSearchParams(location.search);
+      const redirect = params.get('redirect') || '/api/produtos-admin';
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user, pass, redirect })
+      });
+      if (!res.ok) {
+        err.style.display = '';
+        return;
+      }
+      const data = await res.json();
+      location.href = data.redirect || '/api/produtos-admin';
+    });
+  </script>
+</body>
+</html>

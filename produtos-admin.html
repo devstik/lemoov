@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gerenciar Produtos | Lemoov</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 24px; }
+    .admin-header { margin-bottom: 16px; }
+    .layout { display: grid; grid-template-columns: minmax(280px, 1.2fr) minmax(380px, 1.8fr); gap: 24px; }
+    .card { border: 1px solid rgba(9,24,33,0.12); border-radius: 16px; padding: 16px; background: #fff; box-shadow: 0 20px 40px rgba(5,17,30,0.08); }
+    .list { max-height: 70vh; overflow: auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+    .product-card { border: 1px solid rgba(9,24,33,0.12); border-radius: 14px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+    .product-card.active { border-color: rgba(9,91,143,0.45); box-shadow: 0 16px 28px rgba(9,91,143,0.18); }
+    .product-card__media { background: #f6f9fc; height: 150px; display:flex; align-items:center; justify-content:center; }
+    .product-card__media img { width: 100%; height: 100%; object-fit: cover; }
+    .product-card__body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .product-card__name { font-weight: 600; font-size: 14px; }
+    .product-card__meta { font-size: 12px; color: var(--text-muted); }
+    .product-card__actions { display: flex; gap: 8px; margin-top: 6px; }
+    .product-card.is-locked { filter: grayscale(0.3); }
+    .colors-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; }
+    .color-row { border: 1px solid rgba(9,24,33,0.12); border-radius: 12px; padding: 12px; display: grid; gap: 10px; background: #f8fbff; }
+    .color-row__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .color-row__preview { display: flex; gap: 10px; align-items: center; }
+    .color-row__preview img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(9,24,33,0.12); }
+    .color-row__actions { display: flex; gap: 8px; }
+    label { display: block; font-size: 13px; margin: 12px 0 6px; color: #334155; }
+    input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid rgba(9,24,33,0.2); border-radius: 10px; font-size: 14px; }
+    textarea { min-height: 120px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .muted { color: var(--text-muted); font-size: 12px; }
+    .header-actions { display: flex; gap: 8px; margin: 10px 0 0; }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .color-row__grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-header">
+    <p class="section-eyebrow">Admin</p>
+    <h1>Gerenciar produtos</h1>
+  </div>
+  <p class="muted">Edite os produtos sem mexer no código. As alterações aparecem no site.</p>
+  <div class="layout">
+    <div class="card list">
+      <div class="header-actions">
+        <button class="btn btn--primary" id="btnNovo">Novo produto</button>
+        <button class="btn btn--ghost" id="btnRecarregar">Recarregar</button>
+      </div>
+      <div id="listaProdutos" class="grid" style="margin-top:12px;"></div>
+    </div>
+    <div class="card">
+      <form id="produtoForm">
+        <input type="hidden" id="prodId" />
+        <label>Nome</label>
+        <input type="text" id="prodNome" required />
+
+        <div class="row">
+          <div>
+            <label>Categoria</label>
+            <input type="text" id="prodCategoria" required />
+          </div>
+          <div>
+            <label>Preço (ex: 149.90)</label>
+            <input type="number" step="0.01" id="prodPreco" required />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Preço promo (opcional)</label>
+            <input type="number" step="0.01" id="prodPrecoPromo" />
+          </div>
+          <div>
+            <label>Tamanhos (separe por vírgula)</label>
+            <input type="text" id="prodTamanhos" placeholder="P, M, G" />
+          </div>
+        </div>
+
+        <label><input type="checkbox" id="prodSoldOut" /> Esgotado</label>
+
+        <label>Descrição (texto)</label>
+        <textarea id="prodDesc" placeholder="Ex: Tecido macio, compressão alta e secagem rápida."></textarea>
+        <div class="muted">Digite um texto simples. O site formata automaticamente.</div>
+
+        <label>Cores</label>
+        <div id="colorsList" class="colors-list"></div>
+        <button class="btn btn--ghost" type="button" id="btnAddColor">Adicionar cor</button>
+        <div class="muted">Use JPG/PNG. As imagens serão salvas na pasta image/.</div>
+
+        <div class="actions">
+          <button class="btn btn--primary" type="submit">Salvar</button>
+          <button class="btn btn--ghost" type="button" id="btnLimpar">Limpar</button>
+          <button class="btn btn--ghost" type="button" id="btnCancelar" style="display:none;">Cancelar</button>
+          <button class="btn btn--ghost" type="button" id="btnExcluir">Excluir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const listEl = document.getElementById('listaProdutos');
+    const form = document.getElementById('produtoForm');
+    const btnNovo = document.getElementById('btnNovo');
+    const btnLimpar = document.getElementById('btnLimpar');
+    const btnCancelar = document.getElementById('btnCancelar');
+    const btnExcluir = document.getElementById('btnExcluir');
+    const btnRecarregar = document.getElementById('btnRecarregar');
+    const btnAddColor = document.getElementById('btnAddColor');
+    const colorsList = document.getElementById('colorsList');
+
+    const fields = {
+      id: document.getElementById('prodId'),
+      nome: document.getElementById('prodNome'),
+      categoria: document.getElementById('prodCategoria'),
+      preco: document.getElementById('prodPreco'),
+      precoPromo: document.getElementById('prodPrecoPromo'),
+      tamanhos: document.getElementById('prodTamanhos'),
+      soldOut: document.getElementById('prodSoldOut'),
+      desc: document.getElementById('prodDesc')
+    };
+
+    let produtos = [];
+    let activeId = null;
+    let editMode = false;
+
+    function formatMoney(value){
+      const n = Number(value || 0);
+      return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function setForm(prod){
+      fields.id.value = prod?.id || '';
+      fields.nome.value = prod?.nome || '';
+      fields.categoria.value = prod?.categoria || '';
+      fields.preco.value = prod?.preco != null ? prod.preco : '';
+      fields.precoPromo.value = prod?.precoPromo != null ? prod.precoPromo : '';
+      fields.tamanhos.value = Array.isArray(prod?.tamanhos) ? prod.tamanhos.join(', ') : '';
+      fields.soldOut.checked = Boolean(prod?.soldOut);
+      if (prod?.desc?.texto) {
+        fields.desc.value = prod.desc.texto;
+      } else if (prod?.desc) {
+        fields.desc.value = [prod.desc.tecido, prod.desc.compressao, prod.desc.transparencia].filter(Boolean).join(" • ");
+      } else {
+        fields.desc.value = '';
+      }
+      renderColorRows(Array.isArray(prod?.cores) ? prod.cores : []);
+    }
+
+    function setFormEnabled(enabled){
+      Object.keys(fields).forEach((key) => {
+        if (key === 'id') return;
+        const field = fields[key];
+        field.disabled = !enabled;
+      });
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = !enabled;
+      btnLimpar.disabled = !enabled;
+      btnExcluir.disabled = !enabled;
+      if (btnAddColor) btnAddColor.disabled = !enabled;
+      if (colorsList) {
+        colorsList.querySelectorAll('input, button').forEach((el) => {
+          el.disabled = !enabled;
+        });
+      }
+    }
+
+    function setEditMode(next){
+      editMode = next;
+      btnCancelar.style.display = editMode ? '' : 'none';
+      btnNovo.disabled = editMode;
+      btnRecarregar.disabled = editMode;
+      document.querySelectorAll('.product-card').forEach((card) => {
+        const isActive = String(card.dataset.id) === String(activeId);
+        if (!editMode) {
+          card.classList.remove('is-locked');
+          card.style.pointerEvents = '';
+          card.style.opacity = '';
+        } else if (!isActive) {
+          card.classList.add('is-locked');
+          card.style.pointerEvents = 'none';
+          card.style.opacity = '0.4';
+        }
+      });
+    }
+
+    function renderList(){
+      listEl.innerHTML = produtos.map((p) => {
+        const isActive = Number(p.id) === Number(activeId);
+        const firstColor = Array.isArray(p.cores) ? p.cores[0] : null;
+        const img = firstColor
+          ? (Array.isArray(firstColor.imagens) && firstColor.imagens[0] ? firstColor.imagens[0] : (firstColor.imagem || ''))
+          : '';
+        const status = p.soldOut ? 'Esgotado' : 'Disponível';
+        return `
+          <div class="product-card ${isActive ? 'active' : ''}" data-id="${p.id}">
+          <div class="product-card__media">
+              ${img ? `<img src="${img.startsWith('/') ? img : '/' + img}" alt="${p.nome}">` : '<span class="muted">Sem imagem</span>'}
+          </div>
+            <div class="product-card__body">
+              <div class="product-card__name">${p.nome}</div>
+              <div class="product-card__meta">${p.categoria} • ${formatMoney(p.preco)}</div>
+              <div class="product-card__meta">${status}</div>
+              <div class="product-card__actions">
+                <button class="btn btn--ghost" data-edit="${p.id}">Editar</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadProdutos(){
+      const res = await fetch('/api/admin/produtos');
+      if (res.status === 401) {
+        location.href = '/login?redirect=/api/produtos-admin';
+        return;
+      }
+      if (!res.ok) return;
+      produtos = await res.json();
+      renderList();
+    }
+
+    function renderColorRows(cores = []){
+      colorsList.innerHTML = '';
+      if (!cores.length) {
+        addColorRow();
+        return;
+      }
+      cores.forEach((cor) => addColorRow(cor));
+    }
+
+    function addColorRow(cor = {}){
+      const row = document.createElement('div');
+      row.className = 'color-row';
+      const imgs = Array.isArray(cor.imagens) ? cor.imagens.filter(Boolean) : [];
+      const imgPath = cor.imagem || imgs[0] || '';
+      const imgPath2 = imgs[1] || '';
+      const imgPath3 = imgs[2] || '';
+      row.dataset.imagePath1 = imgPath;
+      row.dataset.imagePath2 = imgPath2;
+      row.dataset.imagePath3 = imgPath3;
+      row.innerHTML = `
+        <div class="color-row__grid">
+          <div>
+            <label>Nome da cor</label>
+            <input type="text" data-color-name value="${cor.nome || ''}" />
+          </div>
+          <div>
+            <label>Tamanhos (por cor)</label>
+            <input type="text" data-color-sizes placeholder="P, M, G" value="${Array.isArray(cor.tamanhos) ? cor.tamanhos.join(', ') : ''}" />
+          </div>
+        </div>
+        <div class="color-row__grid">
+          <div>
+            <label>Imagem 1 (principal)</label>
+            <input type="file" data-color-file="1" accept="image/jpeg,image/png" />
+            <div class="color-row__preview">
+              <img data-color-preview="1" src="${imgPath ? '/' + imgPath : ''}" alt="" style="${imgPath ? '' : 'display:none;'}" />
+              <span class="muted" data-color-path="1">${imgPath || 'Sem imagem'}</span>
+            </div>
+          </div>
+          <div>
+            <label>Imagem 2 (opcional)</label>
+            <input type="file" data-color-file="2" accept="image/jpeg,image/png" />
+            <div class="color-row__preview">
+              <img data-color-preview="2" src="${imgPath2 ? '/' + imgPath2 : ''}" alt="" style="${imgPath2 ? '' : 'display:none;'}" />
+              <span class="muted" data-color-path="2">${imgPath2 || 'Sem imagem'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="color-row__grid">
+          <div>
+            <label>Imagem 3 (opcional)</label>
+            <input type="file" data-color-file="3" accept="image/jpeg,image/png" />
+            <div class="color-row__preview">
+              <img data-color-preview="3" src="${imgPath3 ? '/' + imgPath3 : ''}" alt="" style="${imgPath3 ? '' : 'display:none;'}" />
+              <span class="muted" data-color-path="3">${imgPath3 || 'Sem imagem'}</span>
+            </div>
+          </div>
+          <div>
+            <label><input type="checkbox" data-color-soldout ${cor.soldOut ? 'checked' : ''} /> Esgotado</label>
+          </div>
+        </div>
+        <div class="color-row__actions">
+          <button type="button" class="btn btn--ghost" data-color-remove>Remover cor</button>
+        </div>
+      `;
+      const inputs = row.querySelectorAll('[data-color-file]');
+      inputs.forEach((fileInput) => {
+        const idx = fileInput.dataset.colorFile;
+        const previewImg = row.querySelector(`[data-color-preview="${idx}"]`);
+        const pathLabel = row.querySelector(`[data-color-path="${idx}"]`);
+        fileInput.addEventListener('change', () => {
+          const file = fileInput.files && fileInput.files[0];
+          if (!file) return;
+          const url = URL.createObjectURL(file);
+          previewImg.src = url;
+          previewImg.style.display = '';
+          pathLabel.textContent = file.name;
+        });
+      });
+      row.querySelector('[data-color-remove]').addEventListener('click', () => {
+        row.remove();
+      });
+      colorsList.appendChild(row);
+    }
+
+    async function uploadImageFile(file){
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
+      if (res.status === 401) {
+        location.href = '/login?redirect=/api/produtos-admin';
+        throw new Error('Sem login');
+      }
+      if (!res.ok) throw new Error('Falha ao enviar imagem.');
+      const data = await res.json();
+      if (!data?.path) throw new Error('Upload inválido.');
+      return data.path;
+    }
+
+    async function buildColors(){
+      const rows = Array.from(colorsList.querySelectorAll('.color-row'));
+      const colors = [];
+      for (const row of rows) {
+        const nome = row.querySelector('[data-color-name]').value.trim();
+        const sizesRaw = row.querySelector('[data-color-sizes]').value;
+        const tamanhos = sizesRaw.split(',').map((t) => t.trim()).filter(Boolean);
+        const soldOut = row.querySelector('[data-color-soldout]').checked;
+        const fileInput = row.querySelector('[data-color-file]');
+        const file1 = row.querySelector('[data-color-file="1"]');
+        const file2 = row.querySelector('[data-color-file="2"]');
+        const file3 = row.querySelector('[data-color-file="3"]');
+        let imagePath1 = row.dataset.imagePath1 || '';
+        let imagePath2 = row.dataset.imagePath2 || '';
+        let imagePath3 = row.dataset.imagePath3 || '';
+        if (file1 && file1.files && file1.files[0]) {
+          imagePath1 = await uploadImageFile(file1.files[0]);
+          row.dataset.imagePath1 = imagePath1;
+        }
+        if (file2 && file2.files && file2.files[0]) {
+          imagePath2 = await uploadImageFile(file2.files[0]);
+          row.dataset.imagePath2 = imagePath2;
+        }
+        if (file3 && file3.files && file3.files[0]) {
+          imagePath3 = await uploadImageFile(file3.files[0]);
+          row.dataset.imagePath3 = imagePath3;
+        }
+        const imagens = [imagePath1, imagePath2, imagePath3].filter(Boolean);
+        if (!nome && !imagens.length) continue;
+        colors.push({ nome, imagem: imagens[0] || "", imagens, tamanhos, soldOut });
+      }
+      return colors;
+    }
+
+    async function collectForm(){
+      const tamanhos = fields.tamanhos.value
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const descText = fields.desc.value.trim();
+      const cores = await buildColors();
+      return {
+        nome: fields.nome.value.trim(),
+        categoria: fields.categoria.value.trim(),
+        preco: Number(fields.preco.value),
+        precoPromo: fields.precoPromo.value ? Number(fields.precoPromo.value) : undefined,
+        tamanhos: tamanhos.length ? tamanhos : [],
+        soldOut: fields.soldOut.checked,
+        desc: descText ? { texto: descText } : undefined,
+        cores: Array.isArray(cores) ? cores : []
+      };
+    }
+
+    listEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-edit]');
+      const card = e.target.closest('.product-card');
+      const id = btn?.dataset?.edit || card?.dataset?.id;
+      if (!id) return;
+      activeId = id;
+        const prod = produtos.find((p) => String(p.id) === String(activeId));
+        setForm(prod);
+        renderList();
+        setFormEnabled(true);
+        setEditMode(true);
+    });
+
+    btnNovo.addEventListener('click', () => {
+      activeId = null;
+      setForm({});
+      renderList();
+      setFormEnabled(true);
+      setEditMode(true);
+    });
+
+    btnLimpar.addEventListener('click', () => {
+      activeId = null;
+      setForm({});
+      renderList();
+    });
+
+    if (btnCancelar) {
+      btnCancelar.addEventListener('click', () => {
+        activeId = null;
+        setForm({});
+        renderList();
+        setFormEnabled(false);
+        setEditMode(false);
+      });
+    }
+
+    btnExcluir.addEventListener('click', async () => {
+      if (!activeId) return alert('Selecione um produto.');
+      if (!confirm('Excluir este produto?')) return;
+      const res = await fetch(`/api/admin/produtos/${activeId}`, { method: 'DELETE' });
+      if (res.status === 401) {
+        location.href = '/login?redirect=/api/produtos-admin';
+        return;
+      }
+      if (!res.ok) return alert('Falha ao excluir.');
+      activeId = null;
+      setForm({});
+      await loadProdutos();
+      setFormEnabled(false);
+      setEditMode(false);
+    });
+
+    btnRecarregar.addEventListener('click', loadProdutos);
+    if (btnAddColor) {
+      btnAddColor.addEventListener('click', () => addColorRow());
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      let payload;
+      try {
+        payload = await collectForm();
+      } catch (err) {
+        alert(err.message);
+        return;
+      }
+      if (!payload.nome || !payload.categoria || !payload.preco) {
+        alert('Preencha nome, categoria e preço.');
+        return;
+      }
+      const method = activeId ? 'PUT' : 'POST';
+      const url = activeId ? `/api/admin/produtos/${activeId}` : '/api/admin/produtos';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.status === 401) {
+        location.href = '/login?redirect=/api/produtos-admin';
+        return;
+      }
+      if (!res.ok) return alert('Falha ao salvar.');
+      const data = await res.json();
+      activeId = data?.item?.id || activeId;
+      await loadProdutos();
+      if (activeId) {
+        const prod = produtos.find((p) => String(p.id) === String(activeId));
+        if (prod) setForm(prod);
+      }
+      setFormEnabled(true);
+      setEditMode(Boolean(activeId));
+    });
+
+    setFormEnabled(false);
+    loadProdutos();
+  </script>
+</body>
+</html>
