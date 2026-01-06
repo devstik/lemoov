@@ -36,7 +36,7 @@
     "cores": [
       {
         "nome": "Azul",
-        "imagem": "image/macacao/azul1.jpg",
+        "imagem": "image/Macacao/azul1.jpg",
         "tamanhos": [
           "G"
         ],
@@ -45,7 +45,7 @@
       },
       {
         "nome": "Azul",
-        "imagem": "image/macacao/azul2.jpg",
+        "imagem": "image/Macacao/azul2.jpg",
         "tamanhos": [
           "G"
         ],
@@ -54,7 +54,7 @@
       },
       {
         "nome": "Cinza",
-        "imagem": "image/macacao/cinza1.jpg",
+        "imagem": "image/Macacao/cinza1.jpg",
         "tamanhos": [
           "M",
           "G"
@@ -63,7 +63,7 @@
       },
       {
         "nome": "Cinza",
-        "imagem": "image/macacao/cinza2.jpg",
+        "imagem": "image/Macacao/cinza2.jpg",
         "tamanhos": [
           "M",
           "G"
@@ -72,7 +72,7 @@
       },
       {
         "nome": "Grafite",
-        "imagem": "image/macacao/grafite1.jpg",
+        "imagem": "image/Macacao/grafite1.jpg",
         "tamanhos": [
           "M",
           "G"
@@ -81,7 +81,7 @@
       },
       {
         "nome": "Grafite",
-        "imagem": "image/macacao/grafite2.jpg",
+        "imagem": "image/Macacao/grafite2.jpg",
         "tamanhos": [
           "M",
           "G"
@@ -90,7 +90,7 @@
       },
       {
         "nome": "Preto",
-        "imagem": "image/macacao/preto.jpg",
+        "imagem": "image/Macacao/preto.jpg",
         "tamanhos": [
           "G",
           "GG"
@@ -558,7 +558,7 @@
     "cores": [
       {
         "nome": "Preto",
-        "imagem": "image/calca/calca_semcostura_preto.png",
+        "imagem": "image/Calca/calca_semcostura_preto.png",
         "tamanhos": [
           "P",
           "M"
@@ -566,7 +566,7 @@
       },
       {
         "nome": "Azul Escuro",
-        "imagem": "image/calca/calca_semcostura_azul.png",
+        "imagem": "image/Calca/calca_semcostura_azul.png",
         "tamanhos": [
           "P",
           "M"
