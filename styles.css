@@ -1449,6 +1449,11 @@ img, video {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px var(--primary-color);
 }
+.product-card__note {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
 
 /* ================== Modal ================== */
 .modal {
@@ -1599,6 +1604,79 @@ img, video {
 .modal__info p.muted {
   margin: 0;
   line-height: 1.5;
+}
+
+/* ===== Modal de escolha (Conjunto/Top/Legging) ===== */
+.venda-modal__content {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 520px);
+  max-height: calc(100vh - 40px);
+  margin: 12px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(226,255,246,0.92));
+  color: var(--secondary-color);
+  border-radius: 22px;
+  box-shadow: 0 30px 50px rgba(4,9,16,0.25);
+  padding: clamp(18px, 3vw, 28px);
+  display: grid;
+  gap: 14px;
+  animation: slideUp 0.5s ease-out;
+}
+.venda-modal__note {
+  color: var(--text-muted);
+  margin-top: -6px;
+}
+.venda-modal__meta {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.venda-options {
+  display: grid;
+  gap: 10px;
+}
+.venda-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.7);
+}
+.venda-option__info {
+  display: grid;
+  gap: 4px;
+}
+.venda-option__price s {
+  opacity: 0.6;
+  margin-right: 6px;
+}
+.venda-option__qty {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+.venda-option__qty input {
+  width: 72px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+.venda-option--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.venda-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  border-top: 1px dashed rgba(0,0,0,0.12);
+  padding-top: 10px;
+}
+.venda-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .modal__options {
@@ -2426,6 +2504,11 @@ legend {
 .cart__item-details {
     font-size: 0.85rem;
     color: #000000;
+}
+.cart__item-qty {
+    font-size: 0.82rem;
+    color: #000000;
+    margin-top: 2px;
 }
 .cart__item-desc {
     font-size: 0.82rem;

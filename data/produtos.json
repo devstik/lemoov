@@ -104,6 +104,7 @@
     "nome": "Macaquinho Clara",
     "categoria": "Macaquinho",
     "preco": 94.9,
+    "soldOut": true,
     "tamanhos": [
       "G"
     ],
@@ -391,147 +392,10 @@
     "id": 4
   },
   {
-    "nome": "Top e Legging Layla",
-    "categoria": "Conjunto Legging",
-    "preco": 149.9,
-    "tamanhos": [
-      "P",
-      "M",
-      "G",
-      "GG"
-    ],
-    "desc": {
-      "tecido": "Poliamida com elastano",
-      "tecnologias": [
-        "UPF 50+",
-        "4-way stretch",
-        "secagem rápida",
-        "antiodor"
-      ],
-      "compressao": "Alta",
-      "transparencia": "Zero",
-      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
-      "extras": [
-        "Bolsos laterais",
-        "busto forrado",
-        "toque macio"
-      ],
-      "indicacao": [
-        "treino",
-        "corrida",
-        "yoga",
-        "dia a dia"
-      ]
-    },
-    "cores": [
-      {
-        "nome": "TerraCota",
-        "imagem": "image/Conjunto_Calca/terracota1.jpg",
-        "tamanhos": [
-          "M"
-        ]
-      },
-      {
-        "nome": "TerraCota",
-        "imagem": "image/Conjunto_Calca/terracota2.jpg",
-        "tamanhos": [
-          "M"
-        ]
-      },
-      {
-        "nome": "Verde Pavão",
-        "imagem": "image/Conjunto_Calca/verde_pavao1.jpg",
-        "tamanhos": [
-          "M",
-          "G",
-          "GG"
-        ],
-        "soldOut": true
-      },
-      {
-        "nome": "Verde Pavão",
-        "imagem": "image/Conjunto_Calca/verde_pavao2.jpg",
-        "tamanhos": [
-          "M",
-          "G",
-          "GG"
-        ],
-        "soldOut": true
-      },
-      {
-        "nome": "Grafite",
-        "imagem": "image/Conjunto_Calca/preto1.jpg",
-        "tamanhos": [
-          "M",
-          "G",
-          "GG"
-        ],
-        "soldOut": true,
-        "desc": {
-          "tecido": "Poliamida com elastano",
-          "tecnologias": [
-            "UPF 50+",
-            "4-way stretch",
-            "secagem rápida",
-            "antiodor"
-          ],
-          "compressao": "Média",
-          "transparencia": "Zero",
-          "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
-          "extras": [
-            "Bolsos laterais",
-            "busto forrado",
-            "toque macio"
-          ],
-          "indicacao": [
-            "treino",
-            "corrida",
-            "yoga",
-            "dia a dia"
-          ]
-        }
-      },
-      {
-        "nome": "Grafite",
-        "imagem": "image/Conjunto_Calca/preto2.jpg",
-        "tamanhos": [
-          "M",
-          "G",
-          "GG"
-        ],
-        "soldOut": true,
-        "desc": {
-          "tecido": "Poliamida com elastano",
-          "tecnologias": [
-            "UPF 50+",
-            "4-way stretch",
-            "secagem rápida",
-            "antiodor"
-          ],
-          "compressao": "Média",
-          "transparencia": "Zero",
-          "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
-          "extras": [
-            "Bolsos laterais",
-            "busto forrado",
-            "toque macio"
-          ],
-          "indicacao": [
-            "treino",
-            "corrida",
-            "yoga",
-            "dia a dia"
-          ]
-        }
-      }
-    ],
-    "id": 5
-  },
-  {
     "nome": "Legging Sem Costura",
     "categoria": "Conjunto Legging",
     "preco": 139.9,
-    "precoPromo": 85,
+    "precoPromo": 69.9,
     "tamanhos": [
       "P",
       "M"
@@ -566,7 +430,7 @@
       },
       {
         "nome": "Azul Escuro",
-        "imagem": "image/Calca/calca_semcostura_azul.png",
+        "imagem": "image/Calca/calca_semcostura_preto.png",
         "tamanhos": [
           "P",
           "M"
@@ -580,6 +444,7 @@
     "nome": "Top e Short Sófia",
     "categoria": "Conjunto Short",
     "preco": 129.9,
+    "soldOut": true,
     "tamanhos": [
       "P",
       "M",
@@ -640,6 +505,7 @@
     "nome": "Top e Short Paty",
     "categoria": "Conjunto Short",
     "preco": 129.9,
+    "soldOut": true,
     "tamanhos": [
       "P",
       "M",
@@ -759,7 +625,7 @@
   {
     "nome": "Top e Short Sun Moov",
     "categoria": "Conjunto Short",
-    "preco": 129.9,
+    "preco": 79.9,
     "tamanhos": [
       "P",
       "M",
@@ -778,6 +644,9 @@
       "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
       "extras": [
         "Bolso interno",
+        "Bolsos laterais",
+        "Peça forrada",
+        "Somente o short",
         "toque macio"
       ],
       "indicacao": [
@@ -789,10 +658,30 @@
     },
     "cores": [
       {
-        "nome": "Chocolate",
-        "imagem": "image/Conjunto_Short/sunmov_chocolate1.jpg",
+        "nome": "Branco",
+        "imagem": "image/Conjunto_Short/sunmoov_branco_0355.jpg",
         "tamanhos": [
-          "M"
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Branco",
+        "imagem": "image/Conjunto_Short/sunmoov_branco_0356.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Branco",
+        "imagem": "image/Conjunto_Short/sunmoov_branco_0357.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
         ]
       },
       {
@@ -800,21 +689,32 @@
         "imagem": "image/Conjunto_Short/sunmov_chocolate2.jpg",
         "tamanhos": [
           "M"
-        ]
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Chocolate",
+        "imagem": "image/Conjunto_Short/sunmov_chocolate2.jpg",
+        "tamanhos": [
+          "M"
+        ],
+        "soldOut": true
       },
       {
         "nome": "Preto",
         "imagem": "image/Conjunto_Short/sunmov_preto1.jpg",
         "tamanhos": [
           "M"
-        ]
+        ],
+        "soldOut": true
       },
       {
         "nome": "Preto",
         "imagem": "image/Conjunto_Short/sunmov_preto2.jpg",
         "tamanhos": [
           "M"
-        ]
+        ],
+        "soldOut": true
       }
     ],
     "id": 9
@@ -825,10 +725,7 @@
     "preco": 129.9,
     "precoPromo": 90.9,
     "tamanhos": [
-      "P",
-      "M",
-      "G",
-      "GG"
+      "P"
     ],
     "desc": {
       "tecido": "Poliamida com elastano",
@@ -857,30 +754,21 @@
         "nome": "Manteiga",
         "imagem": "image/Conjunto_Short/Manteiga1.jpeg",
         "tamanhos": [
-          "P",
-          "M",
-          "G",
-          "GG"
+          "P"
         ]
       },
       {
         "nome": "Manteiga",
         "imagem": "image/Conjunto_Short/Manteiga2.jpeg",
         "tamanhos": [
-          "P",
-          "M",
-          "G",
-          "GG"
+          "P"
         ]
       },
       {
         "nome": "Manteiga",
         "imagem": "image/Conjunto_Short/Manteiga3.jpeg",
         "tamanhos": [
-          "P",
-          "M",
-          "G",
-          "GG"
+          "P"
         ]
       }
     ],
@@ -892,6 +780,22 @@
     "categoria": "Conjunto Short",
     "preco": 129.9,
     "precoPromo": 123.41,
+    "opcoesVenda": [
+      {
+        "tipo": "Conjunto",
+        "preco": 129.9
+      },
+      {
+        "tipo": "Top",
+        "preco": 59.9,
+        "precoPromo": 40.9
+      },
+      {
+        "tipo": "Short",
+        "preco": 70.0,
+        "precoPromo": 54.9
+      }
+    ],
     "tamanhos": [
       "P",
       "M",
@@ -927,7 +831,6 @@
         "tamanhos": [
           "P",
           "M",
-          "G",
           "GG"
         ]
       },
@@ -937,7 +840,6 @@
         "tamanhos": [
           "P",
           "M",
-          "G",
           "GG"
         ]
       },
@@ -947,7 +849,6 @@
         "tamanhos": [
           "P",
           "M",
-          "G",
           "GG"
         ]
       }
@@ -1072,63 +973,10 @@
     "id": 13
   },
   {
-    "nome": "Conjunto Lia",
-    "categoria": "Conjunto Short",
-    "preco": 149.9,
-    "precoPromo": 119.9,
-    "tamanhos": [
-      "G"
-    ],
-    "desc": {
-      "tecido": "Poliamida com elastano",
-      "tecnologias": [
-        "4-way stretch",
-        "secagem rápida"
-      ],
-      "compressao": "Média",
-      "transparencia": "Zero",
-      "recortes": "Short duplo com bolsos laterais",
-      "extras": [
-        "Top forrado",
-        "Entrada para bojo",
-        "Alças ajustáveis"
-      ],
-      "indicacao": [
-        "treino",
-        "corrida",
-        "dia a dia"
-      ]
-    },
-    "cores": [
-      {
-        "nome": "Azul",
-        "imagem": "image/Conjunto_Short/conjunto_lia_azul01.jpeg",
-        "tamanhos": [
-          "G"
-        ]
-      },
-      {
-        "nome": "Preto",
-        "imagem": "image/Conjunto_Short/conjunto_lia_preto01.jpeg",
-        "tamanhos": [
-          "G"
-        ]
-      },
-      {
-        "nome": "Preto",
-        "imagem": "image/Conjunto_Short/conjunto_lia_preto02.jpeg",
-        "tamanhos": [
-          "G"
-        ]
-      }
-    ],
-    "id": 14
-  },
-  {
     "nome": "Top Layla",
     "categoria": "Conjunto Short",
     "preco": 59.9,
-    "precoPromo": 39.9,
+    "precoPromo": 35.0,
     "tamanhos": [
       "M",
       "G"
@@ -1165,14 +1013,14 @@
         "nome": "Terracota",
         "imagem": "image/Top/top_terracota.jpeg",
         "tamanhos": [
-          "M"
+          "M",
+          "G"
         ]
       },
       {
         "nome": "Preto",
         "imagem": "image/Top/top_preto.jpeg",
         "tamanhos": [
-          "M",
           "G"
         ]
       }
@@ -1183,6 +1031,7 @@
     "nome": "Blusa Tela",
     "categoria": "Blusa",
     "preco": 42.9,
+    "soldOut": true,
     "tamanhos": [
       "P",
       "M",
@@ -1236,6 +1085,7 @@
     "nome": "Colete",
     "categoria": "Blusa",
     "preco": 71.9,
+    "soldOut": true,
     "tamanhos": [
       "36",
       "38",
@@ -1278,8 +1128,7 @@
     "categoria": "Blusa",
     "preco": 18.9,
     "tamanhos": [
-      "P",
-      "M"
+      "P"
     ],
     "desc": {
       "tecido": "Poliamida com elastano",
@@ -1302,11 +1151,225 @@
         "nome": "Branco",
         "imagem": "image/Blusa/blusa_branca.jpeg",
         "tamanhos": [
-          "P",
-          "M"
+          "P"
         ]
       }
     ],
     "id": 18
+  },
+  {
+    "nome": "Blusa Duda",
+    "categoria": "Blusa",
+    "preco": 35.0,
+    "tamanhos": [
+      "P",
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida",
+      "tecnologias": [],
+      "compressao": null,
+      "transparencia": null,
+      "recortes": "Modelagem básica",
+      "extras": [
+        "Somente a blusa"
+      ],
+      "indicacao": [
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Branco",
+        "imagem": "image/Blusa/blusa_duda_branco_0350.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Branco",
+        "imagem": "image/Blusa/blusa_duda_branco_0352.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Branco",
+        "imagem": "image/Blusa/blusa_duda_branco_0356_fix.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Azul",
+        "imagem": "image/Blusa/blusa_duda_azul1.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Lilás",
+        "imagem": "image/Blusa/blusa_duda_lilas1.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Rosa",
+        "imagem": "image/Blusa/blusa_duda_rosa1.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      }
+    ],
+    "id": 19
+  },
+  {
+    "nome": "Conjunto Iris",
+    "categoria": "Conjunto Legging",
+    "preco": 139.9,
+    "opcoesVenda": [
+      {
+        "tipo": "Conjunto",
+        "preco": 139.9
+      },
+      {
+        "tipo": "Top",
+        "preco": 49.9
+      },
+      {
+        "tipo": "Legging",
+        "preco": 89.9
+      }
+    ],
+    "tamanhos": [
+      "P",
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida 300g",
+      "tecnologias": [],
+      "compressao": null,
+      "transparencia": null,
+      "recortes": "Legging com cintura alta",
+      "extras": [
+        "Forrado",
+        "Top com alca e elastico embutido",
+        "Entrada para bojo"
+      ],
+      "indicacao": [
+        "treino",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Branco",
+        "imagem": "image/Conjunto_Calca/iris_branco_0384.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Branco",
+        "imagem": "image/Conjunto_Calca/iris_branco_0385.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Branco",
+        "imagem": "image/Conjunto_Calca/iris_branco_0388.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Azul Frozen",
+        "imagem": "image/Conjunto_Calca/iris_azul_frozen_0001.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Azul Frozen",
+        "imagem": "image/Conjunto_Calca/iris_azul_frozen_0002.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      }
+    ],
+    "id": 20
+  }
+  ,
+  {
+    "nome": "Conjunto Layla",
+    "categoria": "Conjunto Short",
+    "preco": 134.9,
+    "precoPromo": 90.9,
+    "tamanhos": [
+      "M"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short com bolso nas laterais",
+      "extras": [
+        "Top forrado",
+        "Entrada para bojo",
+        "Alças ajustáveis"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/layla_short_0001.jpg",
+        "tamanhos": [
+          "M"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/layla_short_0002.jpg",
+        "tamanhos": [
+          "M"
+        ]
+      }
+    ],
+    "id": 21
   }
 ]

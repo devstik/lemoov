@@ -19,7 +19,15 @@
   <script>
     window.LEMOOV_GA_ID = window.LEMOOV_GA_ID || 'G-XXXXXXXXXXXX';
     window.LEMOOV_PIXEL_ID = window.LEMOOV_PIXEL_ID || '000000000000000';
-    window.LEMOOV_API_BASE = window.LEMOOV_API_BASE || 'https://admin.lemoov.com.br';
+    const isLocal =
+      location.protocol === 'file:' ||
+      location.hostname === 'localhost' ||
+      location.hostname === '127.0.0.1';
+    if (isLocal) {
+      window.LEMOOV_API_BASE = '';
+    } else {
+      window.LEMOOV_API_BASE = window.LEMOOV_API_BASE || 'https://admin.lemoov.com.br';
+    }
   </script>
 
   <!-- Ajuste visual: tamanhos indisponíveis (borrado/desativado) e botão desabilitado -->
@@ -63,11 +71,20 @@
     <div class="hero__media" aria-label="Coleção Lemoov em movimento">
       <div class="hero__carousel" id="heroCarousel">
         <div class="hero__slides">
-          <figure class="hero__slide is-active" data-color="Verde">
-            <img src="image/Conjunto_Calca/verde_pavao2.jpg" alt="Look verde pavão Lemoov" loading="eager" decoding="async" fetchpriority="high">
+          <figure class="hero__slide is-active" data-color="Branco">
+            <img src="image/Blusa/IMG_0350.JPG" alt="Blusa branca Lemoov" loading="eager" decoding="async" fetchpriority="high">
           </figure>
-          <figure class="hero__slide" data-color="Verde Floresta">
-            <img src="image/Conjunto_Calca/verde1.jpg" alt="Look verde floresta Lemoov" loading="lazy" decoding="async">
+          <figure class="hero__slide" data-color="Preto">
+            <img src="image/Blusa/colete_preto2.jpg" alt="Colete preto Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Branco">
+            <img src="image/Conjunto_Calca/iris_branco_0384.jpg" alt="Conjunto Iris branco Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Branco">
+            <img src="image/Conjunto_Calca/iris_branco_0385.jpg" alt="Conjunto Iris branco Lemoov" loading="lazy" decoding="async">
+          </figure>
+          <figure class="hero__slide" data-color="Terracota">
+            <img src="image/Conjunto_Calca/terracota1.jpg" alt="Look terracota Lemoov" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Cacau">
             <img src="image/Conjunto_Short/cacau1.jpeg" alt="Look cacau Lemoov" loading="lazy" decoding="async">
@@ -75,23 +92,8 @@
           <figure class="hero__slide" data-color="Manteiga">
             <img src="image/Conjunto_Short/Manteiga2.jpeg" alt="Look manteiga Lemoov" loading="lazy" decoding="async">
           </figure>
-          <figure class="hero__slide" data-color="Chocolate">
-            <img src="image/Conjunto_Short/sunmov_chocolate1.jpg" alt="Look chocolate Lemoov" loading="lazy" decoding="async">
-          </figure>
-          <figure class="hero__slide" data-color="Terracota">
-            <img src="image/Conjunto_Calca/terracota2.jpg" alt="Look terracota Lemoov" loading="lazy" decoding="async">
-          </figure>
-          <figure class="hero__slide" data-color="Terracota">
-            <img src="image/Conjunto_Calca/terracota1.jpg" alt="Look terracota Lemoov" loading="lazy" decoding="async">
-          </figure>
-          <figure class="hero__slide" data-color="Verde Pavão">
-            <img src="image/Conjunto_Calca/verde_pavao1.jpg" alt="Look verde pavão Lemoov" loading="lazy" decoding="async">
-          </figure>
-          <figure class="hero__slide" data-color="Verde Pavão">
-            <img src="image/Conjunto_Calca/verde_pavao2.jpg" alt="Look verde pavão Lemoov" loading="lazy" decoding="async">
-          </figure>
-          <figure class="hero__slide" data-color="Fucsia">
-            <img src="image/Macaquinho/fucsia1.jpg" alt="Look fúcsia Lemoov" loading="lazy" decoding="async">
+          <figure class="hero__slide" data-color="Preto">
+            <img src="image/Top/top_preto.jpeg" alt="Top preto Lemoov" loading="lazy" decoding="async">
           </figure>
         </div>
       </div>
@@ -104,8 +106,7 @@
         </div>
         <h2>Liberdade para treinar com estilo e tecnologia.</h2>
       <p>
-        Peças com tecidos tecnológicos, proteção UV50+ e acabamentos impecáveis para acompanhar
-        seus treinos dentro e fora do box. Viva o conforto inteligente que impulsiona pessoas em todos os níveis de movimento.
+        Tecnologia têxtil e proteção UV50+ em peças de acabamento impecável. Design pensado para unir performance e o conforto inteligente que impulsiona cada um dos seus movimentos.
       </p>
       <div class="hero__actions">
         <a href="#grid" class="btn btn--primary">Comprar agora</a>
@@ -263,9 +264,9 @@
       <p class="section-eyebrow">No Instagram</p>
       <h3>@lemoovfitness em movimento</h3>
       <div class="social-feed__grid">
-        <a href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener"><img src="image/Conjunto_Calca/verde1.jpg" alt="Look 1 Lemoov" loading="lazy" decoding="async"></a>
-        <a href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener"><img src="image/Macaquinho/terracota1.jpg" alt="Look 2 Lemoov" loading="lazy" decoding="async"></a>
-        <a href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener"><img src="image/Conjunto_Short/verde_agua2.jpg" alt="Look 3 Lemoov" loading="lazy" decoding="async"></a>
+        <a href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener"><img src="image/Conjunto_Calca/iris_branco_0384.jpg" alt="Conjunto Iris branco Lemoov" loading="lazy" decoding="async"></a>
+        <a href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener"><img src="image/Conjunto_Short/layla_short_0001.jpg" alt="Conjunto Layla Lemoov" loading="lazy" decoding="async"></a>
+        <a href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener"><img src="image/Conjunto_Short/cacau1.jpeg" alt="Conjunto Cacau Lemoov" loading="lazy" decoding="async"></a>
       </div>
     </div>
   </section>
@@ -298,6 +299,25 @@
         <div class="modal__cta">
           <button id="btnAdd" class="btn btn--primary">Adicionar ao carrinho</button>
         </div>
+      </div>
+    </article>
+  </dialog>
+  <!-- Modal de escolha (Conjunto/Top/Legging) -->
+  <dialog id="vendaModal" class="modal venda-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vendaTitle">
+    <div class="modal__header">
+      <button class="modal__close" id="closeVendaModal" aria-label="Fechar">✕</button>
+    </div>
+    <article class="venda-modal__content">
+      <h2 id="vendaTitle"></h2>
+      <p class="venda-modal__note">Adicione o conjunto ou a peça individual.</p>
+      <p id="vendaMeta" class="venda-modal__meta"></p>
+      <div id="vendaOptions" class="venda-options"></div>
+      <div class="venda-total">
+        <span>Total</span>
+        <strong id="vendaTotal">R$ 0,00</strong>
+      </div>
+      <div class="venda-actions">
+        <button id="vendaAddBtn" class="btn btn--primary">Adicionar ao carrinho</button>
       </div>
     </article>
   </dialog>
@@ -338,7 +358,7 @@
             </li>
             <li>
               <span>E-mail</span>
-              <a href="mailto:lemoovfitnes@gmail.com">lemoovfitnes@gmail.com</a>
+              <a href="mailto:suporte@lemoov.com.br">suporte@lemoov.com.br</a>
             </li>
             <li>
               <span>Horário</span>
