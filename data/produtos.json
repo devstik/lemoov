@@ -134,14 +134,14 @@
     },
     "cores": [
       {
-        "nome": "Verde Agua",
+        "nome": "Verde Água",
         "imagem": "image/Macaquinho/verde_agua1.jpg",
         "tamanhos": [
           "G"
         ]
       },
       {
-        "nome": "Verde Agua",
+        "nome": "Verde Água",
         "imagem": "image/Macaquinho/verde_agua2.jpg",
         "tamanhos": [
           "G"
@@ -164,7 +164,7 @@
         "soldOut": true
       },
       {
-        "nome": "Fucsia",
+        "nome": "Fúcsia",
         "imagem": "image/Macaquinho/fucsia1.jpg",
         "tamanhos": [
           "G"
@@ -173,7 +173,7 @@
         "soldOut": true
       },
       {
-        "nome": "Fucsia",
+        "nome": "Fúcsia",
         "imagem": "image/Macaquinho/fucsia2.jpg",
         "tamanhos": [
           "G"
@@ -215,7 +215,7 @@
     },
     "cores": [
       {
-        "nome": "Verde Agua",
+        "nome": "Verde Água",
         "imagem": "image/Macaquinho/verde_pavao1.jpg",
         "tamanhos": [
           "G"
@@ -223,7 +223,7 @@
         "soldOut": true
       },
       {
-        "nome": "Verde Agua",
+        "nome": "Verde Água",
         "imagem": "image/Macaquinho/verde_pavao2.jpg",
         "tamanhos": [
           "G"
@@ -1268,7 +1268,7 @@
       "recortes": "Legging com cintura alta",
       "extras": [
         "Forrado",
-        "Top com alca e elastico embutido",
+        "Top com alça e elástico embutido",
         "Entrada para bojo"
       ],
       "indicacao": [
