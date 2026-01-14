@@ -104,7 +104,7 @@ function animateProductFly(sourceElement) {
 let produtos = [];
 
 const FILTER_CARDS = [
-  { label: "Macacão & Macaquinho", categories: ["Macacão","Macaquinho"], tagline: "Movimento total", image: "image/macacao/preto.jpg" },
+  { label: "Macacão & Macaquinho", categories: ["Macacão","Macaquinho"], tagline: "Movimento total", image: "image/Macacao/preto.jpg" },
   { label: "Conjuntos Legging", categories: ["Conjunto Legging"], tagline: "Mix & Match", image: "image/Conjunto_Calca/iris_branco_0384.jpg" },
   { label: "Shorts & Top", categories: ["Conjunto Short"], tagline: "Movimento livre", image: "image/Conjunto_Short/sunmoov_branco_0355.jpg" },
   { label: "Blusas & Coletes", categories: ["Blusa"], tagline: "Camadas leves", image: "image/Blusa/IMG_0350.JPG" }
