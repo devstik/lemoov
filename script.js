@@ -965,6 +965,11 @@ function renderFiltros(){
         grid.scrollIntoView({ behavior: "smooth", block: "start" });
         grid.classList.add("grid--highlight");
         setTimeout(() => grid.classList.remove("grid--highlight"), 1200);
+        requestAnimationFrame(() => {
+          const y = grid.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo({ top: Math.max(y - 16, 0), behavior: "smooth" });
+          if (location.hash !== "#grid") location.hash = "#grid";
+        });
       }
     });
     card.appendChild(btn);
