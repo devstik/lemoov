@@ -132,24 +132,48 @@ const cssEscape = (typeof CSS !== "undefined" && typeof CSS.escape === "function
   : (value) => String(value).replace(/[^a-zA-Z0-9_\-]/g, (ch) => `\\${ch.charCodeAt(0).toString(16)} `);
 
 async function loadProdutos(){
-  try {
-    const res = await fetch(PRODUCT_ENDPOINT);
-    if (!res.ok) throw new Error("failed");
-    const data = await res.json();
-    produtos = Array.isArray(data) ? data : [];
-    return true;
-  } catch (_e) {
+  const fetchList = async (url) => {
     try {
-      const res = await fetch("data/produtos.json");
-      if (!res.ok) throw new Error("failed");
+      const res = await fetch(url);
+      if (!res.ok) return null;
       const data = await res.json();
-      produtos = Array.isArray(data) ? data : [];
-      return true;
-    } catch (_err) {
-      produtos = [];
-      return false;
+      return Array.isArray(data) ? data : null;
+    } catch (_e) {
+      return null;
     }
-  }
+  };
+
+  const [apiList, localList] = await Promise.all([
+    fetchList(PRODUCT_ENDPOINT),
+    fetchList("data/produtos.json")
+  ]);
+
+  const latestStamp = (list) => {
+    if (!Array.isArray(list)) return 0;
+    let max = 0;
+    for (const item of list) {
+      const raw = item?.updatedAt || item?.atualizadoEm || item?.updated_at;
+      const ts = raw ? Date.parse(raw) : 0;
+      if (Number.isFinite(ts) && ts > max) max = ts;
+    }
+    return max;
+  };
+
+  const pickMostRecent = (a, b) => {
+    if (!Array.isArray(a) && !Array.isArray(b)) return [];
+    if (!Array.isArray(a)) return b || [];
+    if (!Array.isArray(b)) return a || [];
+    const aStamp = latestStamp(a);
+    const bStamp = latestStamp(b);
+    if (aStamp && bStamp) return aStamp >= bStamp ? a : b;
+    if (aStamp && !bStamp) return a;
+    if (!aStamp && bStamp) return b;
+    if (a.length !== b.length) return a.length > b.length ? a : b;
+    return a;
+  };
+
+  produtos = pickMostRecent(apiList, localList);
+  return Array.isArray(produtos) && produtos.length > 0;
 }
 
 function formatBirthForInput(value){
@@ -466,11 +490,20 @@ function hasVendaOptions(prod){
 }
 function getVendaOptions(prod){
   if (!hasVendaOptions(prod)) return [];
+  const basePrice = Number(prod?.preco) || 0;
+  const basePromo = Number(prod?.precoPromo) || 0;
   return prod.opcoesVenda
     .map((opt) => ({
       tipo: String(opt.tipo || "").trim(),
       preco: Number(opt.preco) || 0,
-      precoPromo: Number(opt.precoPromo) || 0
+      precoPromo: (() => {
+        const rawPromo = Number(opt.precoPromo) || 0;
+        if (rawPromo > 0) return rawPromo;
+        if (String(opt.tipo).trim() === "Conjunto" && basePromo > 0 && basePromo < basePrice) {
+          return basePromo;
+        }
+        return 0;
+      })()
     }))
     .filter((opt) => opt.tipo && opt.preco >= 0);
 }
@@ -927,6 +960,12 @@ function renderFiltros(){
       filtroAtual = value;
       renderFiltros();
       renderGrid();
+      const grid = el("#grid");
+      if (grid) {
+        grid.scrollIntoView({ behavior: "smooth", block: "start" });
+        grid.classList.add("grid--highlight");
+        setTimeout(() => grid.classList.remove("grid--highlight"), 1200);
+      }
     });
     card.appendChild(btn);
     wrap.appendChild(card);
@@ -1282,10 +1321,10 @@ function openVendaModal({ prod, corIndex = 0, tamanho, imagem, descricao, source
   }
 
   if (optionsWrap && prod?.nome === "Conjunto Cacau") {
-    const bloqueiaConjunto = tamanho === "P" || tamanho === "GG";
-    if (bloqueiaConjunto) {
+    const bloqueiaConjuntoTop = tamanho === "P" || tamanho === "GG";
+    if (bloqueiaConjuntoTop) {
       optionsWrap.querySelectorAll(".venda-option").forEach((row) => {
-        if (row.dataset.tipo === "Conjunto") {
+        if (row.dataset.tipo === "Conjunto" || row.dataset.tipo === "Top") {
           row.dataset.disabled = "true";
           row.classList.add("venda-option--disabled");
           const input = row.querySelector("input");
@@ -1602,11 +1641,16 @@ function getCartSubtotal(){
 function getCartCount(){
   return carrinho.reduce((a, b) => a + getItemQty(b), 0);
 }
+function getEffectivePrice(prod){
+  const base = Number(prod?.preco) || 0;
+  const promo = Number(prod?.precoPromo) || 0;
+  return promo > 0 && promo < base ? promo : base;
+}
 function addCarrinho(prod, animateSource = null){
   const item = {
     nome: prod.nome,
     categoria: prod.categoria,
-    preco: Number(prod.preco) || 0,
+    preco: getEffectivePrice(prod),
     quantidade: getItemQty(prod),
     tipoSelecionado: prod.tipoSelecionado,
     corSelecionada: prod.corSelecionada,

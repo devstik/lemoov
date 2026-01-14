@@ -182,7 +182,7 @@ app.post('/api/admin/produtos', authRequired, (req, res) => {
   try {
     const produtos = ensureProductIds(readProdutos());
     const nextId = produtos.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0) + 1;
-    const item = { ...req.body, id: nextId };
+    const item = { ...req.body, id: nextId, updatedAt: new Date().toISOString() };
     produtos.push(item);
     writeProdutos(produtos);
     res.json({ ok: true, item });
@@ -203,7 +203,7 @@ app.put('/api/admin/produtos/:id', authRequired, (req, res) => {
     const produtos = ensureProductIds(readProdutos());
     const idx = produtos.findIndex((p) => Number(p.id) === id);
     if (idx === -1) return res.status(404).json({ ok: false });
-    produtos[idx] = { ...produtos[idx], ...req.body, id };
+    produtos[idx] = { ...produtos[idx], ...req.body, id, updatedAt: new Date().toISOString() };
     writeProdutos(produtos);
     res.json({ ok: true, item: produtos[idx] });
   } catch (_e) {
