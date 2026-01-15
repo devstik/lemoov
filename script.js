@@ -486,10 +486,13 @@ function getColorImage(cor){
 function hasVendaOptions(prod){
   return Array.isArray(prod?.opcoesVenda) && prod.opcoesVenda.length > 0;
 }
-function getVendaOptions(prod){
+function getVendaOptions(prod, colorObj){
   if (!hasVendaOptions(prod)) return [];
   const basePrice = Number(prod?.preco) || 0;
-  const basePromo = Number(prod?.precoPromo) || 0;
+  const colorPrice = computeColorPrice(prod, colorObj);
+  const basePromo = (colorPrice.original && colorPrice.final < colorPrice.original)
+    ? colorPrice.final
+    : (Number(prod?.precoPromo) || 0);
   return prod.opcoesVenda
     .map((opt) => ({
       tipo: String(opt.tipo || "").trim(),
@@ -1283,7 +1286,8 @@ function attachCarouselAfterRender() {
 let vendaModalState = null;
 function openVendaModal({ prod, corIndex = 0, tamanho, imagem, descricao, sourceEl }){
   const modal = el("#vendaModal");
-  const options = getVendaOptions(prod);
+  const corSelecionada = (prod && prod.cores && prod.cores[corIndex]) ? prod.cores[corIndex] : null;
+  const options = getVendaOptions(prod, corSelecionada);
   if (!modal || !options.length) return;
 
   const produtoModal = el("#modal");
@@ -1323,8 +1327,11 @@ function openVendaModal({ prod, corIndex = 0, tamanho, imagem, descricao, source
     }).join("");
   }
 
-  if (optionsWrap && prod?.nome === "Conjunto Cacau") {
-    const bloqueiaConjuntoTop = tamanho === "P" || tamanho === "GG";
+  if (optionsWrap) {
+    const nomeProduto = String(prod?.nome || "").trim().toLowerCase();
+    const tamanhoNorm = String(tamanho || "").trim().toUpperCase();
+    const bloqueiaConjuntoTop = nomeProduto === "conjunto cacau"
+      && (tamanhoNorm === "P" || tamanhoNorm === "GG");
     if (bloqueiaConjuntoTop) {
       optionsWrap.querySelectorAll(".venda-option").forEach((row) => {
         if (row.dataset.tipo === "Conjunto" || row.dataset.tipo === "Top") {
@@ -1405,7 +1412,14 @@ if (vendaAddBtn) {
     if (!optionsWrap) return;
 
     let totalQty = 0;
+    const nomeProduto = String(prod?.nome || "").trim().toLowerCase();
+    const tamanhoNorm = String(tamanho || "").trim().toUpperCase();
+    const bloqueiaConjuntoTop = nomeProduto === "conjunto cacau"
+      && (tamanhoNorm === "P" || tamanhoNorm === "GG");
     optionsWrap.querySelectorAll(".venda-option").forEach((row) => {
+      if (bloqueiaConjuntoTop && (row.dataset.tipo === "Conjunto" || row.dataset.tipo === "Top")) {
+        return;
+      }
       if (row.dataset.disabled === "true") return;
       const tipo = row.dataset.tipo;
       const preco = Number(row.dataset.preco) || 0;
