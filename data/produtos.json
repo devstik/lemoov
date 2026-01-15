@@ -723,7 +723,7 @@
     "nome": "Conjunto Manteiga",
     "categoria": "Conjunto Short",
     "preco": 129.9,
-    "precoPromo": 95.0,
+    "precoPromo": 90.9,
     "tamanhos": [
       "P"
     ],
@@ -779,7 +779,7 @@
     "nome": "Conjunto Cacau",
     "categoria": "Conjunto Short",
     "preco": 129.9,
-    "precoPromo": 90.9,
+    "precoPromo": 95.0,
     "opcoesVenda": [
       {
         "tipo": "Conjunto",
