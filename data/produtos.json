@@ -661,27 +661,21 @@
         "nome": "Branco",
         "imagem": "image/Conjunto_Short/sunmoov_branco_0355.jpg",
         "tamanhos": [
-          "P",
-          "M",
-          "G"
+          "P"
         ]
       },
       {
         "nome": "Branco",
         "imagem": "image/Conjunto_Short/sunmoov_branco_0356.jpg",
         "tamanhos": [
-          "P",
-          "M",
-          "G"
+          "P"
         ]
       },
       {
         "nome": "Branco",
         "imagem": "image/Conjunto_Short/sunmoov_branco_0357.jpg",
         "tamanhos": [
-          "P",
-          "M",
-          "G"
+          "P"
         ]
       },
       {
@@ -779,7 +773,7 @@
     "nome": "Conjunto Cacau",
     "categoria": "Conjunto Short",
     "preco": 129.9,
-    "precoPromo": 95.0,
+    "precoPromo": 90.9,
     "opcoesVenda": [
       {
         "tipo": "Conjunto",
@@ -1182,57 +1176,59 @@
     "cores": [
       {
         "nome": "Branco",
-        "imagem": "image/Blusa/blusa_duda_branco_0350.jpg",
+        "imagens": [
+          "image/Blusa/blusa_duda_branco_0350.jpg",
+          "image/Blusa/blusa_duda_branco_0352.jpg",
+          "image/Blusa/blusa_duda_branco_0356_fix.jpg"
+        ],
         "tamanhos": [
           "P",
           "M",
           "G"
-        ]
-      },
-      {
-        "nome": "Branco",
-        "imagem": "image/Blusa/blusa_duda_branco_0352.jpg",
-        "tamanhos": [
-          "P",
-          "M",
-          "G"
-        ]
-      },
-      {
-        "nome": "Branco",
-        "imagem": "image/Blusa/blusa_duda_branco_0356_fix.jpg",
-        "tamanhos": [
-          "P",
-          "M",
-          "G"
-        ]
+        ],
+        "swatch": "#f5f5f5"
       },
       {
         "nome": "Azul",
-        "imagem": "image/Blusa/blusa_duda_azul1.jpg",
         "tamanhos": [
           "P",
           "M",
           "G"
-        ]
+        ],
+        "imagens": [
+          "image/Blusa/blusa_duda_branco_0350.jpg",
+          "image/Blusa/blusa_duda_branco_0352.jpg",
+          "image/Blusa/blusa_duda_branco_0356_fix.jpg"
+        ],
+        "swatch": "#95b7db"
       },
       {
         "nome": "Lilás",
-        "imagem": "image/Blusa/blusa_duda_lilas1.jpg",
         "tamanhos": [
           "P",
           "M",
           "G"
-        ]
+        ],
+        "imagens": [
+          "image/Blusa/blusa_duda_branco_0350.jpg",
+          "image/Blusa/blusa_duda_branco_0352.jpg",
+          "image/Blusa/blusa_duda_branco_0356_fix.jpg"
+        ],
+        "swatch": "#c8a7dd"
       },
       {
         "nome": "Rosa",
-        "imagem": "image/Blusa/blusa_duda_rosa1.jpg",
         "tamanhos": [
           "P",
           "M",
           "G"
-        ]
+        ],
+        "imagens": [
+          "image/Blusa/blusa_duda_branco_0350.jpg",
+          "image/Blusa/blusa_duda_branco_0352.jpg",
+          "image/Blusa/blusa_duda_branco_0356_fix.jpg"
+        ],
+        "swatch": "#e8b2c7"
       }
     ],
     "id": 19
@@ -1279,48 +1275,31 @@
     "cores": [
       {
         "nome": "Branco",
-        "imagem": "image/Conjunto_Calca/iris_branco_0384.jpg",
+        "imagens": [
+          "image/Conjunto_Calca/iris_branco_0384.jpg",
+          "image/Conjunto_Calca/iris_branco_0385.jpg",
+          "image/Conjunto_Calca/iris_branco_0388.jpg"
+        ],
         "tamanhos": [
           "P",
           "M",
           "G"
-        ]
-      },
-      {
-        "nome": "Branco",
-        "imagem": "image/Conjunto_Calca/iris_branco_0385.jpg",
-        "tamanhos": [
-          "P",
-          "M",
-          "G"
-        ]
-      },
-      {
-        "nome": "Branco",
-        "imagem": "image/Conjunto_Calca/iris_branco_0388.jpg",
-        "tamanhos": [
-          "P",
-          "M",
-          "G"
-        ]
+        ],
+        "swatch": "#f5f5f5"
       },
       {
         "nome": "Azul Frozen",
-        "imagem": "image/Conjunto_Calca/iris_azul_frozen_0001.jpg",
         "tamanhos": [
           "P",
           "M",
           "G"
-        ]
-      },
-      {
-        "nome": "Azul Frozen",
-        "imagem": "image/Conjunto_Calca/iris_azul_frozen_0002.jpg",
-        "tamanhos": [
-          "P",
-          "M",
-          "G"
-        ]
+        ],
+        "imagens": [
+          "image/Conjunto_Calca/iris_branco_0384.jpg",
+          "image/Conjunto_Calca/iris_branco_0385.jpg",
+          "image/Conjunto_Calca/iris_branco_0388.jpg"
+        ],
+        "swatch": "#9bb8d4"
       }
     ],
     "id": 20
@@ -1330,7 +1309,7 @@
     "nome": "Conjunto Layla",
     "categoria": "Conjunto Short",
     "preco": 134.9,
-    "precoPromo": 90.9,
+    "precoPromo": 95.0,
     "tamanhos": [
       "M"
     ],

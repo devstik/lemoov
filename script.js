@@ -428,9 +428,23 @@ document.addEventListener("DOMContentLoaded", ()=>{
 });
 
 /* ===== Descrição helpers ===== */
+function hasDescContent(desc){
+  if (!desc) return false;
+  if (desc.texto && String(desc.texto).trim()) return true;
+  if (desc.tecido && String(desc.tecido).trim()) return true;
+  if (desc.compressao && String(desc.compressao).trim()) return true;
+  if (desc.transparencia && String(desc.transparencia).trim()) return true;
+  if (desc.recortes && String(desc.recortes).trim()) return true;
+  if (Array.isArray(desc.extras) && desc.extras.length) return true;
+  if (Array.isArray(desc.tecnologias) && desc.tecnologias.length) return true;
+  if (Array.isArray(desc.indicacao) && desc.indicacao.length) return true;
+  return false;
+}
 function resolveDesc(prod, colorIndex = 0){
   const cor = (prod.cores || [])[colorIndex];
-  return (cor && cor.desc) ? cor.desc : (prod.desc || prod.descricao || {});
+  if (cor && hasDescContent(cor.desc)) return cor.desc;
+  if (hasDescContent(prod.desc)) return prod.desc;
+  return prod.descricao || {};
 }
 function formatShortDetalhamento(desc){
   if (!desc) return "Detalhamento indisponível";
@@ -445,13 +459,17 @@ function formatShortDetalhamento(desc){
   if (Array.isArray(desc.tecnologias) && desc.tecnologias.length) {
     parts.push(`Tecnologias: ${desc.tecnologias.slice(0, 2).join(", ")}`);
   }
-  return parts.join(" • ");
+  return parts.length ? parts.join(" • ") : "Detalhamento indisponível";
 }
 function formatDescricaoHTML(desc){
-  if (!desc) return "";
+  if (!desc || !hasDescContent(desc)) return "<p>Detalhamento indisponível</p>";
   if (desc.texto) {
     return `<p>${desc.texto}</p>`;
   }
+  const summary = formatShortDetalhamento(desc);
+  const summaryHtml = summary && summary !== "Detalhamento indisponível"
+    ? `<p class="modal__desc-summary">${summary}</p>`
+    : "";
   const li = [];
   if (desc.tecido) li.push(`<li><strong>Tecido:</strong> ${desc.tecido}</li>`);
   if (Array.isArray(desc.tecnologias) && desc.tecnologias.length) li.push(`<li><strong>Tecnologias:</strong> ${desc.tecnologias.join(", ")}</li>`);
@@ -460,7 +478,7 @@ function formatDescricaoHTML(desc){
   if (desc.recortes) li.push(`<li><strong>Recortes:</strong> ${desc.recortes}</li>`);
   if (Array.isArray(desc.extras) && desc.extras.length) li.push(`<li><strong>Extras:</strong> ${desc.extras.join(", ")}</li>`);
   if (Array.isArray(desc.indicacao) && desc.indicacao.length) li.push(`<li><strong>Indicação de uso:</strong> ${desc.indicacao.join(", ")}</li>`);
-  return `<ul class="product-desc-list">${li.join("")}</ul>`;
+  return `${summaryHtml}<ul class="product-desc-list">${li.join("")}</ul>`;
 }
 
 /* ===== Helpers de disponibilidade por cor/tamanho ===== */
@@ -482,6 +500,31 @@ function getColorImages(cor){
 function getColorImage(cor){
   const imgs = getColorImages(cor);
   return imgs[0] || "";
+}
+function setMainImage(imgEl, colorObj, index = 0){
+  if (!imgEl) return false;
+  const imgs = getColorImages(colorObj);
+  if (!imgs.length) return false;
+  const safeIndex = ((index % imgs.length) + imgs.length) % imgs.length;
+  imgEl.src = imgs[safeIndex];
+  imgEl.dataset.imgIndex = String(safeIndex);
+  imgEl.dataset.imgCount = String(imgs.length);
+  return true;
+}
+function appendSwatchContent(button, colorObj){
+  const swatchColor = colorObj && colorObj.swatch;
+  const imgUrl = getColorImage(colorObj);
+  if (swatchColor || !imgUrl) {
+    const dot = document.createElement("span");
+    dot.className = "swatch__dot";
+    dot.style.setProperty("--swatch-color", swatchColor || "#e6e6e6");
+    button.appendChild(dot);
+    return;
+  }
+  const img = document.createElement("img");
+  img.src = imgUrl;
+  img.alt = colorObj?.nome || "";
+  button.appendChild(img);
 }
 function hasVendaOptions(prod){
   return Array.isArray(prod?.opcoesVenda) && prod.opcoesVenda.length > 0;
@@ -533,6 +576,21 @@ function getAvailableSizesForColor(prod, colorIndex){
   if (!cor) return prod.tamanhos || [];
   if (Array.isArray(cor.tamanhos) && cor.tamanhos.length) return cor.tamanhos;
   return prod.tamanhos || [];
+}
+function getDisplayName(prod, colorIndex){
+  const baseName = String(prod?.nome || "").trim();
+  if (!baseName) return "";
+  if (baseName !== "Top e Short Sun Moov") return baseName;
+  const cor = (prod?.cores || [])[colorIndex] || null;
+  const corNome = String(cor?.nome || "").trim().toLowerCase();
+  return corNome === "branco" ? "Short Sun Moov" : baseName;
+}
+function getCardNote(prod, colorIndex){
+  if (hasVendaOptions(prod)) return "Adicione o conjunto ou a peça individual.";
+  if (prod?.nome === "Blusa Duda") return "Preço referente somente à blusa.";
+  return getDisplayName(prod, colorIndex) === "Short Sun Moov"
+    ? "Preço referente somente ao short."
+    : "";
 }
 function applySizeAvailability(container, allSizes, availableSizes, onChange){
   const setAvail = new Set(availableSizes);
@@ -990,9 +1048,7 @@ function buildSwatches(prod, onChange, selectedIndex = 0, mainImage = null, onCo
     b.type = "button";
     b.setAttribute("aria-pressed", (idx === selectedIndex) ? "true" : "false");
     b.setAttribute("aria-label", c.nome);
-    const img = document.createElement("img");
-    img.src = getColorImage(c); img.alt = c.nome;
-    b.appendChild(img);
+    appendSwatchContent(b, c);
     b.addEventListener("click", (e)=> {
       e.preventDefault(); e.stopPropagation();
       onChange(idx, c);
@@ -1002,7 +1058,8 @@ function buildSwatches(prod, onChange, selectedIndex = 0, mainImage = null, onCo
       });
       b.dataset.selected = "true";
       b.setAttribute("aria-pressed", "true");
-      if (mainImage) mainImage.src = getColorImage(c);
+      const nextImg = getColorImage(c);
+      if (mainImage) setMainImage(mainImage, c, 0);
       if (typeof onColorAffectsDesc === "function") onColorAffectsDesc(idx);
     });
     container.appendChild(b);
@@ -1050,32 +1107,25 @@ function renderGrid(){
 
     const desc0 = resolveDesc(p, 0);
     const short0 = formatShortDetalhamento(desc0);
-    const vendaNote = hasVendaOptions(p)
-      ? `<p class="product-card__note">Adicione o conjunto ou a peça individual.</p>`
-      : "";
-    const blusaNote = p.nome === "Blusa Duda"
-      ? `<p class="product-card__note">Preço referente somente à blusa.</p>`
-      : "";
-    const shortNote = p.nome === "Top e Short Sun Moov"
-      ? `<p class="product-card__note">Preço referente somente ao short.</p>`
-      : "";
+    const cardNote = getCardNote(p, selectedColorIndex);
+    const noteHtml = `<p class="product-card__note" data-card-note style="${cardNote ? "" : "display:none;"}">${cardNote}</p>`;
 
     artigo.innerHTML = `
       <a href="#" class="product-card__link">
         <figure class="product-card__media">
-          <img src="${primeiraImagem}" alt="${p.nome}" loading="lazy" decoding="async"/>
+          <img src="${primeiraImagem}" alt="${getDisplayName(p, selectedColorIndex)}" loading="lazy" decoding="async"/>
           <span class="product-card__badge" data-badge-off style="display:none;">
             <span class="badge-off" data-badge-off-text></span>
           </span>
         </figure>
         <div class="product-card__info">
-          <h3 class="product-card__name">${p.nome}</h3>
+          <h3 class="product-card__name" data-card-name>${getDisplayName(p, selectedColorIndex)}</h3>
           <p class="product-card__desc" data-short-desc>${short0}</p>
           <div class="product-card__price">
             <s class="original-price" data-price-original style="display:none;"></s>
             <span class="current-price" data-price-final></span>
           </div>
-          ${vendaNote || blusaNote || shortNote}
+          ${noteHtml}
           <div class="product-card__options">
             <div class="product-card__colors">
               <legend class="product-card__legend">Cor:</legend>
@@ -1091,7 +1141,6 @@ function renderGrid(){
       <button class="product-card__btn-add" data-add-quick>Adicionar ao carrinho</button>
     `;
 
-    const mainImage = artigo.querySelector(".product-card__media img");
     const colorsWrap = artigo.querySelector("[data-options-colors]");
     const sizesWrap  = artigo.querySelector("[data-options-sizes]");
     const $orig      = artigo.querySelector('[data-price-original]');
@@ -1100,6 +1149,8 @@ function renderGrid(){
     const $badgeTxt  = artigo.querySelector('[data-badge-off-text]');
     const $shortDesc = artigo.querySelector('[data-short-desc]');
     const addBtn = artigo.querySelector("[data-add-quick]");
+    const nameEl = artigo.querySelector("[data-card-name]");
+    const noteEl = artigo.querySelector("[data-card-note]");
 
     function refreshAddButton(){
       const soldOut = isVariantSoldOut(p, selectedColorIndex);
@@ -1133,6 +1184,9 @@ function renderGrid(){
       $final.textContent = formatBRL(pr.final);
     }
 
+    const mainImage = artigo.querySelector(".product-card__media img");
+    if (mainImage) setMainImage(mainImage, (p.cores || [])[0], 0);
+
     // Cores
     if (p.cores && p.cores.length) {
       colorsWrap.appendChild(
@@ -1143,6 +1197,18 @@ function renderGrid(){
             sizesWrap, (p.tamanhos || []), availableForColor,
             (t)=>{ selectedSize = t; refreshAddButton(); }
           );
+          if (nameEl) nameEl.textContent = getDisplayName(p, idx);
+          if (mainImage) mainImage.alt = getDisplayName(p, idx);
+          const nextNote = getCardNote(p, idx);
+          if (noteEl) {
+            if (nextNote) {
+              noteEl.textContent = nextNote;
+              noteEl.style.display = "";
+            } else {
+              noteEl.textContent = "";
+              noteEl.style.display = "none";
+            }
+          }
           updateCardPrice(idx);
           refreshAddButton();
         }, 0, mainImage, (idx)=>{
@@ -1196,7 +1262,7 @@ function renderGrid(){
 
       const descAtual = formatShortDetalhamento(resolveDesc(p, selectedColorIndex));
       addCarrinho({
-        nome: p.nome,
+        nome: getDisplayName(p, selectedColorIndex),
         categoria: p.categoria,
         preco: priceNow,
         corSelecionada: (p.cores && p.cores[selectedColorIndex]) ? p.cores[selectedColorIndex].nome : undefined,
@@ -1207,21 +1273,30 @@ function renderGrid(){
     });
 
     const mediaFigure = artigo.querySelector(".product-card__media");
-    if (mediaFigure && p.cores && p.cores.length > 1) {
+    if (mediaFigure && p.cores && p.cores.length) {
       mediaFigure.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const swatches = colorsWrap.querySelectorAll(".swatch");
-        if (!swatches.length) return;
-        const nextIndex = (selectedColorIndex + 1) % swatches.length;
-        swatches[nextIndex]?.click();
+        const currentColor = (p.cores || [])[selectedColorIndex];
+        const imgs = getColorImages(currentColor);
+        if (mainImage && imgs.length > 1) {
+          const currentIndex = Number(mainImage.dataset.imgIndex) || 0;
+          const nextIndex = (currentIndex + 1) % imgs.length;
+          setMainImage(mainImage, currentColor, nextIndex);
+          return;
+        }
+        if (p.cores.length > 1) {
+          const swatches = colorsWrap.querySelectorAll(".swatch");
+          if (!swatches.length) return;
+          const nextIndex = (selectedColorIndex + 1) % swatches.length;
+          swatches[nextIndex]?.click();
+        }
       });
     }
 
     artigo.querySelector(".product-card__link").addEventListener("click", (e) => {
       if (e.target.closest(".swatch, .size")) return;
       e.preventDefault();
-      abrirModal(lista.indexOf(p));
     });
 
     grid.appendChild(artigo);
@@ -1294,7 +1369,7 @@ function openVendaModal({ prod, corIndex = 0, tamanho, imagem, descricao, source
   if (produtoModal && produtoModal.open) fecharModal();
 
   const titulo = el("#vendaTitle");
-  if (titulo) titulo.textContent = prod.nome;
+  if (titulo) titulo.textContent = getDisplayName(prod, corIndex);
 
   const metaBits = [
     prod.cores && prod.cores[corIndex] ? `Cor: ${prod.cores[corIndex].nome}` : null,
@@ -1428,7 +1503,7 @@ if (vendaAddBtn) {
       if (!qty) return;
       totalQty += qty;
       addCarrinho({
-        nome: prod.nome,
+        nome: getDisplayName(prod, corIndex),
         categoria: prod.categoria,
         preco,
         quantidade: qty,
@@ -1453,13 +1528,22 @@ if (vendaAddBtn) {
 /* ------------------------------------------------------------
    Modal de produto
 ------------------------------------------------------------ */
-function abrirModal(index){
+function abrirModal(prodOrIndex){
   const base = (() => {
     if (!filtroAtual || filtroAtual === "Todos") return produtos;
     const cats = filtroAtual.split("|").map(s => s.trim());
     return produtos.filter(p => cats.includes(p.categoria));
   })();
-  produtoAtual = base[index];
+  let prod = null;
+  if (typeof prodOrIndex === "number") {
+    prod = base[prodOrIndex] || null;
+  } else if (prodOrIndex && typeof prodOrIndex === "object") {
+    prod = prodOrIndex;
+  } else if (typeof prodOrIndex === "string") {
+    prod = base.find(p => String(p.id) === prodOrIndex || p.nome === prodOrIndex) || null;
+  }
+  if (!prod) return;
+  produtoAtual = prod;
   corIndexAtual = 0;
 
   const allSizes = produtoAtual.tamanhos || [];
@@ -1468,7 +1552,7 @@ function abrirModal(index){
   const imgInicial = (produtoAtual.cores && produtoAtual.cores.length) ? getColorImage(produtoAtual.cores[0]) : "";
 
   el("#modalImg").src = imgInicial;
-  el("#modalNome").textContent = produtoAtual.nome;
+  el("#modalNome").textContent = getDisplayName(produtoAtual, corIndexAtual);
 
   const desc0 = resolveDesc(produtoAtual, 0);
   el("#modalDesc").innerHTML = formatDescricaoHTML(desc0);
@@ -1508,9 +1592,7 @@ function abrirModal(index){
       b.type = "button";
       b.setAttribute("aria-pressed", (idx === 0) ? "true" : "false");
       b.setAttribute("aria-label", c.nome);
-      const img = document.createElement("img");
-      img.src = getColorImage(c); img.alt = c.nome;
-      b.appendChild(img);
+      appendSwatchContent(b, c);
       b.addEventListener("click", ()=>{
         corIndexAtual = idx;
         colorsWrap.querySelectorAll(".swatch").forEach(s=> {
@@ -1519,7 +1601,8 @@ function abrirModal(index){
         });
         b.dataset.selected = "true";
         b.setAttribute("aria-pressed", "true");
-        el("#modalImg").src = getColorImage(c);
+        setMainImage(el("#modalImg"), c, 0);
+        el("#modalNome").textContent = getDisplayName(produtoAtual, corIndexAtual);
 
         const avail = getAvailableSizesForColor(produtoAtual, corIndexAtual);
         tamanhoAtual = applySizeAvailability(el("#modalSizes"), allSizes, avail, (t)=> { tamanhoAtual = t; updateAddButtonState(); });
@@ -1611,7 +1694,7 @@ function abrirModal(index){
 
     const descricaoCurta = formatShortDetalhamento(resolveDesc(produtoAtual, corIndexAtual));
     addCarrinho({
-      nome: produtoAtual.nome,
+      nome: getDisplayName(produtoAtual, corIndexAtual),
       categoria: produtoAtual.categoria,
       preco: priceNow,
       corSelecionada: cor ? cor.nome : undefined,
