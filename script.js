@@ -110,7 +110,6 @@ const FILTER_CARDS = [
   { label: "Blusas & Coletes", categories: ["Blusa"], tagline: "Camadas leves", image: "image/Blusa/IMG_0350.JPG" }
 ];
 const API_BASE = window.LEMOOV_API_BASE || "";
-const PRODUCT_ENDPOINT = `${API_BASE}/api/produtos`;
 
 /* ------------------------------------------------------------
    Estado & Helpers
@@ -143,8 +142,7 @@ async function loadProdutos(){
     }
   };
 
-  const [apiList, localList] = await Promise.all([
-    fetchList(PRODUCT_ENDPOINT),
+  const [localList] = await Promise.all([
     fetchList("data/produtos.json")
   ]);
 
@@ -172,7 +170,7 @@ async function loadProdutos(){
     return a;
   };
 
-  produtos = pickMostRecent(apiList, localList);
+  produtos = pickMostRecent(null, localList);
   return Array.isArray(produtos) && produtos.length > 0;
 }
 
