@@ -718,8 +718,24 @@
     "categoria": "Conjunto Short",
     "preco": 129.9,
     "precoPromo": 90.9,
+    "opcoesVenda": [
+      {
+        "tipo": "Conjunto",
+        "preco": 129.9
+      },
+      {
+        "tipo": "Top",
+        "preco": 59.9,
+        "precoPromo": 40.9
+      },
+      {
+        "tipo": "Short",
+        "preco": 70.0,
+        "precoPromo": 54.9
+      }
+    ],
     "tamanhos": [
-      "P"
+      "M"
     ],
     "desc": {
       "tecido": "Poliamida com elastano",
@@ -748,21 +764,21 @@
         "nome": "Manteiga",
         "imagem": "image/Conjunto_Short/Manteiga1.jpeg",
         "tamanhos": [
-          "P"
+          "M"
         ]
       },
       {
         "nome": "Manteiga",
         "imagem": "image/Conjunto_Short/Manteiga2.jpeg",
         "tamanhos": [
-          "P"
+          "M"
         ]
       },
       {
         "nome": "Manteiga",
         "imagem": "image/Conjunto_Short/Manteiga3.jpeg",
         "tamanhos": [
-          "P"
+          "M"
         ]
       }
     ],
@@ -791,10 +807,7 @@
       }
     ],
     "tamanhos": [
-      "P",
-      "M",
-      "G",
-      "GG"
+      "M"
     ],
     "desc": {
       "tecido": "Poliamida com elastano",
@@ -823,27 +836,21 @@
         "nome": "Cacau",
         "imagem": "image/Conjunto_Short/cacau1.jpeg",
         "tamanhos": [
-          "P",
-          "M",
-          "GG"
+          "M"
         ]
       },
       {
         "nome": "Cacau",
         "imagem": "image/Conjunto_Short/cacau2.jpeg",
         "tamanhos": [
-          "P",
-          "M",
-          "GG"
+          "M"
         ]
       },
       {
         "nome": "Cacau",
         "imagem": "image/Conjunto_Short/cacau3.jpeg",
         "tamanhos": [
-          "P",
-          "M",
-          "GG"
+          "M"
         ]
       }
     ],
@@ -1186,6 +1193,7 @@
           "M",
           "G"
         ],
+        "soldOut": true,
         "swatch": "#f5f5f5"
       },
       {
@@ -1200,14 +1208,13 @@
           "image/Blusa/blusa_duda_branco_0352.jpg",
           "image/Blusa/blusa_duda_branco_0356_fix.jpg"
         ],
+        "soldOut": true,
         "swatch": "#95b7db"
       },
       {
         "nome": "Lilás",
         "tamanhos": [
-          "P",
-          "M",
-          "G"
+          "P"
         ],
         "imagens": [
           "image/Blusa/blusa_duda_branco_0350.jpg",
@@ -1228,6 +1235,7 @@
           "image/Blusa/blusa_duda_branco_0352.jpg",
           "image/Blusa/blusa_duda_branco_0356_fix.jpg"
         ],
+        "soldOut": true,
         "swatch": "#e8b2c7"
       }
     ],

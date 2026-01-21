@@ -1407,9 +1407,14 @@ function openVendaModal({ prod, corIndex = 0, tamanho, imagem, descricao, source
     const tamanhoNorm = String(tamanho || "").trim().toUpperCase();
     const bloqueiaConjuntoTop = nomeProduto === "conjunto cacau"
       && (tamanhoNorm === "P" || tamanhoNorm === "GG");
-    if (bloqueiaConjuntoTop) {
+    const bloqueiaConjuntoShort = (nomeProduto === "conjunto cacau" || nomeProduto === "conjunto manteiga")
+      && tamanhoNorm === "M";
+    if (bloqueiaConjuntoTop || bloqueiaConjuntoShort) {
       optionsWrap.querySelectorAll(".venda-option").forEach((row) => {
-        if (row.dataset.tipo === "Conjunto" || row.dataset.tipo === "Top") {
+        const tipo = row.dataset.tipo;
+        const disableForTop = bloqueiaConjuntoTop && (tipo === "Conjunto" || tipo === "Top");
+        const disableForShort = bloqueiaConjuntoShort && (tipo === "Conjunto" || tipo === "Short");
+        if (disableForTop || disableForShort) {
           row.dataset.disabled = "true";
           row.classList.add("venda-option--disabled");
           const input = row.querySelector("input");
@@ -1491,12 +1496,17 @@ if (vendaAddBtn) {
     const tamanhoNorm = String(tamanho || "").trim().toUpperCase();
     const bloqueiaConjuntoTop = nomeProduto === "conjunto cacau"
       && (tamanhoNorm === "P" || tamanhoNorm === "GG");
+    const bloqueiaConjuntoShort = (nomeProduto === "conjunto cacau" || nomeProduto === "conjunto manteiga")
+      && tamanhoNorm === "M";
     optionsWrap.querySelectorAll(".venda-option").forEach((row) => {
-      if (bloqueiaConjuntoTop && (row.dataset.tipo === "Conjunto" || row.dataset.tipo === "Top")) {
+      const tipo = row.dataset.tipo;
+      if (bloqueiaConjuntoTop && (tipo === "Conjunto" || tipo === "Top")) {
+        return;
+      }
+      if (bloqueiaConjuntoShort && (tipo === "Conjunto" || tipo === "Short")) {
         return;
       }
       if (row.dataset.disabled === "true") return;
-      const tipo = row.dataset.tipo;
       const preco = Number(row.dataset.preco) || 0;
       const qtyInput = row.querySelector("input");
       const qty = Math.max(0, Number(qtyInput?.value) || 0);
