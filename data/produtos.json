@@ -392,55 +392,6 @@
     "id": 4
   },
   {
-    "nome": "Legging Sem Costura",
-    "categoria": "Conjunto Legging",
-    "preco": 139.9,
-    "precoPromo": 69.9,
-    "tamanhos": [
-      "P",
-      "M"
-    ],
-    "desc": {
-      "tecido": "Poliamida com elastano",
-      "tecnologias": [
-        "toque geladinho",
-        "secagem rápida"
-      ],
-      "compressao": "Média",
-      "transparencia": "Zero",
-      "recortes": "Sem costura lateral para máximo conforto",
-      "extras": [
-        "Cintura média",
-        "Modelagem que abraça o corpo"
-      ],
-      "indicacao": [
-        "treino",
-        "corrida",
-        "dia a dia"
-      ]
-    },
-    "cores": [
-      {
-        "nome": "Preto",
-        "imagem": "image/Calca/calca_semcostura_preto.png",
-        "tamanhos": [
-          "P",
-          "M"
-        ]
-      },
-      {
-        "nome": "Azul Escuro",
-        "imagem": "image/Calca/calca_semcostura_preto.png",
-        "tamanhos": [
-          "P",
-          "M"
-        ]
-      }
-    ],
-    "id": 6,
-    "soldOut": false
-  },
-  {
     "nome": "Top e Short Sófia",
     "categoria": "Conjunto Short",
     "preco": 129.9,
