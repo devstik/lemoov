@@ -101,6 +101,62 @@
     "id": 1
   },
   {
+    "nome": "Macacão Selene",
+    "categoria": "Macacão",
+    "preco": 169.9,
+    "lancamento": true,
+    "tamanhos": [
+      "P",
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida gramatura 295",
+      "tecnologias": [],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Modelagem do macacão",
+      "extras": [
+        "Toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Selene",
+        "imagem": "image/Macacao/macacao_selene_1.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Selene",
+        "imagem": "image/Macacao/macacao_selene_2.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Selene",
+        "imagem": "image/Macacao/macacao_selene_3.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G"
+        ]
+      }
+    ],
+    "id": 24
+  },
+  {
     "nome": "Macaquinho Clara",
     "categoria": "Macaquinho",
     "preco": 94.9,
@@ -1262,6 +1318,66 @@
       }
     ],
     "id": 20
+  },
+  {
+    "nome": "Legging Elara + Top Iris",
+    "categoria": "Conjunto Legging",
+    "preco": 144.9,
+    "lancamento": true,
+    "opcoesVenda": [
+      {
+        "tipo": "Conjunto",
+        "preco": 144.9
+      },
+      {
+        "tipo": "Top",
+        "preco": 49.9
+      },
+      {
+        "tipo": "Legging",
+        "preco": 95.0
+      }
+    ],
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "desc": {
+      "tecido": "Poliamida gramatura 295",
+      "tecnologias": [],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Legging com cintura alta e bolsos laterais",
+      "extras": [
+        "Top Iris forrado com entrada para bojo",
+        "Alças com excelente sustentação",
+        "Toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Elara",
+        "imagens": [
+          "image/Conjunto_Calca/legging_elara_1.jpeg",
+          "image/Conjunto_Calca/legging_elara_2.jpeg",
+          "image/Conjunto_Calca/legging_elara_3.jpeg"
+        ],
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      }
+    ],
+    "id": 23
   }
   ,
   {
@@ -1309,5 +1425,81 @@
       }
     ],
     "id": 21
+  },
+  {
+    "nome": "Short Ciclista + Top Iris",
+    "categoria": "Conjunto Short",
+    "preco": 134.9,
+    "lancamento": true,
+    "opcoesVenda": [
+      {
+        "tipo": "Conjunto",
+        "preco": 134.9
+      },
+      {
+        "tipo": "Top",
+        "preco": 49.9
+      },
+      {
+        "tipo": "Short",
+        "preco": 85.0
+      }
+    ],
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "desc": {
+      "tecido": "Poliamida gramatura 295",
+      "tecnologias": [],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short ciclista com bolsos laterais",
+      "extras": [
+        "Top Iris forrado com entrada para bojo",
+        "Alças com excelente sustentação",
+        "Toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Iris",
+        "imagem": "image/Conjunto_Short/short_ciclista_1.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      },
+      {
+        "nome": "Iris",
+        "imagem": "image/Conjunto_Short/short_ciclista_2.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      },
+      {
+        "nome": "Iris",
+        "imagem": "image/Conjunto_Short/short_ciclista_3.jpeg",
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
+      }
+    ],
+    "id": 22
   }
 ]

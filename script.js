@@ -110,6 +110,7 @@ const FILTER_CARDS = [
   { label: "Blusas & Coletes", categories: ["Blusa"], tagline: "Camadas leves", image: "image/Blusa/IMG_0350.JPG" }
 ];
 const API_BASE = window.LEMOOV_API_BASE || "";
+const IMAGE_BASE = window.LEMOOV_IMAGE_BASE || "";
 
 /* ------------------------------------------------------------
    Estado & Helpers
@@ -232,13 +233,13 @@ function initHeroCarousel(){
 
   const heroImages = [
     "image/Blusa/IMG_0350.JPG",
-    "image/Blusa/colete_preto2.jpg",
+    "image/short_ciclista_5.jpeg",
     "image/Conjunto_Calca/iris_branco_0384.jpg",
     "image/Conjunto_Calca/iris_branco_0385.jpg",
     "image/Conjunto_Calca/terracota1.jpg",
     "image/Conjunto_Short/cacau1.jpeg",
     "image/Conjunto_Short/Manteiga2.jpeg",
-    "image/Top/top_preto.jpeg"
+    "image/legging_elara_bolsos_laterais_5.jpeg"
   ];
   slides.forEach((slide, idx) => {
     const img = slide.querySelector("img");
@@ -485,8 +486,8 @@ function formatDescricaoHTML(desc){
 function resolveImagePath(path){
   if (!path) return "";
   if (/^https?:\/\//i.test(path) || path.startsWith("data:")) return path;
-  if (path.startsWith("/") && API_BASE) return `${API_BASE}${path}`;
-  if (API_BASE) return `${API_BASE}/${path}`;
+  if (path.startsWith("/") && IMAGE_BASE) return `${IMAGE_BASE}${path}`;
+  if (IMAGE_BASE) return `${IMAGE_BASE}/${path}`;
   return path;
 }
 function getColorImages(cor){
@@ -998,6 +999,11 @@ function ordenar(lista){
   }
 }
 
+function isLancamentoFilter(value){
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "lancamentos" || normalized === "lancamento";
+}
+
 function renderFiltros(){
   const wrap = el("#filters");
   if(!wrap) return;
@@ -1073,13 +1079,26 @@ function renderGrid(){
 
   let lista = produtos;
   if (filtroAtual && filtroAtual !== "Todos"){
-    const categorias = filtroAtual.split("|").map(s => s.trim());
-    lista = produtos.filter(p => categorias.includes(p.categoria));
+    if (isLancamentoFilter(filtroAtual)) {
+      lista = produtos.filter(p => p.lancamento);
+    } else {
+      const categorias = filtroAtual.split("|").map(s => s.trim());
+      lista = produtos.filter(p => categorias.includes(p.categoria));
+    }
   }
   lista = ordenar(lista);
   const disponiveis = lista.filter(p => !isProductSoldOut(p));
   const esgotados = lista.filter(p => isProductSoldOut(p));
-  lista = [...disponiveis, ...esgotados];
+  const prioritizeLaunch = (items) => items
+    .map((item, idx) => ({ item, idx }))
+    .sort((a, b) => {
+      const al = a.item?.lancamento ? 1 : 0;
+      const bl = b.item?.lancamento ? 1 : 0;
+      if (al !== bl) return bl - al;
+      return a.idx - b.idx;
+    })
+    .map(({ item }) => item);
+  lista = [...prioritizeLaunch(disponiveis), ...prioritizeLaunch(esgotados)];
 
   const countEl = document.querySelector("#productCount");
   if (countEl) countEl.textContent = "";
@@ -1117,6 +1136,9 @@ function renderGrid(){
           <span class="product-card__badge" data-badge-off style="display:none;">
             <span class="badge-off" data-badge-off-text></span>
           </span>
+          <span class="product-card__badge product-card__badge--launch" data-badge-launch style="display:none;">
+            <span class="badge-launch">Lançamento</span>
+          </span>
         </figure>
         <div class="product-card__info">
           <h3 class="product-card__name" data-card-name>${getDisplayName(p, selectedColorIndex)}</h3>
@@ -1147,10 +1169,15 @@ function renderGrid(){
     const $final     = artigo.querySelector('[data-price-final]');
     const $badgeWrap = artigo.querySelector('[data-badge-off]');
     const $badgeTxt  = artigo.querySelector('[data-badge-off-text]');
+    const $badgeLaunch = artigo.querySelector('[data-badge-launch]');
     const $shortDesc = artigo.querySelector('[data-short-desc]');
     const addBtn = artigo.querySelector("[data-add-quick]");
     const nameEl = artigo.querySelector("[data-card-name]");
     const noteEl = artigo.querySelector("[data-card-note]");
+
+    if ($badgeLaunch) {
+      $badgeLaunch.style.display = p.lancamento ? "" : "none";
+    }
 
     function refreshAddButton(){
       const soldOut = isVariantSoldOut(p, selectedColorIndex);
@@ -2061,6 +2088,8 @@ const sortSelect = el('#sortSelect');
 if (sortSelect) sortSelect.addEventListener('change', (e)=>{ ordenacaoAtual = e.target.value; renderGrid(); });
 
 async function initCatalog(){
+  const urlFilter = new URLSearchParams(window.location.search).get("filter");
+  if (urlFilter) filtroAtual = urlFilter.trim();
   renderFiltros();
   const ok = await loadProdutos();
   renderGrid();

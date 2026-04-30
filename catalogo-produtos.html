@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lemoov | Catálogo rápido</title>
+  <meta name="description" content="Catálogo rápido Lemoov para comprar direto do Instagram." />
+  <meta property="og:title" content="Lemoov | Catálogo rápido" />
+  <meta property="og:description" content="Catálogo rápido Lemoov para comprar direto do Instagram." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Lemoov Fitness" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:image" content="image/Conjunto_Calca/iris_branco_0384.jpg" />
+  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    window.LEMOOV_GA_ID = window.LEMOOV_GA_ID || 'G-XXXXXXXXXXXX';
+    window.LEMOOV_PIXEL_ID = window.LEMOOV_PIXEL_ID || '000000000000000';
+    const isLocal =
+      location.protocol === 'file:' ||
+      location.hostname === 'localhost' ||
+      location.hostname === '127.0.0.1';
+    window.LEMOOV_API_BASE = '';
+    window.LEMOOV_IMAGE_BASE = '';
+  </script>
+  <style>
+    body.catalog-landing {
+      background: linear-gradient(180deg, #f6fbff 0%, #eef6f8 42%, #f7fafc 100%);
+    }
+    .catalog-landing .layout {
+      padding-top: 22px;
+    }
+    .catalog-landing .filters-cards {
+      display: none;
+    }
+    .catalog-landing .grid.carousel-active,
+    .catalog-landing .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 16px;
+      overflow: visible;
+      padding-bottom: 34px;
+      scroll-snap-type: none;
+    }
+    .catalog-landing .grid.carousel-active > .product-card {
+      min-width: 0;
+      flex: initial;
+      scroll-snap-align: unset;
+    }
+    .catalog-landing .grid-controls {
+      display: none;
+    }
+    .catalog-landing .product-card {
+      border-radius: 16px;
+      min-height: auto;
+      box-shadow: 0 10px 24px rgba(17, 23, 34, 0.08);
+    }
+    .catalog-landing .product-card:hover {
+      transform: translateY(-3px);
+    }
+    .catalog-landing .product-card__media {
+      min-height: 0;
+      aspect-ratio: 4 / 5;
+      border-radius: 16px 16px 0 0;
+    }
+    .catalog-landing .product-card__media::after {
+      content: "";
+      display: none;
+    }
+    .catalog-landing .product-card__info {
+      padding: 11px 12px 12px;
+      gap: 5px;
+    }
+    .catalog-landing .product-card__name {
+      font-size: 0.92rem;
+      margin-bottom: 0;
+    }
+    .catalog-landing .product-card__desc {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      font-size: 0.74rem;
+      line-height: 1.3;
+    }
+    .catalog-landing .product-card__price {
+      font-size: 1rem;
+      line-height: 1.2;
+    }
+    .catalog-landing .product-card__price .original-price {
+      font-size: 0.78rem;
+    }
+    .catalog-landing .product-card__note {
+      margin-top: 2px;
+      font-size: 0.72rem;
+    }
+    .catalog-landing .product-card__options {
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+    .catalog-landing .product-card__legend {
+      font-size: 0.72rem;
+      margin-bottom: 5px;
+    }
+    .catalog-landing .product-card__info .swatches {
+      gap: 5px;
+    }
+    .catalog-landing .product-card__info .swatch,
+    .catalog-landing .product-card__info .size {
+      width: 25px;
+      height: 25px;
+      font-size: 0.66rem;
+    }
+    .catalog-landing .product-card__info .swatch__dot {
+      width: 14px;
+      height: 14px;
+    }
+    .catalog-landing .product-card__btn-add {
+      border-radius: 0 0 16px 16px;
+      padding: 0.68rem 0.52rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+    }
+    .catalog-landing .product-card__badge {
+      top: 7px;
+      left: 7px;
+    }
+    .catalog-landing .product-card__badge--launch {
+      left: auto;
+      right: 7px;
+    }
+    .catalog-landing .badge-off,
+    .catalog-landing .badge-launch {
+      font-size: 0.58rem;
+      padding: 5px 6px;
+      border-radius: 7px;
+    }
+    @media (max-width: 520px) {
+      .catalog-landing .layout {
+        padding-top: 14px;
+      }
+      .catalog-landing .grid.carousel-active,
+      .catalog-landing .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .catalog-landing .product-card__options {
+        flex-direction: column;
+      }
+    }
+    @media (min-width: 1180px) {
+      .catalog-landing .container {
+        width: min(100% - 40px, 1320px);
+      }
+      .catalog-landing .grid.carousel-active,
+      .catalog-landing .grid {
+        grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body class="catalog-landing">
+
+  <header class="header">
+    <div class="container header__wrap">
+      <h1 class="logo">
+        <a href="index.html">Lemoov <span>Fitness</span></a>
+      </h1>
+
+      <nav class="nav">
+        <button id="openCart" class="btn-icon" aria-label="Abrir carrinho">
+          <i id="cartIcon" class="fas fa-shopping-cart"></i>
+          <span id="cartCount" class="badge">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container layout layout--single">
+    <main class="content" style="position:relative;">
+      <section id="grid" class="grid"></section>
+    </main>
+  </div>
+
+  <!-- Modal Produto -->
+  <dialog id="modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalNome" aria-describedby="modalDesc">
+    <div class="modal__header">
+      <button class="modal__close" id="closeModal" aria-label="Fechar">✕</button>
+    </div>
+    <article class="modal__content">
+      <section class="modal__info">
+        <h2 id="modalNome"></h2>
+        <div id="modalDesc" class="modal__desc muted"></div>
+        <section class="modal__options">
+          <fieldset class="modal__colors">
+            <legend>Cor:</legend>
+            <ul id="modalColors" class="swatches"></ul>
+          </fieldset>
+          <fieldset class="modal__sizes">
+            <legend>Tamanho:</legend>
+            <ul id="modalSizes" class="sizes__wrap"></ul>
+          </fieldset>
+        </section>
+        <p id="modalPreco" class="price"></p>
+      </section>
+      <div class="modal__mediaWrap">
+        <figure class="modal__media">
+          <img id="modalImg" src="" alt="Produto" />
+        </figure>
+        <div class="modal__cta">
+          <button id="btnAdd" class="btn btn--primary">Adicionar ao carrinho</button>
+        </div>
+      </div>
+    </article>
+  </dialog>
+
+  <!-- Modal de escolha (Conjunto/Top/Legging) -->
+  <dialog id="vendaModal" class="modal venda-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vendaTitle">
+    <div class="modal__header">
+      <button class="modal__close" id="closeVendaModal" aria-label="Fechar">✕</button>
+    </div>
+    <article class="venda-modal__content">
+      <h2 id="vendaTitle"></h2>
+      <p class="venda-modal__note">Adicione o conjunto ou a peça individual.</p>
+      <p id="vendaMeta" class="venda-modal__meta"></p>
+      <div id="vendaOptions" class="venda-options"></div>
+      <div class="venda-total">
+        <span>Total</span>
+        <strong id="vendaTotal">R$ 0,00</strong>
+      </div>
+      <div class="venda-actions">
+        <button id="vendaAddBtn" class="btn btn--primary">Adicionar ao carrinho</button>
+      </div>
+    </article>
+  </dialog>
+
+  <!-- Drawer Carrinho (modal central) -->
+  <aside id="cart" class="cart" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cartTitle" tabindex="-1">
+    <div class="cart__header">
+      <h3 id="cartTitle">Seu Carrinho</h3>
+      <button class="cart__close" id="closeCart" aria-label="Fechar">✕</button>
+    </div>
+    <ul id="cartList" class="cart__list"></ul>
+    <div class="cart__footer">
+      <div class="cart__total">
+        <span>Total:</span>
+        <strong id="cartTotal">R$ 0,00</strong>
+      </div>
+      <a id="btnWhats" class="btn btn--whats" target="_blank" rel="noopener">Finalizar no WhatsApp</a>
+    </div>
+  </aside>
+  <div id="cartBackdrop" class="backdrop"></div>
+
+  <script src="script.js?v=6"></script>
+</body>
+</html>

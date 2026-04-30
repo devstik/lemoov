@@ -2443,6 +2443,25 @@ legend {
   position: absolute;
   top: 10px;
   left: 10px;
+  z-index: 4;
+}
+
+.product-card__badge--launch {
+  left: auto;
+  right: 10px;
+}
+
+.badge-launch {
+  display: inline-block;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #1f9d78;
+  color: #f5fffc;
+  font-weight: 700;
+  letter-spacing: .2px;
+  text-transform: uppercase;
 }
 .cart {
     background: linear-gradient(135deg, #fefefe, #f4f8ff 65%);
