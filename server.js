@@ -96,6 +96,14 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_users (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(100) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
     const [rows] = await mysqlPool.execute('SELECT COUNT(*) AS total FROM lemoov_products');
     if (Number(rows?.[0]?.total || 0) === 0) {
       const localProducts = ensureProductIds(readProdutos());
@@ -105,6 +113,15 @@ async function initDatabase() {
           [Number(item.id), JSON.stringify(item)]
         );
       }
+    }
+    const [userRows] = await mysqlPool.execute('SELECT COUNT(*) AS total FROM lemoov_users');
+    if (Number(userRows?.[0]?.total || 0) === 0) {
+      const salt = crypto.randomBytes(16).toString('hex');
+      const hash = crypto.scryptSync(BASIC_PASS, salt, 64).toString('hex');
+      await mysqlPool.execute(
+        'INSERT INTO lemoov_users (username, password_hash) VALUES (?, ?)',
+        [BASIC_USER, `${salt}:${hash}`]
+      );
     }
   })().catch((err) => {
     mysqlInitError = err;
@@ -328,9 +345,29 @@ app.get('/login', (_req, res) => {
   res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { user, pass, redirect } = req.body || {};
-  if (user === BASIC_USER && pass === BASIC_PASS) {
+  let valid = false;
+  if (MYSQL_ENABLED) {
+    try {
+      await initDatabase();
+      const [rows] = await mysqlPool.execute(
+        'SELECT password_hash FROM lemoov_users WHERE username = ?',
+        [user]
+      );
+      if (rows.length > 0) {
+        const [salt, storedHash] = rows[0].password_hash.split(':');
+        const hash = crypto.scryptSync(String(pass || ''), salt, 64).toString('hex');
+        valid = hash === storedHash;
+      }
+    } catch (e) {
+      console.error('Erro no login via banco:', e);
+      valid = user === BASIC_USER && pass === BASIC_PASS;
+    }
+  } else {
+    valid = user === BASIC_USER && pass === BASIC_PASS;
+  }
+  if (valid) {
     const token = crypto.randomBytes(16).toString('hex');
     sessions.set(token, { user, createdAt: Date.now() });
     res.setHeader('Set-Cookie', `lemoov_session=${token}; HttpOnly; Path=/; SameSite=Lax`);
