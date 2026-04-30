@@ -143,7 +143,8 @@ async function loadProdutos(){
     }
   };
 
-  const [localList] = await Promise.all([
+  const [apiList, localList] = await Promise.all([
+    fetchList(`${API_BASE}/api/produtos`),
     fetchList("data/produtos.json")
   ]);
 
@@ -171,7 +172,7 @@ async function loadProdutos(){
     return a;
   };
 
-  produtos = pickMostRecent(null, localList);
+  produtos = pickMostRecent(apiList, localList);
   return Array.isArray(produtos) && produtos.length > 0;
 }
 
@@ -502,6 +503,25 @@ function getColorImage(cor){
   const imgs = getColorImages(cor);
   return imgs[0] || "";
 }
+function getColorStock(cor){
+  return cor && cor.estoque && typeof cor.estoque === "object" && !Array.isArray(cor.estoque)
+    ? cor.estoque
+    : null;
+}
+function normalizeStockSize(size){
+  return String(size || "UNICO").trim().toUpperCase();
+}
+function getStockQtyForSize(cor, size){
+  const stock = getColorStock(cor);
+  if (!stock) return null;
+  const key = normalizeStockSize(size);
+  const qty = Number(stock[key]);
+  return Number.isFinite(qty) ? qty : 0;
+}
+function hasStockForSize(cor, size){
+  const qty = getStockQtyForSize(cor, size);
+  return qty === null ? true : qty > 0;
+}
 function setMainImage(imgEl, colorObj, index = 0){
   if (!imgEl) return false;
   const imgs = getColorImages(colorObj);
@@ -556,6 +576,8 @@ function isVariantSoldOut(prod, colorIndex = 0){
   if (prod && prod.soldOut) return true;
   const cor = (prod && prod.cores) ? prod.cores[colorIndex] : null;
   if (cor && cor.soldOut) return true;
+  const stock = getColorStock(cor);
+  if (stock && Object.values(stock).every((qty) => Number(qty) <= 0)) return true;
   return false;
 }
 function isProductSoldOut(prod){
@@ -574,9 +596,16 @@ function isProductSoldOut(prod){
 function getAvailableSizesForColor(prod, colorIndex){
   if (isVariantSoldOut(prod, colorIndex)) return [];
   const cor = (prod.cores || [])[colorIndex];
-  if (!cor) return prod.tamanhos || [];
-  if (Array.isArray(cor.tamanhos) && cor.tamanhos.length) return cor.tamanhos;
-  return prod.tamanhos || [];
+  const baseSizes = (() => {
+    if (!cor) return prod.tamanhos || [];
+    if (Array.isArray(cor.tamanhos) && cor.tamanhos.length) return cor.tamanhos;
+    return prod.tamanhos || [];
+  })();
+  const stock = getColorStock(cor);
+  if (!stock) return baseSizes;
+  const stockSizes = Object.keys(stock).filter((size) => Number(stock[size]) > 0);
+  if (!baseSizes.length) return stockSizes;
+  return baseSizes.filter((size) => hasStockForSize(cor, size));
 }
 function getDisplayName(prod, colorIndex){
   const baseName = String(prod?.nome || "").trim();
@@ -1289,6 +1318,8 @@ function renderGrid(){
 
       const descAtual = formatShortDetalhamento(resolveDesc(p, selectedColorIndex));
       addCarrinho({
+        productId: p.id,
+        colorIndex: selectedColorIndex,
         nome: getDisplayName(p, selectedColorIndex),
         categoria: p.categoria,
         preco: priceNow,
@@ -1540,6 +1571,8 @@ if (vendaAddBtn) {
       if (!qty) return;
       totalQty += qty;
       addCarrinho({
+        productId: prod.id,
+        colorIndex: corIndex,
         nome: getDisplayName(prod, corIndex),
         categoria: prod.categoria,
         preco,
@@ -1731,6 +1764,8 @@ function abrirModal(prodOrIndex){
 
     const descricaoCurta = formatShortDetalhamento(resolveDesc(produtoAtual, corIndexAtual));
     addCarrinho({
+      productId: produtoAtual.id,
+      colorIndex: corIndexAtual,
       nome: getDisplayName(produtoAtual, corIndexAtual),
       categoria: produtoAtual.categoria,
       preco: priceNow,
@@ -1785,6 +1820,8 @@ function getEffectivePrice(prod){
 }
 function addCarrinho(prod, animateSource = null){
   const item = {
+    productId: prod.productId,
+    colorIndex: prod.colorIndex,
     nome: prod.nome,
     categoria: prod.categoria,
     preco: getEffectivePrice(prod),
@@ -2931,12 +2968,19 @@ function openWhatsAppWithMessage(message) {
 
 async function savePedido(payload){
   try {
-    await fetch(`${API_BASE}/api/pedidos`, {
+    const res = await fetch(`${API_BASE}/api/pedidos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-  } catch (_e) {}
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.ok === false) {
+      throw new Error(data?.error || "Falha ao salvar pedido.");
+    }
+    return data;
+  } catch (err) {
+    throw err;
+  }
 }
 
 async function handleSubmitCheckout(ev){
@@ -2991,12 +3035,39 @@ async function handleSubmitCheckout(ev){
       throw new Error("Preencha: " + faltantes.join(", ") + ".");
     }
 
-    const numeroPedido = getNextOrderNumber();
+    const visitorRegion = getVisitorRegion();
+    const numeroPedidoSugerido = getNextOrderNumber();
+    const itensEstoque = carrinho.map((p) => ({
+      productId: p.productId,
+      colorIndex: p.colorIndex,
+      nome: p.nome,
+      corSelecionada: p.corSelecionada,
+      tamanhoSelecionado: p.tamanhoSelecionado || "UNICO",
+      quantidade: getItemQty(p)
+    }));
+    const pedidoSalvo = await savePedido({
+      pedido: numeroPedidoSugerido,
+      status: "reservado",
+      total: totalCompra,
+      currency: "BRL",
+      item_count: purchaseItems.length,
+      itens: purchaseItems,
+      itensEstoque,
+      frete_modo: freteModo || "",
+      cep: endereco.cep || "",
+      cidade: endereco.cidade || "",
+      uf: endereco.uf || "",
+      visitor_city: visitorRegion?.city || "",
+      visitor_region: visitorRegion?.region || "",
+      visitor_country: visitorRegion?.country || "",
+      pagamento: pagamento || "",
+      origem_cep: ORIGIN_CEP
+    });
+    const numeroPedido = pedidoSalvo?.pedido || numeroPedidoSugerido;
     ultimoNumeroPedido = numeroPedido;
     const pedidoEl = el("#ckPedido");
     if (pedidoEl) pedidoEl.textContent = numeroPedido;
     const mensagem = buildWhatsMessage({ cliente, endereco, pagamento }, { numeroPedido });
-    const visitorRegion = getVisitorRegion();
     trackEvent("purchase", {
       currency: "BRL",
       value: totalCompra,
@@ -3014,22 +3085,6 @@ async function handleSubmitCheckout(ev){
       country: visitorRegion?.country || "Brasil",
       cep: endereco.cep || "",
       frete_modo: freteModo || ""
-    });
-    savePedido({
-      pedido: numeroPedido,
-      total: totalCompra,
-      currency: "BRL",
-      item_count: purchaseItems.length,
-      itens: purchaseItems,
-      frete_modo: freteModo || "",
-      cep: endereco.cep || "",
-      cidade: endereco.cidade || "",
-      uf: endereco.uf || "",
-      visitor_city: visitorRegion?.city || "",
-      visitor_region: visitorRegion?.region || "",
-      visitor_country: visitorRegion?.country || "",
-      pagamento: pagamento || "",
-      origem_cep: ORIGIN_CEP
     });
     openWhatsAppWithMessage(mensagem);
 

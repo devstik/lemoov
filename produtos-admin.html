@@ -141,6 +141,36 @@
       const n = Number(value || 0);
       return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
+    function formatStock(estoque){
+      if (!estoque || typeof estoque !== 'object' || Array.isArray(estoque)) return '';
+      return Object.entries(estoque)
+        .map(([size, qty]) => `${size}: ${Number(qty) || 0}`)
+        .join(', ');
+    }
+    function parseStock(raw){
+      const text = String(raw || '').trim();
+      if (!text) return null;
+      const stock = {};
+      text.split(',').forEach((part) => {
+        const [sizeRaw, qtyRaw] = part.split(/[:=]/);
+        const size = String(sizeRaw || '').trim().toUpperCase();
+        if (!size) return;
+        const qty = Math.max(0, Number(String(qtyRaw || '0').trim()) || 0);
+        stock[size] = qty;
+      });
+      return Object.keys(stock).length ? stock : null;
+    }
+    function getTotalStock(prod){
+      if (!Array.isArray(prod?.cores)) return null;
+      let total = 0;
+      let managed = false;
+      prod.cores.forEach((cor) => {
+        if (!cor?.estoque || typeof cor.estoque !== 'object' || Array.isArray(cor.estoque)) return;
+        managed = true;
+        Object.values(cor.estoque).forEach((qty) => { total += Number(qty) || 0; });
+      });
+      return managed ? total : null;
+    }
     function showNotice(message, type = 'success'){
       if (!saveNotice) return;
       saveNotice.textContent = message;
@@ -215,7 +245,8 @@
           ? (Array.isArray(firstColor.imagens) && firstColor.imagens[0] ? firstColor.imagens[0] : (firstColor.imagem || ''))
           : '';
         const imgSrc = img ? (img.startsWith('http') ? img : (img.startsWith('/') ? img : '/' + img)) : '';
-        const status = p.soldOut ? 'Esgotado' : 'Disponível';
+        const totalStock = getTotalStock(p);
+        const status = p.soldOut ? 'Esgotado' : (totalStock == null ? 'Disponível' : `${totalStock} em estoque`);
         return `
           <div class="product-card ${isActive ? 'active' : ''}" data-id="${p.id}">
             <div class="product-card__media">
@@ -237,6 +268,11 @@
     async function loadProdutos(){
       const res = await fetch('/api/admin/produtos');
       if (res.status === 401) {
+        location.href = '/login?redirect=/api/produtos-admin';
+        return;
+      }
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
         location.href = '/login?redirect=/api/produtos-admin';
         return;
       }
@@ -277,6 +313,11 @@
             <label>Tamanhos (por cor)</label>
             <input type="text" data-color-sizes placeholder="P, M, G" value="${Array.isArray(cor.tamanhos) ? cor.tamanhos.join(', ') : ''}" />
           </div>
+        </div>
+        <div>
+          <label>Estoque por tamanho</label>
+          <input type="text" data-color-stock placeholder="P: 2, M: 4, G: 0" value="${formatStock(cor.estoque)}" />
+          <div class="muted">Use o formato tamanho: quantidade. Quando zerar, o tamanho sai do catálogo.</div>
         </div>
         <div class="color-row__grid">
           <div>
@@ -353,7 +394,10 @@
       for (const row of rows) {
         const nome = row.querySelector('[data-color-name]').value.trim();
         const sizesRaw = row.querySelector('[data-color-sizes]').value;
-        const tamanhos = sizesRaw.split(',').map((t) => t.trim()).filter(Boolean);
+        const stock = parseStock(row.querySelector('[data-color-stock]')?.value || '');
+        const tamanhos = stock
+          ? Object.keys(stock)
+          : sizesRaw.split(',').map((t) => t.trim()).filter(Boolean);
         const soldOut = row.querySelector('[data-color-soldout]').checked;
         const fileInput = row.querySelector('[data-color-file]');
         const file1 = row.querySelector('[data-color-file="1"]');
@@ -376,7 +420,13 @@
         }
         const imagens = [imagePath1, imagePath2, imagePath3].filter(Boolean);
         if (!nome && !imagens.length) continue;
-        colors.push({ nome, imagem: imagens[0] || "", imagens, tamanhos, soldOut });
+        const colorPayload = { nome, imagem: imagens[0] || "", imagens, tamanhos, soldOut };
+        if (stock) {
+          colorPayload.estoque = stock;
+          colorPayload.tamanhos = Object.keys(stock).filter((size) => Number(stock[size]) > 0);
+          colorPayload.soldOut = colorPayload.tamanhos.length === 0;
+        }
+        colors.push(colorPayload);
       }
       return colors;
     }
