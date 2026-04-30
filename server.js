@@ -46,6 +46,7 @@ const mysqlPool = MYSQL_ENABLED ? mysql.createPool({
   charset: 'utf8mb4'
 }) : null;
 let mysqlInitPromise = null;
+let mysqlInitError = null;
 const sessions = new Map();
 const SESSION_TTL_MS = 60 * 60 * 1000;
 
@@ -77,6 +78,7 @@ function writePedidos(list) {
 }
 async function initDatabase() {
   if (!MYSQL_ENABLED) return;
+  if (mysqlInitError) throw mysqlInitError;
   if (mysqlInitPromise) return mysqlInitPromise;
   mysqlInitPromise = (async () => {
     await mysqlPool.execute(`
@@ -104,7 +106,11 @@ async function initDatabase() {
         );
       }
     }
-  })();
+  })().catch((err) => {
+    mysqlInitError = err;
+    mysqlInitPromise = null;
+    throw err;
+  });
   return mysqlInitPromise;
 }
 async function readProdutosStore(conn = null) {
@@ -341,6 +347,15 @@ app.post('/api/logout', (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/health', (_req, res) => {
+  res.json({
+    ok: true,
+    storage: MYSQL_ENABLED ? 'mysql' : 'json',
+    mysqlReady: MYSQL_ENABLED ? !mysqlInitError : null,
+    mysqlError: mysqlInitError ? mysqlInitError.message : null
+  });
+});
+
 app.get('/api/pedidos', authRequired, async (req, res) => {
   try {
     const pedidos = await readPedidosStore();
@@ -433,13 +448,14 @@ app.use(express.static(__dirname)); // serve index.html, script.js, etc.
 
 const PORT = process.env.PORT || 3000;
 initDatabase()
+  .catch((err) => {
+    console.error('Falha ao inicializar banco de dados. O site vai subir, mas APIs com MySQL podem falhar:', err);
+  })
   .then(() => {
     app.listen(PORT, () => {
-      const storage = MYSQL_ENABLED ? 'MySQL' : 'JSON local';
+      const storage = MYSQL_ENABLED
+        ? (mysqlInitError ? 'MySQL com erro' : 'MySQL')
+        : 'JSON local';
       console.log(`Servidor no ar http://localhost:${PORT} (${storage})`);
     });
-  })
-  .catch((err) => {
-    console.error('Falha ao inicializar banco de dados:', err);
-    process.exit(1);
   });
