@@ -27,6 +27,8 @@ app.use((req, res, next) => {
 
 const DB_PATH = path.join(__dirname, 'data', 'pedidos.json');
 const PROD_PATH = path.join(__dirname, 'data', 'produtos.json');
+const ADMIN_USER = process.env.REPORT_USER || 'lemoov';
+const ADMIN_PASS = process.env.REPORT_PASS || 'Lemo4v@';
 const MYSQL_CONFIG = {
   host: (process.env.DB_HOST || process.env.MYSQL_HOST || '').replace(/^localhost$/i, '127.0.0.1'),
   user: process.env.DB_USER || process.env.MYSQL_USER,
@@ -110,16 +112,13 @@ async function initDatabase() {
         );
       }
     }
-    const [userRows] = await mysqlPool.execute('SELECT COUNT(*) AS total FROM lemoov_users');
-    if (Number(userRows?.[0]?.total || 0) === 0) {
-      const salt = crypto.randomBytes(16).toString('hex');
-      const hash = crypto.scryptSync('Lemo4v@', salt, 64).toString('hex');
-      await mysqlPool.execute(
-        'INSERT INTO lemoov_users (username, password_hash) VALUES (?, ?)',
-        ['lemoov', `${salt}:${hash}`]
-      );
-      console.log('Usuário admin criado: lemoov');
-    }
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(ADMIN_PASS, salt, 64).toString('hex');
+    await mysqlPool.execute('DELETE FROM lemoov_users WHERE username = ?', [ADMIN_USER]);
+    await mysqlPool.execute(
+      'INSERT INTO lemoov_users (username, password_hash) VALUES (?, ?)',
+      [ADMIN_USER, `${salt}:${hash}`]
+    );
   })().catch((err) => {
     console.error('[initDatabase] erro:', err.message);
     mysqlInitPromise = null;
@@ -344,7 +343,7 @@ app.get('/login', (_req, res) => {
 
 app.post('/api/login', async (req, res) => {
   const { user, pass, redirect } = req.body || {};
-  let valid = user === 'lemoov' && pass === 'Lemo4v@';
+  let valid = user === ADMIN_USER && pass === ADMIN_PASS;
   if (!valid && MYSQL_ENABLED) {
     try {
       await initDatabase();
@@ -383,11 +382,11 @@ app.post('/api/admin/reset-admin-user', authRequired, async (_req, res) => {
   try {
     await initDatabase();
     const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.scryptSync('Lemo4v@', salt, 64).toString('hex');
-    await mysqlPool.execute('DELETE FROM lemoov_users WHERE username = ?', ['lemoov']);
+    const hash = crypto.scryptSync(ADMIN_PASS, salt, 64).toString('hex');
+    await mysqlPool.execute('DELETE FROM lemoov_users WHERE username = ?', [ADMIN_USER]);
     await mysqlPool.execute(
       'INSERT INTO lemoov_users (username, password_hash) VALUES (?, ?)',
-      ['lemoov', `${salt}:${hash}`]
+      [ADMIN_USER, `${salt}:${hash}`]
     );
     res.json({ ok: true });
   } catch (e) {
