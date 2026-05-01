@@ -102,7 +102,24 @@
     .s-entregue{background:#dcfce7;color:#166534}
     .s-cancelado{background:#f1f5f9;color:#64748b}
     /* Order detail */
-    .order-detail{padding:14px}
+    .order-detail{padding:14px;overflow-y:auto;max-height:calc(100vh - 160px)}
+    /* Modal */
+    .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+    .modal-box{background:#fff;border-radius:16px;width:100%;max-width:760px;box-shadow:0 24px 64px rgba(0,0,0,.25);overflow:hidden;margin:auto}
+    .modal-head{padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center}
+    .modal-head h2{font-size:15px;font-weight:700}
+    .modal-body{padding:20px;max-height:calc(100vh - 120px);overflow-y:auto}
+    /* Relatório */
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:20px}
+    .kpi-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px 18px}
+    .kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:4px}
+    .kpi-val{font-size:24px;font-weight:700;color:#0f172a}
+    .rel-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:900px){.rel-grid{grid-template-columns:1fr}}
+    /* Items list in order form */
+    .order-item-entry{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9}
+    /* Orders layout wider side */
+    .orders-layout{display:grid;grid-template-columns:1fr 400px;gap:16px;align-items:start}
     .order-section-title{font-size:11px;font-weight:600;text-transform:uppercase;color:#64748b;letter-spacing:.04em;margin-bottom:8px}
     .order-info-box{background:#f8fafc;border-radius:8px;padding:10px;font-size:13px;margin-bottom:14px}
     .order-item-row{padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
@@ -122,6 +139,7 @@
     <button class="tab-btn active" data-tab="produtos">Produtos</button>
     <button class="tab-btn" data-tab="estoque">Estoque</button>
     <button class="tab-btn" data-tab="pedidos">Pedidos</button>
+    <button class="tab-btn" data-tab="relatorio">Relatório</button>
   </nav>
   <div class="adm-header-right">
     <button class="btn btn--header" id="btnSync">↑ Sync JSON</button>
@@ -206,6 +224,40 @@
   </div>
 </div>
 
+<!-- ── RELATÓRIO ─────────────────────────────────── -->
+<div id="tab-relatorio" class="tab-panel">
+  <div class="kpi-grid" id="relKpis"></div>
+  <div class="rel-grid">
+    <div class="card">
+      <div class="card-head"><h2>Pedidos por status</h2></div>
+      <div class="card-body" id="relStatus"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>Produtos mais vendidos</h2></div>
+      <div class="card-body" id="relProdutos"></div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-head"><h2>Receita por dia (últimos 30 dias)</h2></div>
+      <div class="card-body" id="relPeriodo"></div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-head"><h2>Pedidos recentes</h2><a class="btn btn--secondary btn--sm" style="margin-left:auto" href="/api/relatorio" target="_blank">Ver relatório completo</a></div>
+      <div class="card-body" style="overflow-x:auto" id="relRecentes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL NOVO PEDIDO ─────────────────────────── -->
+<div id="modalOv" class="modal-ov" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>Novo pedido</h2>
+      <button class="btn btn--ghost btn--sm" style="margin-left:auto" onclick="closeModal()">✕ Fechar</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
 <script>
 // ── Helpers ─────────────────────────────────────────────────
 const $  = id  => document.getElementById(id);
@@ -236,7 +288,7 @@ function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
 let produtos=[], pedidos=[], activeProdId=null, activePedNum=null, orderFilter='';
-let colorCounter=0;
+let colorCounter=0, newOrderItems=[];
 
 // ── Tabs ────────────────────────────────────────────────────
 $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
@@ -247,6 +299,7 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   $(`tab-${tab}`).classList.add('active');
   if(tab==='pedidos') loadPedidos();
   if(tab==='estoque') fillEstoqueSelect();
+  if(tab==='relatorio') loadRelatorio();
 }));
 
 // ── Sync / Logout ────────────────────────────────────────────
@@ -549,6 +602,13 @@ function renderSizes(prod,ci){
         <label class="fl">${s}</label>
         <input type="number" class="fc" min="0" value="0" data-sz="${esc(s)}" />
       </div>`).join('')}
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px dashed #e2e8f0">
+      <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">Adicionar tamanho não listado:</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div><label class="fl">Tamanho</label><input class="fc" style="width:110px" id="estoq_new_sz" placeholder="XG, UNICO…" /></div>
+        <div><label class="fl">Quantidade</label><input type="number" class="fc" style="width:110px" min="0" value="0" id="estoq_new_qty" /></div>
+      </div>
     </div>`;
 }
 
@@ -557,6 +617,9 @@ $('btnEntrada').addEventListener('click',async()=>{
   if(!prodId){showNotice($('estoqueNotice'),'Selecione um produto.','error');return}
   const qtd={};
   $$('#estoq_sizes [data-sz]').forEach(inp=>{const q=Number(inp.value)||0;if(q>0)qtd[inp.dataset.sz]=q});
+  const newSz=($('estoq_new_sz')?.value||'').trim().toUpperCase();
+  const newQty=Number($('estoq_new_qty')?.value)||0;
+  if(newSz&&newQty>0) qtd[newSz]=(qtd[newSz]||0)+newQty;
   if(!Object.keys(qtd).length){showNotice($('estoqueNotice'),'Informe ao menos uma quantidade maior que zero.','error');return}
   try{
     const r=await fetch('/api/admin/entrada-estoque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({produtoId:Number(prodId),corIndex:ci,quantidades:qtd})});
@@ -676,51 +739,274 @@ function renderOrderDetail(ped){
   });
 }
 
-$('btnNovoPedido').addEventListener('click',()=>{
-  activePedNum=null; renderOrdersTable();
-  $('orderSide').innerHTML=`
-    <div class="card-head"><h2>Novo pedido manual</h2></div>
-    <div class="order-detail">
-      <div id="npNotice" class="notice"></div>
-      <div class="fg"><label class="fl">Nome do cliente *</label><input class="fc" id="np_nome" /></div>
-      <div class="frow">
-        <div class="fg"><label class="fl">Telefone</label><input class="fc" id="np_tel" /></div>
-        <div class="fg"><label class="fl">Status</label>
-          <select class="fc" id="np_st">
-            <option value="reservado">Reservado</option>
-            <option value="confirmado" selected>Confirmado</option>
-            <option value="enviado">Enviado</option>
-            <option value="entregue">Entregue</option>
-          </select>
+function closeModal(){$('modalOv').style.display='none';$('modalBody').innerHTML='';newOrderItems=[]}
+
+function renderNewOrderForm(){
+  newOrderItems=[];
+  $('modalBody').innerHTML=`
+    <div id="npNotice" class="notice"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:10px">Cliente</div>
+        <div class="fg"><label class="fl">Nome *</label><input class="fc" id="np_nome" /></div>
+        <div class="frow">
+          <div class="fg"><label class="fl">Telefone</label><input class="fc" id="np_tel" /></div>
+          <div class="fg"><label class="fl">Email</label><input class="fc" id="np_email" type="email" /></div>
+        </div>
+        <div class="fg"><label class="fl">Endereço</label><input class="fc" id="np_end" /></div>
+        <div class="frow">
+          <div class="fg"><label class="fl">Cidade</label><input class="fc" id="np_cidade" /></div>
+          <div class="fg"><label class="fl">UF</label><input class="fc" id="np_uf" maxlength="2" style="text-transform:uppercase" /></div>
+        </div>
+        <div class="frow" style="margin-top:4px">
+          <div class="fg"><label class="fl">Pagamento</label>
+            <select class="fc" id="np_pg">
+              <option value="">—</option><option>PIX</option><option>Cartão de Crédito</option>
+              <option>Cartão de Débito</option><option>Dinheiro</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Status</label>
+            <select class="fc" id="np_st">
+              <option value="reservado">Reservado</option>
+              <option value="confirmado" selected>Confirmado</option>
+              <option value="enviado">Enviado</option>
+              <option value="entregue">Entregue</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">Observações</label><textarea class="fc" id="np_obs" style="min-height:50px"></textarea></div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:10px">Itens do pedido</div>
+        <div id="npItemsList" style="margin-bottom:12px;min-height:32px">
+          <div style="color:#94a3b8;font-size:13px">Nenhum item adicionado.</div>
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;border:1px solid #e8edf2">
+          <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">Adicionar item</div>
+          <div class="fg"><label class="fl">Produto</label>
+            <select class="fc" id="np_prod"><option value="">— Selecione —</option></select>
+          </div>
+          <div class="frow">
+            <div class="fg"><label class="fl">Cor</label><select class="fc" id="np_cor"><option value="">—</option></select></div>
+            <div class="fg"><label class="fl">Tamanho</label><select class="fc" id="np_sz"><option value="">—</option></select></div>
+          </div>
+          <div class="frow">
+            <div class="fg"><label class="fl">Qtd</label><input type="number" class="fc" id="np_qty" min="1" value="1" /></div>
+            <div class="fg"><label class="fl">Preço unit. (R$)</label><input type="number" class="fc" id="np_price" step="0.01" min="0" /></div>
+          </div>
+          <button class="btn btn--secondary btn--sm" id="np_addItem" style="width:100%;margin-top:4px">+ Adicionar item</button>
+        </div>
+        <div style="margin-top:14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px">
+            <span style="color:#64748b">Subtotal</span><span id="np_subtotal" style="font-weight:500">R$ 0,00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px">
+            <label style="color:#64748b">Taxa / frete (R$)</label>
+            <input type="number" id="np_taxa" step="0.01" value="0" style="width:90px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;text-align:right;font-family:inherit" />
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding-top:10px;border-top:1px solid #f1f5f9">
+            <span>Total</span><span id="np_total">R$ 0,00</span>
+          </div>
         </div>
       </div>
-      <div class="fg"><label class="fl">Pagamento</label><input class="fc" id="np_pg" placeholder="PIX, Cartão, Dinheiro…" /></div>
-      <div class="fg"><label class="fl">Observações</label><textarea class="fc" id="np_obs" style="min-height:60px"></textarea></div>
-      <div class="form-actions">
-        <button class="btn btn--primary" id="btnSalvPed">Salvar pedido</button>
-        <button class="btn btn--ghost" id="btnCancPed">Cancelar</button>
-      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px">
+      <button class="btn btn--primary" id="btnSalvPed">Salvar pedido</button>
+      <button class="btn btn--ghost" onclick="closeModal()">Cancelar</button>
     </div>`;
+
+  // Populate product select
+  const npProd=$('np_prod');
+  produtos.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.nome;npProd.appendChild(o)});
+
+  function fillCorSelect(p){
+    const npCor=$('np_cor'); npCor.innerHTML='';
+    if(!p||!p.cores?.length){npCor.innerHTML='<option value="0">Única</option>';return}
+    p.cores.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.nome||`Cor ${i+1}`;npCor.appendChild(o)});
+  }
+  function fillSzSelect(p,ci){
+    const c=p?.cores?.[ci];
+    const npSz=$('np_sz'); npSz.innerHTML='';
+    const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+    const base=c?.tamanhos?.length?c.tamanhos:(p?.tamanhos?.length?p.tamanhos:[]);
+    const sizes=Array.from(new Set([...base,...Object.keys(e)]));
+    sizes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=Number(e[s])>0?`${s} (${e[s]} em estoque)`:s;npSz.appendChild(o)});
+    if(!sizes.length){const o=document.createElement('option');o.value='UNICO';o.textContent='Único';npSz.appendChild(o)}
+  }
+  function updateTotals(){
+    const sub=newOrderItems.reduce((s,it)=>s+it.precoUnitario*it.quantidade,0);
+    const taxa=Number($('np_taxa')?.value)||0;
+    $('np_subtotal').textContent=fmtR(sub);
+    $('np_total').textContent=fmtR(sub+taxa);
+  }
+  function renderNpItems(){
+    $('npItemsList').innerHTML=newOrderItems.length===0
+      ?'<div style="color:#94a3b8;font-size:13px">Nenhum item adicionado.</div>'
+      :newOrderItems.map((it,i)=>`<div class="order-item-entry">
+          <div style="flex:1;font-size:13px">
+            <div style="font-weight:600">${esc(it.nome)}${it.cor?' · '+esc(it.cor):''}${it.tamanho?' · '+esc(it.tamanho):''}</div>
+            <div style="color:#64748b;font-size:12px">Qtd: ${it.quantidade} × ${fmtR(it.precoUnitario)} = ${fmtR(it.precoUnitario*it.quantidade)}</div>
+          </div>
+          <button class="btn btn--danger btn--sm" data-rmitem="${i}">✕</button>
+        </div>`).join('');
+    $$('[data-rmitem]').forEach(btn=>btn.addEventListener('click',()=>{
+      newOrderItems.splice(Number(btn.dataset.rmitem),1);renderNpItems();updateTotals();
+    }));
+    updateTotals();
+  }
+
+  npProd.addEventListener('change',()=>{
+    const p=produtos.find(p=>String(p.id)===npProd.value);
+    fillCorSelect(p); fillSzSelect(p,0);
+    $('np_price').value=p?(p.precoPromo||p.preco||''):'';
+  });
+  $('np_cor').addEventListener('change',()=>{
+    const p=produtos.find(p=>String(p.id)===$('np_prod').value);
+    if(p) fillSzSelect(p,Number($('np_cor').value)||0);
+  });
+  $('np_taxa').addEventListener('input',updateTotals);
+
+  $('np_addItem').addEventListener('click',()=>{
+    const prodId=$('np_prod').value;
+    if(!prodId){showNotice($('npNotice'),'Selecione um produto.','error');return}
+    const p=produtos.find(p=>String(p.id)===prodId);
+    const ci=Number($('np_cor').value)||0;
+    const cor=p?.cores?.[ci];
+    const sz=$('np_sz').value;
+    if(!sz){showNotice($('npNotice'),'Selecione um tamanho.','error');return}
+    const qty=Math.max(1,Number($('np_qty').value)||1);
+    const price=Number($('np_price').value)||(p?.precoPromo||p?.preco||0);
+    newOrderItems.push({productId:Number(prodId),colorIndex:ci,nome:p?.nome||'',cor:cor?.nome||'',tamanho:sz,tamanhoSelecionado:sz,quantidade:qty,precoUnitario:price});
+    renderNpItems();
+    $('np_qty').value=1;
+  });
+
   $('btnSalvPed').addEventListener('click',async()=>{
     const nome=($('np_nome').value||'').trim();
     if(!nome){showNotice($('npNotice'),'Informe o nome do cliente.','error');return}
+    const sub=newOrderItems.reduce((s,it)=>s+it.precoUnitario*it.quantidade,0);
+    const taxa=Number($('np_taxa')?.value)||0;
+    const body={
+      cliente:{nome,telefone:($('np_tel').value||'').trim(),email:($('np_email').value||'').trim(),
+                endereco:($('np_end').value||'').trim(),cidade:($('np_cidade').value||'').trim(),uf:($('np_uf').value||'').trim().toUpperCase()},
+      status:$('np_st').value, pagamento:$('np_pg').value,
+      obs:($('np_obs').value||'').trim(),
+      itens:newOrderItems,
+      itensEstoque:newOrderItems.map(it=>({productId:it.productId,colorIndex:it.colorIndex,tamanhoSelecionado:it.tamanhoSelecionado,quantidade:it.quantidade,nome:it.nome})),
+      subtotal:sub, taxa, total:sub+taxa, origem:'admin'
+    };
     try{
-      const r=await fetch('/api/admin/pedido',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        cliente:{nome,telefone:($('np_tel').value||'').trim()},
-        status:$('np_st').value, pagamento:($('np_pg').value||'').trim(),
-        obs:($('np_obs').value||'').trim(), itens:[], itensEstoque:[]
-      })});
-      if(!r.ok) throw new Error('Falha ao salvar');
+      const r=await fetch('/api/pedidos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const d=await r.json();
-      await loadPedidos(); activePedNum=d.pedido; renderOrdersTable();
+      if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao salvar pedido');
+      await loadProdutos();
+      closeModal();
+      await loadPedidos();
+      activePedNum=d.pedido; renderOrdersTable();
       const ped=pedidos.find(p=>String(p.pedido)===String(activePedNum));
       if(ped) renderOrderDetail(ped);
     }catch(e){showNotice($('npNotice'),'Erro: '+e.message,'error')}
   });
-  $('btnCancPed').addEventListener('click',()=>{
-    $('orderSide').innerHTML='<div class="form-empty">Selecione um pedido ou crie um novo.</div>';
-  });
+  renderNpItems();
+}
+
+$('btnNovoPedido').addEventListener('click',()=>{
+  $('modalOv').style.display='flex';
+  renderNewOrderForm();
 });
+
+// ═══════════════════════════════════════════════════════════
+// RELATÓRIO
+// ═══════════════════════════════════════════════════════════
+async function loadRelatorio(){
+  try{
+    const r=await fetch('/api/pedidos');
+    if(r.status===401){redirect401();return}
+    if(!r.ok) return;
+    const peds=await r.json();
+    const ativos=peds.filter(p=>p.status!=='cancelado');
+    const totalRec=ativos.reduce((s,p)=>s+(Number(p.total)||0),0);
+    const totalItens=ativos.reduce((s,p)=>s+(Array.isArray(p.itens)?p.itens.reduce((si,it)=>si+(Number(it.quantidade)||1),0):0),0);
+    const ticketMed=ativos.length?totalRec/ativos.length:0;
+    const taxaTotal=ativos.reduce((s,p)=>s+(Number(p.taxa)||0),0);
+
+    $('relKpis').innerHTML=[
+      ['Receita Total',fmtR(totalRec)],
+      ['Pedidos',peds.length+' pedidos'],
+      ['Itens Vendidos',totalItens+' un.'],
+      ['Ticket Médio',fmtR(ticketMed)],
+      ['Taxas / Frete',fmtR(taxaTotal)],
+    ].map(([l,v])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-val">${v}</div></div>`).join('');
+
+    // By status
+    const byStatus={};
+    peds.forEach(p=>{const s=p.status||'reservado';byStatus[s]=(byStatus[s]||0)+1});
+    $('relStatus').innerHTML=Object.entries(byStatus).map(([s,n])=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f8fafc">
+        ${sPill(s)}<span style="margin-left:auto;font-weight:700">${n} pedido${n!==1?'s':''}</span>
+      </div>`).join('')||'<div style="color:#94a3b8;font-size:13px">Sem pedidos.</div>';
+
+    // Top products
+    const prodMap={};
+    ativos.forEach(p=>{
+      (Array.isArray(p.itens)?p.itens:[]).forEach(it=>{
+        const k=it.nome||'Desconhecido';
+        if(!prodMap[k])prodMap[k]={qty:0,rev:0};
+        prodMap[k].qty+=Number(it.quantidade)||1;
+        prodMap[k].rev+=(Number(it.precoUnitario||it.preco)||0)*(Number(it.quantidade)||1);
+      });
+    });
+    const topProds=Object.entries(prodMap).sort((a,b)=>b[1].rev-a[1].rev).slice(0,8);
+    $('relProdutos').innerHTML=topProds.length?topProds.map(([nome,d],i)=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f8fafc;font-size:13px">
+        <div>
+          <span style="font-size:10px;background:#f1f5f9;color:#64748b;border-radius:4px;padding:1px 5px;margin-right:6px">${i+1}</span>
+          <strong>${esc(nome)}</strong>
+          <span style="color:#64748b;font-size:11px;margin-left:6px">${d.qty} un.</span>
+        </div>
+        <span style="font-weight:700">${fmtR(d.rev)}</span>
+      </div>`).join(''):'<div style="color:#94a3b8;font-size:13px">Sem vendas registradas.</div>';
+
+    // Revenue by day (last 30 days)
+    const byDay={};
+    const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-29);
+    ativos.forEach(p=>{
+      const d=new Date(p.recebidoEm||0);
+      if(d<cutoff)return;
+      const key=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+      byDay[key]=(byDay[key]||0)+(Number(p.total)||0);
+    });
+    const dayEntries=Object.entries(byDay);
+    const maxVal=Math.max(...dayEntries.map(([,v])=>v),1);
+    $('relPeriodo').innerHTML=dayEntries.length?dayEntries.map(([day,val])=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12px">
+        <span style="width:50px;color:#64748b;flex-shrink:0;text-align:right">${day}</span>
+        <div style="flex:1;background:#f1f5f9;border-radius:4px;height:18px;overflow:hidden">
+          <div style="width:${Math.round(val/maxVal*100)}%;background:#2563eb;height:100%;border-radius:4px;transition:width .3s"></div>
+        </div>
+        <span style="width:90px;text-align:right;font-weight:600">${fmtR(val)}</span>
+      </div>`).join(''):'<div style="color:#94a3b8;font-size:13px">Sem dados nos últimos 30 dias.</div>';
+
+    // Recent orders table
+    const recent=[...peds].sort((a,b)=>new Date(b.recebidoEm||0)-new Date(a.recebidoEm||0)).slice(0,15);
+    $('relRecentes').innerHTML=`<table class="orders-tbl" style="font-size:12px">
+      <thead><tr><th>Pedido</th><th>Cliente</th><th>Status</th><th>Itens</th><th>Subtotal</th><th>Taxa</th><th>Total</th><th>Data</th></tr></thead>
+      <tbody>${recent.map(p=>{
+        const itens=Array.isArray(p.itens)?p.itens.length:'—';
+        return `<tr>
+          <td><strong>#${esc(String(p.pedido))}</strong></td>
+          <td>${esc(p.cliente?.nome||p.nome||'—')}</td>
+          <td>${sPill(p.status)}</td>
+          <td>${itens}</td>
+          <td>${fmtR(p.subtotal||p.total||0)}</td>
+          <td>${p.taxa!=null?fmtR(p.taxa):'—'}</td>
+          <td style="font-weight:700">${fmtR(p.total||0)}</td>
+          <td style="color:#64748b;white-space:nowrap">${fmtD(p.recebidoEm)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  }catch(e){console.error('[relatorio]',e)}
+}
 
 // ── Init ─────────────────────────────────────────────────────
 loadProdutos();
