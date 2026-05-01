@@ -138,14 +138,14 @@ async function readProdutosStore(conn = null) {
   });
 }
 async function writeProdutosStore(list, conn = null) {
-  if (!MYSQL_ENABLED) {
-    writeProdutos(list);
-    return;
-  }
+  const canonical = ensureProductIds(list);
+  // Always keep JSON in sync so Sync JSON doesn't lose MySQL-only additions
+  writeProdutos(canonical);
+  if (!MYSQL_ENABLED) return;
   await initDatabase();
   const db = conn || mysqlPool;
   await db.execute('DELETE FROM lemoov_products');
-  for (const item of ensureProductIds(list)) {
+  for (const item of canonical) {
     await db.execute(
       'INSERT INTO lemoov_products (id, data) VALUES (?, ?)',
       [Number(item.id), JSON.stringify(item)]
@@ -479,7 +479,8 @@ app.post('/api/admin/produtos', authRequired, async (req, res) => {
     await writeProdutosStore(produtos);
     res.json({ ok: true, item });
   } catch (e) {
-    res.status(500).json({ ok: false });
+    console.error('[POST /api/admin/produtos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -494,12 +495,13 @@ app.put('/api/admin/produtos/:id', authRequired, async (req, res) => {
     const id = Number(req.params.id);
     const produtos = ensureProductIds(await readProdutosStore());
     const idx = produtos.findIndex((p) => Number(p.id) === id);
-    if (idx === -1) return res.status(404).json({ ok: false });
+    if (idx === -1) return res.status(404).json({ ok: false, error: 'Produto não encontrado' });
     produtos[idx] = { ...produtos[idx], ...req.body, id, updatedAt: new Date().toISOString() };
     await writeProdutosStore(produtos);
     res.json({ ok: true, item: produtos[idx] });
-  } catch (_e) {
-    res.status(500).json({ ok: false });
+  } catch (e) {
+    console.error('[PUT /api/admin/produtos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -510,8 +512,9 @@ app.delete('/api/admin/produtos/:id', authRequired, async (req, res) => {
     const next = produtos.filter((p) => Number(p.id) !== id);
     await writeProdutosStore(next);
     res.json({ ok: true });
-  } catch (_e) {
-    res.status(500).json({ ok: false });
+  } catch (e) {
+    console.error('[DELETE /api/admin/produtos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
