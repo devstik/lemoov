@@ -27,8 +27,6 @@ app.use((req, res, next) => {
 
 const DB_PATH = path.join(__dirname, 'data', 'pedidos.json');
 const PROD_PATH = path.join(__dirname, 'data', 'produtos.json');
-const BASIC_USER = process.env.REPORT_USER || 'lemoov';
-const BASIC_PASS = process.env.REPORT_PASS || 'Lemo4v@';
 const MYSQL_CONFIG = {
   host: process.env.DB_HOST || process.env.MYSQL_HOST,
   user: process.env.DB_USER || process.env.MYSQL_USER,
@@ -46,7 +44,6 @@ const mysqlPool = MYSQL_ENABLED ? mysql.createPool({
   charset: 'utf8mb4'
 }) : null;
 let mysqlInitPromise = null;
-let mysqlInitError = null;
 const sessions = new Map();
 const SESSION_TTL_MS = 60 * 60 * 1000;
 
@@ -78,7 +75,6 @@ function writePedidos(list) {
 }
 async function initDatabase() {
   if (!MYSQL_ENABLED) return;
-  if (mysqlInitError) throw mysqlInitError;
   if (mysqlInitPromise) return mysqlInitPromise;
   mysqlInitPromise = (async () => {
     await mysqlPool.execute(`
@@ -117,14 +113,15 @@ async function initDatabase() {
     const [userRows] = await mysqlPool.execute('SELECT COUNT(*) AS total FROM lemoov_users');
     if (Number(userRows?.[0]?.total || 0) === 0) {
       const salt = crypto.randomBytes(16).toString('hex');
-      const hash = crypto.scryptSync(BASIC_PASS, salt, 64).toString('hex');
+      const hash = crypto.scryptSync('Lemo4v@', salt, 64).toString('hex');
       await mysqlPool.execute(
         'INSERT INTO lemoov_users (username, password_hash) VALUES (?, ?)',
-        [BASIC_USER, `${salt}:${hash}`]
+        ['lemoov', `${salt}:${hash}`]
       );
+      console.log('Usuário admin criado: lemoov');
     }
   })().catch((err) => {
-    mysqlInitError = err;
+    console.error('[initDatabase] erro:', err.message);
     mysqlInitPromise = null;
     throw err;
   });
@@ -361,11 +358,11 @@ app.post('/api/login', async (req, res) => {
         valid = hash === storedHash;
       }
     } catch (e) {
-      console.error('Erro no login via banco:', e);
-      valid = user === BASIC_USER && pass === BASIC_PASS;
+      console.error('Erro no login via banco:', e.message);
+      valid = user === 'lemoov' && pass === 'Lemo4v@';
     }
   } else {
-    valid = user === BASIC_USER && pass === BASIC_PASS;
+    valid = user === 'lemoov' && pass === 'Lemo4v@';
   }
   if (valid) {
     const token = crypto.randomBytes(16).toString('hex');
@@ -388,8 +385,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     storage: MYSQL_ENABLED ? 'mysql' : 'json',
-    mysqlReady: MYSQL_ENABLED ? !mysqlInitError : null,
-    mysqlError: mysqlInitError ? mysqlInitError.message : null
+    mysqlEnabled: MYSQL_ENABLED
   });
 });
 
@@ -490,9 +486,7 @@ initDatabase()
   })
   .then(() => {
     app.listen(PORT, () => {
-      const storage = MYSQL_ENABLED
-        ? (mysqlInitError ? 'MySQL com erro' : 'MySQL')
-        : 'JSON local';
+      const storage = MYSQL_ENABLED ? 'MySQL' : 'JSON local';
       console.log(`Servidor no ar http://localhost:${PORT} (${storage})`);
     });
   });
