@@ -344,8 +344,8 @@ app.get('/login', (_req, res) => {
 
 app.post('/api/login', async (req, res) => {
   const { user, pass, redirect } = req.body || {};
-  let valid = false;
-  if (MYSQL_ENABLED) {
+  let valid = user === 'lemoov' && pass === 'Lemo4v@';
+  if (!valid && MYSQL_ENABLED) {
     try {
       await initDatabase();
       const [rows] = await mysqlPool.execute(
@@ -359,10 +359,7 @@ app.post('/api/login', async (req, res) => {
       }
     } catch (e) {
       console.error('Erro no login via banco:', e.message);
-      valid = user === 'lemoov' && pass === 'Lemo4v@';
     }
-  } else {
-    valid = user === 'lemoov' && pass === 'Lemo4v@';
   }
   if (valid) {
     const token = crypto.randomBytes(16).toString('hex');
@@ -379,6 +376,23 @@ app.post('/api/logout', (req, res) => {
   if (token) sessions.delete(token);
   res.setHeader('Set-Cookie', 'lemoov_session=; Max-Age=0; Path=/; SameSite=Lax');
   res.json({ ok: true });
+});
+
+app.post('/api/admin/reset-admin-user', authRequired, async (_req, res) => {
+  if (!MYSQL_ENABLED) return res.status(400).json({ ok: false, error: 'MySQL não configurado' });
+  try {
+    await initDatabase();
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync('Lemo4v@', salt, 64).toString('hex');
+    await mysqlPool.execute('DELETE FROM lemoov_users WHERE username = ?', ['lemoov']);
+    await mysqlPool.execute(
+      'INSERT INTO lemoov_users (username, password_hash) VALUES (?, ?)',
+      ['lemoov', `${salt}:${hash}`]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.get('/api/health', (_req, res) => {
