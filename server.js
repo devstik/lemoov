@@ -176,6 +176,30 @@ async function appendPedidoStore(item, conn = null) {
     [String(item.pedido), JSON.stringify(item)]
   );
 }
+async function updatePedidoStore(numero, updates) {
+  if (!MYSQL_ENABLED) {
+    const pedidos = readPedidos();
+    const idx = pedidos.findIndex((p) => String(p.pedido) === String(numero));
+    if (idx === -1) throw new Error('Pedido não encontrado');
+    pedidos[idx] = { ...pedidos[idx], ...updates, pedido: numero };
+    writePedidos(pedidos);
+    return pedidos[idx];
+  }
+  await initDatabase();
+  const [rows] = await mysqlPool.execute('SELECT data FROM lemoov_orders WHERE order_number = ?', [String(numero)]);
+  if (!rows.length) throw new Error('Pedido não encontrado');
+  const updated = { ...JSON.parse(rows[0].data), ...updates, pedido: numero };
+  await mysqlPool.execute('UPDATE lemoov_orders SET data = ? WHERE order_number = ?', [JSON.stringify(updated), String(numero)]);
+  return updated;
+}
+async function deletePedidoStore(numero) {
+  if (!MYSQL_ENABLED) {
+    writePedidos(readPedidos().filter((p) => String(p.pedido) !== String(numero)));
+    return;
+  }
+  await initDatabase();
+  await mysqlPool.execute('DELETE FROM lemoov_orders WHERE order_number = ?', [String(numero)]);
+}
 function ensureProductIds(list) {
   let maxId = 0;
   list.forEach((p) => { if (Number.isFinite(p.id)) maxId = Math.max(maxId, p.id); });
@@ -532,6 +556,36 @@ app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
     res.json({ ok: true, produto: prod });
   } catch (e) {
     console.error('[entrada-estoque]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
+  try {
+    const item = await updatePedidoStore(req.params.numero, req.body);
+    res.json({ ok: true, item });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.delete('/api/admin/pedido/:numero', authRequired, async (req, res) => {
+  try {
+    await deletePedidoStore(req.params.numero);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/pedido', authRequired, async (req, res) => {
+  try {
+    const pedidos = await readPedidosStore();
+    const numeroPedido = String(req.body?.pedido || '').trim() || generateOrderNumber(pedidos);
+    const pedido = { ...req.body, pedido: numeroPedido, status: req.body?.status || 'confirmado', recebidoEm: new Date().toISOString(), origem: 'admin' };
+    await appendPedidoStore(pedido);
+    res.json({ ok: true, pedido: numeroPedido, item: pedido });
+  } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
