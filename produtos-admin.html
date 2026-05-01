@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Inter',system-ui,sans-serif;background:#f1f5f9;color:#0f172a;font-size:14px;line-height:1.5;min-height:100vh}
@@ -123,6 +124,18 @@
     .order-section-title{font-size:11px;font-weight:600;text-transform:uppercase;color:#64748b;letter-spacing:.04em;margin-bottom:8px}
     .order-info-box{background:#f8fafc;border-radius:8px;padding:10px;font-size:13px;margin-bottom:14px}
     .order-item-row{padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+    /* Toggle switch */
+    .toggle-wrap{display:inline-flex;align-items:center;cursor:pointer;gap:6px;user-select:none}
+    .toggle-wrap input[type=checkbox]{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+    .toggle-track{width:38px;height:22px;background:#e2e8f0;border-radius:99px;position:relative;transition:background .2s;flex-shrink:0}
+    .toggle-wrap input[type=checkbox]:checked+.toggle-track{background:#22c55e}
+    .toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.18)}
+    .toggle-wrap input[type=checkbox]:checked+.toggle-track .toggle-thumb{transform:translateX(16px)}
+    /* Drag handle */
+    .drag-handle{cursor:grab;color:#d1d5db;font-size:18px;line-height:1;padding:0 2px;flex-shrink:0;user-select:none;touch-action:none}
+    .drag-handle:hover{color:#94a3b8}
+    /* Inactive product */
+    .prod-inativo{opacity:.5}
     /* Scrollbar */
     ::-webkit-scrollbar{width:4px;height:4px}
     ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
@@ -288,7 +301,7 @@ function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
 let produtos=[], pedidos=[], activeProdId=null, activePedNum=null, orderFilter='';
-let colorCounter=0, newOrderItems=[];
+let colorCounter=0, newOrderItems=[], prodListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
 $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
@@ -333,21 +346,24 @@ async function loadProdutos(){
 }
 
 function renderProdList(){
-  $('listaProdutos').innerHTML=produtos.map(p=>{
-    const c=Array.isArray(p.cores)?p.cores[0]:null;
+  const sorted=[...produtos].sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999));
+  $('listaProdutos').innerHTML=sorted.map(p=>{
+    const inativo=p.ativo===false;
+    const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
     const img=c?.imagens?.[0]||c?.imagem||'';
     const src=img?(img.startsWith('http')?img:'/'+img):'';
     const st=totalStock(p);
     const [bc,bt]=p.soldOut?['badge--out','Esgotado']:(st==null?['badge--na','—']:[`badge--ok`,`${st} un.`]);
     const active=String(p.id)===String(activeProdId);
-    return `<div class="prod-item ${active?'active':''}" data-id="${p.id}">
+    return `<div class="prod-item ${active?'active':''} ${inativo?'prod-inativo':''}" data-id="${p.id}">
+      <span class="drag-handle" title="Arrastar para reordenar">⠿</span>
       ${src?`<img class="prod-item__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:
              `<div class="prod-item__img" style="font-size:9px;color:#94a3b8;display:flex;align-items:center;justify-content:center">Sem foto</div>`}
       <div style="flex:1;min-width:0">
         <div class="prod-item__name">${esc(p.nome)}</div>
         <div class="prod-item__meta">${esc(p.categoria)} · ${fmtR(p.preco)}</div>
       </div>
-      <span class="badge ${bc}">${bt}</span>
+      ${inativo?'<span class="badge badge--out" style="font-size:9px;padding:2px 5px">OFF</span>':`<span class="badge ${bc}">${bt}</span>`}
     </div>`;
   }).join('');
   $$('#listaProdutos .prod-item').forEach(el=>el.addEventListener('click',()=>{
@@ -355,6 +371,18 @@ function renderProdList(){
     renderProdList();
     renderProdForm(produtos.find(p=>String(p.id)===String(activeProdId)));
   }));
+  if(typeof Sortable!=='undefined'){
+    if(prodListSortable) prodListSortable.destroy();
+    prodListSortable=Sortable.create($('listaProdutos'),{
+      animation:150,handle:'.drag-handle',
+      onEnd:async()=>{
+        const ids=Array.from($$('#listaProdutos .prod-item')).map(el=>Number(el.dataset.id));
+        ids.forEach((id,i)=>{const p=produtos.find(p=>Number(p.id)===id);if(p)p.ordem=i+1});
+        try{await fetch('/api/admin/produtos/ordem',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})})}
+        catch(e){console.error('Erro ao reordenar:',e)}
+      }
+    });
+  }
 }
 
 $('btnNovo').addEventListener('click',()=>{
@@ -380,8 +408,15 @@ function renderProdForm(p){
       </div>
       <div class="frow">
         <div class="fg"><label class="fl">Tamanhos (vírgula)</label><input class="fc" id="f_tam" placeholder="P, M, G, GG" /></div>
-        <div class="fg" style="display:flex;align-items:center;gap:8px;padding-top:18px">
-          <input type="checkbox" id="f_soldout" /><label for="f_soldout" style="font-size:13px;font-weight:500">Esgotado</label>
+        <div class="fg" style="display:flex;align-items:center;gap:14px;padding-top:18px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;cursor:pointer">
+            <input type="checkbox" id="f_soldout" /> Esgotado
+          </label>
+          <label class="toggle-wrap">
+            <input type="checkbox" id="f_ativo" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span style="font-size:13px;font-weight:500">Visível no site</span>
+          </label>
         </div>
       </div>
       <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="f_desc"></textarea></div>
@@ -405,6 +440,7 @@ function renderProdForm(p){
   $('f_promo').value=p?.precoPromo??'';
   $('f_tam').value=tamTxt;
   $('f_soldout').checked=Boolean(p?.soldOut);
+  $('f_ativo').checked=p?.ativo!==false;
   $('f_desc').value=descTxt;
 
   const cores=Array.isArray(p?.cores)?p.cores:[];
@@ -457,15 +493,23 @@ function addColorRow(cor={}){
           <label class="img-slot-label" for="cf_${cid}_${idx}">${lbl}</label>
         </div>`).join('')}
     </div>
-    <label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:13px;cursor:pointer">
-      <input type="checkbox" data-cso /> Esgotada
-    </label>`;
+    <div style="display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+        <input type="checkbox" data-cso /> Esgotada
+      </label>
+      <label class="toggle-wrap">
+        <input type="checkbox" data-cativo />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span style="font-size:13px">Cor visível</span>
+      </label>
+    </div>`;
 
   // Set values
   div.querySelector('[data-cn]').value=cor.nome||'';
   div.querySelector('[data-cs]').value=Array.isArray(cor.tamanhos)?cor.tamanhos.join(', '):'';
   div.querySelector('[data-ck]').value=fmtStock(cor.estoque);
   div.querySelector('[data-cso]').checked=Boolean(cor.soldOut);
+  div.querySelector('[data-cativo]').checked=cor.ativo!==false;
 
   // Image previews
   [[i1,'1'],[i2,'2'],[i3,'3']].forEach(([src,idx])=>{
@@ -514,6 +558,7 @@ async function buildCores(){
     const stock=parseStock(row.querySelector('[data-ck]')?.value||'');
     const tamanhos=stock?Object.keys(stock):sizesRaw.split(',').map(t=>t.trim()).filter(Boolean);
     const soldOut=row.querySelector('[data-cso]').checked;
+    const ativo=row.querySelector('[data-cativo]')?.checked!==false;
     let i1=row.dataset.i1||'', i2=row.dataset.i2||'', i3=row.dataset.i3||'';
     for(const [idx,setter] of [['1',v=>i1=v],['2',v=>i2=v],['3',v=>i3=v]]){
       const inp=row.querySelector(`[data-cf="${idx}"]`);
@@ -521,7 +566,7 @@ async function buildCores(){
     }
     const imagens=[i1,i2,i3].filter(Boolean);
     if(!nome&&!imagens.length) continue;
-    const c={nome,imagem:imagens[0]||'',imagens,tamanhos,soldOut};
+    const c={nome,imagem:imagens[0]||'',imagens,tamanhos,soldOut,ativo};
     if(stock){c.estoque=stock;c.tamanhos=Object.keys(stock).filter(s=>Number(stock[s])>0);c.soldOut=c.tamanhos.length===0}
     cores.push(c);
   }
@@ -537,7 +582,7 @@ async function salvarProd(id){
     const payload={
       nome:$('f_nome').value.trim(), categoria:$('f_cat').value.trim(),
       preco:Number($('f_preco').value), precoPromo:$('f_promo').value?Number($('f_promo').value):undefined,
-      tamanhos, soldOut:$('f_soldout').checked,
+      tamanhos, soldOut:$('f_soldout').checked, ativo:$('f_ativo').checked,
       desc:descTxt?{texto:descTxt}:undefined, cores
     };
     if(!payload.nome||!payload.categoria||!payload.preco) throw new Error('Preencha nome, categoria e preço.');

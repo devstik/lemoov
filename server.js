@@ -446,8 +446,15 @@ app.get('/relatorio.html', authRequired, (_req, res) => {
 
 app.get('/api/produtos', async (req, res) => {
   try {
-    const produtos = await readProdutosStore();
-    res.json(produtos);
+    const all = await readProdutosStore();
+    const publicos = all
+      .filter(p => p.ativo !== false)
+      .map(p => ({
+        ...p,
+        cores: Array.isArray(p.cores) ? p.cores.filter(c => c.ativo !== false) : p.cores
+      }))
+      .sort((a, b) => (Number(a.ordem) || 9999) - (Number(b.ordem) || 9999));
+    res.json(publicos);
   } catch (_e) {
     res.status(500).json({ ok: false });
   }
@@ -525,6 +532,26 @@ app.post('/api/admin/sync-produtos', authRequired, async (req, res) => {
     res.json({ ok: true, total: local.length });
   } catch (e) {
     console.error('[sync-produtos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.patch('/api/admin/produtos/ordem', authRequired, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) return res.status(400).json({ ok: false, error: 'ids required' });
+    const produtos = await readProdutosStore();
+    const idSet = new Set(ids.map(Number));
+    ids.forEach((id, index) => {
+      const p = produtos.find(p => Number(p.id) === Number(id));
+      if (p) p.ordem = index + 1;
+    });
+    produtos.filter(p => !idSet.has(Number(p.id))).forEach((p, i) => {
+      p.ordem = ids.length + i + 1;
+    });
+    await writeProdutosStore(produtos);
+    res.json({ ok: true });
+  } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
