@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 const DB_PATH = path.join(__dirname, 'data', 'pedidos.json');
 const PROD_PATH = path.join(__dirname, 'data', 'produtos.json');
 const MYSQL_CONFIG = {
-  host: process.env.DB_HOST || process.env.MYSQL_HOST,
+  host: (process.env.DB_HOST || process.env.MYSQL_HOST || '').replace(/^localhost$/i, '127.0.0.1'),
   user: process.env.DB_USER || process.env.MYSQL_USER,
   password: process.env.DB_PASS || process.env.MYSQL_PASSWORD || '',
   database: process.env.DB_NAME || process.env.MYSQL_DATABASE
