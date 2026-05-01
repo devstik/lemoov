@@ -28,16 +28,17 @@ app.use((req, res, next) => {
 const DB_PATH = path.join(__dirname, 'data', 'pedidos.json');
 const PROD_PATH = path.join(__dirname, 'data', 'produtos.json');
 const ADMIN_USER = process.env.REPORT_USER || 'lemoov';
-const ADMIN_PASS = process.env.REPORT_PASS || 'Lemo4v@';
+const ADMIN_PASS = process.env.REPORT_PASS || 'L3moov@';
 const MYSQL_CONFIG = {
+  socketPath: process.env.DB_SOCKET || null,
   host: (process.env.DB_HOST || process.env.MYSQL_HOST || '').replace(/^localhost$/i, '127.0.0.1'),
   user: process.env.DB_USER || process.env.MYSQL_USER,
   password: process.env.DB_PASS || process.env.MYSQL_PASSWORD || '',
   database: process.env.DB_NAME || process.env.MYSQL_DATABASE
 };
-const MYSQL_ENABLED = Boolean(MYSQL_CONFIG.host && MYSQL_CONFIG.user && MYSQL_CONFIG.database);
+const MYSQL_ENABLED = Boolean((MYSQL_CONFIG.socketPath || MYSQL_CONFIG.host) && MYSQL_CONFIG.user && MYSQL_CONFIG.database);
 const mysqlPool = MYSQL_ENABLED ? mysql.createPool({
-  host: MYSQL_CONFIG.host,
+  ...(MYSQL_CONFIG.socketPath ? { socketPath: MYSQL_CONFIG.socketPath } : { host: MYSQL_CONFIG.host }),
   user: MYSQL_CONFIG.user,
   password: MYSQL_CONFIG.password,
   database: MYSQL_CONFIG.database,
