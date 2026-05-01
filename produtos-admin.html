@@ -50,8 +50,13 @@
   <div class="admin-header">
     <p class="section-eyebrow">Admin</p>
     <h1>Gerenciar produtos</h1>
+    <div class="header-actions" style="margin-top:10px;gap:8px;display:flex;flex-wrap:wrap;align-items:center;">
+      <button class="btn btn--primary" id="btnSyncJson">Importar produtos.json → Banco</button>
+      <a class="btn btn--ghost" href="/api/relatorio">Ver pedidos</a>
+      <span id="syncStatus" style="font-size:13px;color:#065f46;display:none;"></span>
+    </div>
   </div>
-  <p class="muted">Edite os produtos sem mexer no código. As alterações aparecem no site.</p>
+  <p class="muted">Edite os produtos sem mexer no código. As alterações aparecem no site e no catálogo.</p>
   <div class="layout">
     <div class="card list">
       <div class="header-actions">
@@ -504,7 +509,7 @@
       showNotice('Produto removido.', 'success');
     });
 
-    btnRecarregar.addEventListener('click', loadProdutos);
+    btnRecarregar.addEventListener('click', () => loadProdutos().then(() => { if (typeof populateEntradaProdutos === 'function') populateEntradaProdutos(); }));
     if (btnAddColor) {
       btnAddColor.addEventListener('click', () => addColorRow());
     }
@@ -547,7 +552,154 @@
     });
 
     setFormEnabled(false);
-    loadProdutos();
+
+    // Sync JSON → Banco
+    document.getElementById('btnSyncJson').addEventListener('click', async () => {
+      const btn = document.getElementById('btnSyncJson');
+      const status = document.getElementById('syncStatus');
+      if (!confirm('Isso vai sobrescrever os produtos no banco com o conteúdo do produtos.json. Continuar?')) return;
+      btn.disabled = true;
+      btn.textContent = 'Importando...';
+      status.style.display = 'none';
+      try {
+        const res = await fetch('/api/admin/sync-produtos', { method: 'POST' });
+        if (res.status === 401) { location.href = '/login?redirect=/api/produtos-admin'; return; }
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Falha');
+        status.textContent = `✓ ${data.total} produtos importados com sucesso.`;
+        status.style.display = '';
+        await loadProdutos();
+        populateEntradaProdutos();
+      } catch (e) {
+        status.textContent = '✗ Erro: ' + e.message;
+        status.style.color = '#b91c1c';
+        status.style.display = '';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Importar produtos.json → Banco';
+      }
+    });
+  </script>
+
+  <!-- Entrada de Estoque -->
+  <div style="margin-top:32px;">
+    <h2 style="margin:0 0 6px;">Entrada de Estoque</h2>
+    <p class="muted">Registre o recebimento de mercadoria. As quantidades são somadas ao estoque atual.</p>
+    <div class="card" style="margin-top:12px;max-width:560px;">
+      <div id="entradaNotice" class="notice"></div>
+      <label>Produto</label>
+      <select id="entradaProduto" style="width:100%;padding:10px 12px;border:1px solid rgba(9,24,33,0.2);border-radius:10px;font-size:14px;">
+        <option value="">— Selecione —</option>
+      </select>
+      <label>Cor</label>
+      <select id="entradaCor" style="width:100%;padding:10px 12px;border:1px solid rgba(9,24,33,0.2);border-radius:10px;font-size:14px;">
+        <option value="">— Selecione o produto primeiro —</option>
+      </select>
+      <div id="entradaSizes" style="margin-top:12px;"></div>
+      <div class="actions" style="margin-top:16px;">
+        <button class="btn btn--primary" id="btnEntrada">Registrar entrada</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const entradaProdutoEl = document.getElementById('entradaProduto');
+    const entradaCorEl = document.getElementById('entradaCor');
+    const entradaSizesEl = document.getElementById('entradaSizes');
+    const entradaNoticeEl = document.getElementById('entradaNotice');
+
+    function showEntradaNotice(msg, type = 'success') {
+      entradaNoticeEl.textContent = msg;
+      entradaNoticeEl.className = `notice notice--${type}`;
+      clearTimeout(showEntradaNotice._t);
+      showEntradaNotice._t = setTimeout(() => {
+        entradaNoticeEl.className = 'notice';
+        entradaNoticeEl.textContent = '';
+      }, 3000);
+    }
+
+    function populateEntradaProdutos() {
+      entradaProdutoEl.innerHTML = '<option value="">— Selecione —</option>';
+      produtos.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.nome;
+        entradaProdutoEl.appendChild(opt);
+      });
+    }
+
+    entradaProdutoEl.addEventListener('change', () => {
+      const prod = produtos.find((p) => String(p.id) === entradaProdutoEl.value);
+      entradaCorEl.innerHTML = '';
+      entradaSizesEl.innerHTML = '';
+      if (!prod || !Array.isArray(prod.cores) || !prod.cores.length) {
+        entradaCorEl.innerHTML = '<option value="">— Sem cores —</option>';
+        return;
+      }
+      prod.cores.forEach((cor, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = cor.nome || `Cor ${i + 1}`;
+        entradaCorEl.appendChild(opt);
+      });
+      renderEntradaSizes(prod, 0);
+    });
+
+    entradaCorEl.addEventListener('change', () => {
+      const prod = produtos.find((p) => String(p.id) === entradaProdutoEl.value);
+      if (!prod) return;
+      renderEntradaSizes(prod, Number(entradaCorEl.value) || 0);
+    });
+
+    function renderEntradaSizes(prod, corIndex) {
+      const cor = Array.isArray(prod.cores) ? prod.cores[corIndex] : null;
+      const estoque = (cor?.estoque && typeof cor.estoque === 'object' && !Array.isArray(cor.estoque)) ? cor.estoque : {};
+      const tamanhos = Array.isArray(cor?.tamanhos) && cor.tamanhos.length
+        ? cor.tamanhos
+        : (Array.isArray(prod.tamanhos) && prod.tamanhos.length ? prod.tamanhos : ['P', 'M', 'G', 'GG']);
+      const allSizes = Array.from(new Set([...tamanhos, ...Object.keys(estoque)]));
+
+      entradaSizesEl.innerHTML = `
+        <div style="font-size:13px;color:#334155;margin-bottom:8px;">Quantidades a <strong>adicionar</strong> por tamanho (estoque atual entre parênteses):</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;">
+          ${allSizes.map((s) => `
+            <div>
+              <label style="font-size:12px;margin-bottom:4px;">${s} (atual: ${Number(estoque[s]) || 0})</label>
+              <input type="number" min="0" value="0" data-size="${s}"
+                style="width:100%;padding:8px 10px;border:1px solid rgba(9,24,33,0.2);border-radius:8px;font-size:14px;" />
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    document.getElementById('btnEntrada').addEventListener('click', async () => {
+      const produtoId = entradaProdutoEl.value;
+      const corIndex = Number(entradaCorEl.value) || 0;
+      if (!produtoId) return alert('Selecione um produto.');
+      const inputs = entradaSizesEl.querySelectorAll('[data-size]');
+      const quantidades = {};
+      inputs.forEach((inp) => {
+        const qty = Number(inp.value) || 0;
+        if (qty > 0) quantidades[inp.dataset.size] = qty;
+      });
+      if (!Object.keys(quantidades).length) return alert('Informe ao menos uma quantidade maior que zero.');
+      const res = await fetch('/api/admin/entrada-estoque', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ produtoId: Number(produtoId), corIndex, quantidades })
+      });
+      if (res.status === 401) { location.href = '/login?redirect=/api/produtos-admin'; return; }
+      const data = await res.json();
+      if (!data.ok) return showEntradaNotice('Erro: ' + (data.error || 'Falha'), 'error');
+      showEntradaNotice('Estoque atualizado com sucesso.', 'success');
+      await loadProdutos();
+      populateEntradaProdutos();
+      const prod = produtos.find((p) => String(p.id) === produtoId);
+      if (prod) renderEntradaSizes(prod, corIndex);
+    });
+
+    loadProdutos().then(() => populateEntradaProdutos());
   </script>
 </body>
 </html>

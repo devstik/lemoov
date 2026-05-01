@@ -477,6 +477,51 @@ app.delete('/api/admin/produtos/:id', authRequired, async (req, res) => {
   }
 });
 
+app.post('/api/admin/sync-produtos', authRequired, async (req, res) => {
+  try {
+    const local = ensureProductIds(readProdutos());
+    await writeProdutosStore(local);
+    res.json({ ok: true, total: local.length });
+  } catch (e) {
+    console.error('[sync-produtos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
+  try {
+    const { produtoId, corIndex, quantidades } = req.body || {};
+    if (!produtoId || !quantidades || typeof quantidades !== 'object') {
+      return res.status(400).json({ ok: false, error: 'Dados inválidos' });
+    }
+    const produtos = ensureProductIds(await readProdutosStore());
+    const prod = produtos.find((p) => Number(p.id) === Number(produtoId));
+    if (!prod) return res.status(404).json({ ok: false, error: 'Produto não encontrado' });
+    const cor = Array.isArray(prod.cores) ? prod.cores[Number(corIndex) || 0] : null;
+    if (!cor) return res.status(404).json({ ok: false, error: 'Cor não encontrada' });
+    if (!cor.estoque || typeof cor.estoque !== 'object' || Array.isArray(cor.estoque)) {
+      cor.estoque = {};
+    }
+    Object.entries(quantidades).forEach(([size, qty]) => {
+      const s = String(size).trim().toUpperCase();
+      if (!s) return;
+      cor.estoque[s] = Math.max(0, (Number(cor.estoque[s]) || 0) + (Math.max(0, Number(qty)) || 0));
+    });
+    cor.tamanhos = Object.keys(cor.estoque).filter((s) => Number(cor.estoque[s]) > 0);
+    cor.soldOut = cor.tamanhos.length === 0;
+    const allManaged = prod.cores.every((c) => c.estoque && typeof c.estoque === 'object' && !Array.isArray(c.estoque));
+    if (allManaged) {
+      prod.soldOut = prod.cores.every((c) => Object.values(c.estoque).every((q) => Number(q) <= 0));
+    }
+    prod.updatedAt = new Date().toISOString();
+    await writeProdutosStore(produtos);
+    res.json({ ok: true, produto: prod });
+  } catch (e) {
+    console.error('[entrada-estoque]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.use(express.static(__dirname)); // serve index.html, script.js, etc.
 
 const PORT = process.env.PORT || 3000;
