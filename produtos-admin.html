@@ -608,12 +608,15 @@ async function salvarProd(id){
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Falha ao salvar')}
     const d=await r.json();
     activeProdId=String(d?.item?.id||id||'');
+    // Verificar o que o servidor realmente salvou
+    const coresSalvas=(d?.item?.cores||[]).map(c=>`${c.nome}:${c.ativo===false?'OCULTA':'visível'}`).join(', ');
+    console.log('[salvarProd] servidor confirmou cores:', coresSalvas);
     await loadProdutos();
     if(activeProdId){
       const prod=produtos.find(p=>String(p.id)===activeProdId);
       if(prod){$('formTitle').textContent=prod.nome;renderProdList()}
     }
-    showNotice($('saveNotice'),'Produto salvo com sucesso!','success');
+    showNotice($('saveNotice'),`Salvo! Cores: ${coresSalvas||'—'}`, 'success');
   }catch(e){ showNotice($('saveNotice'),e.message,'error') }
   finally{ btn.disabled=false; btn.textContent='Salvar produto' }
 }

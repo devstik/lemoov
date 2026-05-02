@@ -517,6 +517,8 @@ app.put('/api/admin/produtos/:id', authRequired, async (req, res) => {
     const idx = produtos.findIndex((p) => Number(p.id) === id);
     if (idx === -1) return res.status(404).json({ ok: false, error: 'Produto não encontrado' });
     produtos[idx] = { ...produtos[idx], ...req.body, id, updatedAt: new Date().toISOString() };
+    const coresLog = (produtos[idx].cores || []).map(c => `${c.nome}:ativo=${c.ativo}`).join(', ');
+    console.log(`[PUT produto ${id}] cores: ${coresLog}`);
     await writeProdutosStore(produtos);
     res.json({ ok: true, item: produtos[idx] });
   } catch (e) {
