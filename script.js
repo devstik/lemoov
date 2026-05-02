@@ -661,27 +661,32 @@ function applySizeAvailability(container, allSizes, availableSizes, onChange){
 
 /* ===== Preço por cor/produto (promo/%/base) ===== */
 function computeColorPrice(prod, colorObj){
-  const base = Number(prod.preco) || 0;
+  const corBase = (colorObj && typeof colorObj.preco === "number" && colorObj.preco > 0) ? colorObj.preco : null;
+  const base = corBase ?? (Number(prod.preco) || 0);
+  const prodBase = Number(prod.preco) || 0;
 
-  if (colorObj && typeof colorObj.precoPromo === "number") {
+  if (colorObj && typeof colorObj.precoPromo === "number" && colorObj.precoPromo > 0) {
     const final = colorObj.precoPromo;
     const original = base;
     const pct = Math.round((1 - final / original) * 100);
-    return { final, original, pct: Math.max(0, pct) };
+    return { final, original: final < original ? original : null, pct: Math.max(0, pct) };
   }
   if (colorObj && typeof colorObj.descontoPct === "number") {
     const final = +(base * (1 - colorObj.descontoPct/100)).toFixed(2);
     return { final, original: base, pct: Math.max(0, Math.round(colorObj.descontoPct)) };
   }
-  if (typeof prod.precoPromo === "number") {
+  if (corBase) {
+    return { final: corBase, original: corBase !== prodBase ? prodBase : null, pct: 0 };
+  }
+  if (typeof prod.precoPromo === "number" && prod.precoPromo > 0) {
     const final = prod.precoPromo;
-    const original = base;
+    const original = prodBase;
     const pct = Math.round((1 - final / original) * 100);
-    return { final, original, pct: Math.max(0, pct) };
+    return { final, original: final < original ? original : null, pct: Math.max(0, pct) };
   }
   if (typeof prod.descontoPct === "number") {
-    const final = +(base * (1 - prod.descontoPct/100)).toFixed(2);
-    return { final, original: base, pct: Math.max(0, Math.round(prod.descontoPct)) };
+    const final = +(prodBase * (1 - prod.descontoPct/100)).toFixed(2);
+    return { final, original: prodBase, pct: Math.max(0, Math.round(prod.descontoPct)) };
   }
   return { final: base, original: null, pct: 0 };
 }
