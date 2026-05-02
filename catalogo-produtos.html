@@ -27,6 +27,19 @@
     window.LEMOOV_IMAGE_BASE = '';
   </script>
   <style>
+    .site-banner {
+      width: 100%;
+      overflow: hidden;
+      line-height: 0;
+      display: block;
+    }
+    .site-banner img {
+      width: 100%;
+      height: clamp(180px, 42vw, 520px);
+      object-fit: cover;
+      object-position: center top;
+      display: block;
+    }
     body.catalog-landing {
       background: linear-gradient(180deg, #f6fbff 0%, #eef6f8 42%, #f7fafc 100%);
     }
@@ -140,6 +153,10 @@
       border-radius: 7px;
     }
     @media (max-width: 520px) {
+      .site-banner img {
+        height: 58vw;
+        object-position: center center;
+      }
       .catalog-landing .layout {
         padding-top: 14px;
       }
@@ -164,6 +181,10 @@
   </style>
 </head>
 <body class="catalog-landing">
+
+  <a href="#grid" class="site-banner" aria-label="Ver coleção">
+    <img src="image/banner.jpg" alt="Coleção Arena Lemoov Fitness" loading="eager" fetchpriority="high" />
+  </a>
 
   <header class="header">
     <div class="container header__wrap">
