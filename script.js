@@ -3198,7 +3198,7 @@ async function handleSubmitCheckout(ev){
     const pedidoSalvo = await savePedido({
       ...pedidoPayload,
       pagamento_status: "aguardando_pagamento",
-      payment_provider: "infinitypay",
+      payment_provider: "infinitepay",
       payment_reference: pagamentoOnline.paymentId || pagamentoOnline.id || ""
     });
     const numeroPedido = pedidoSalvo?.pedido || numeroPedidoSugerido;

@@ -60,6 +60,9 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR
   ? path.resolve(process.env.UPLOAD_DIR)
   : path.join(__dirname, UPLOAD_PUBLIC_PREFIX);
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const INFINITEPAY_API_URL = process.env.INFINITEPAY_API_URL || 'https://api.checkout.infinitepay.io/links';
+const INFINITEPAY_HANDLE = process.env.INFINITEPAY_HANDLE || process.env.INFINITYPAY_HANDLE || '';
+const PUBLIC_SITE_URL = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
 
 function readPedidos() {
   try {
@@ -237,6 +240,25 @@ function generateOrderNumber(pedidos) {
     if (Number.isFinite(seq)) maxSeq = Math.max(maxSeq, seq);
   });
   return `${dateKey}${maxSeq + 1}`;
+}
+function getPublicBaseUrl(req) {
+  if (PUBLIC_SITE_URL) return PUBLIC_SITE_URL;
+  const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
+  return `${proto}://${req.get('host')}`.replace(/\/$/, '');
+}
+function toCents(value) {
+  return Math.max(0, Math.round(Number(value || 0) * 100));
+}
+function normalizePaymentItems(itens = []) {
+  return itens
+    .map((item) => {
+      const quantity = Math.max(1, Number(item.quantity || item.quantidade || 1));
+      const cents = item.price_cents || item.price_centavos || item.valor_centavos;
+      const price = cents ? Number(cents) : toCents(item.price || item.preco || item.valor || 0);
+      const description = String(item.description || item.item_name || item.nome || 'Produto Lemoov').slice(0, 180);
+      return { quantity, price, description };
+    })
+    .filter((item) => item.price > 0);
 }
 function reserveStock(produtos, itens = []) {
   const stockItems = itens
@@ -426,41 +448,92 @@ app.post('/api/admin/reset-admin-user', authRequired, async (_req, res) => {
 
 app.post('/api/pagamentos/infinitypay', async (req, res) => {
   try {
-    const apiKey = process.env.INFINITYPAY_API_KEY || '';
-    const checkoutBase = process.env.INFINITYPAY_CHECKOUT_BASE || '';
-    const { pedido, metodo, total } = req.body || {};
+    const { pedido, metodo, total, itens } = req.body || {};
+    const orderNsu = String(pedido || Date.now());
+    const paymentItems = normalizePaymentItems(itens);
 
-    if (!apiKey) {
+    if (!INFINITEPAY_HANDLE) {
       return res.json({
         ok: true,
         configured: false,
-        provider: 'infinitypay',
-        paymentId: `dev-${pedido || Date.now()}`,
+        provider: 'infinitepay',
+        paymentId: `dev-${orderNsu}`,
         checkoutUrl: '',
-        message: 'InfinityPay ainda sem credenciais. Pedido segue em modo assistido.'
+        message: 'InfinitePay ainda sem handle configurado. Pedido segue em modo assistido.'
       });
     }
 
-    if (!checkoutBase) {
-      return res.status(501).json({
+    if (!paymentItems.length) {
+      return res.status(400).json({ ok: false, error: 'Pedido sem itens válidos para pagamento.' });
+    }
+
+    const baseUrl = getPublicBaseUrl(req);
+    const payload = {
+      handle: INFINITEPAY_HANDLE,
+      redirect_url: `${baseUrl}/obrigado.html?pedido=${encodeURIComponent(orderNsu)}`,
+      webhook_url: `${baseUrl}/api/webhooks/infinitepay`,
+      order_nsu: orderNsu,
+      items: paymentItems
+    };
+    const response = await fetch(INFINITEPAY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.url) {
+      return res.status(response.status || 502).json({
         ok: false,
         configured: true,
-        provider: 'infinitypay',
-        error: 'Defina INFINITYPAY_CHECKOUT_BASE quando a integração InfinityPay for conectada.'
+        provider: 'infinitepay',
+        error: data?.message || data?.error || 'Não foi possível gerar o link de pagamento InfinitePay.'
       });
     }
 
     return res.json({
       ok: true,
       configured: true,
-      provider: 'infinitypay',
-      paymentId: String(pedido || Date.now()),
+      provider: 'infinitepay',
+      paymentId: orderNsu,
       method: metodo || 'pix',
       amount: Number(total || 0),
-      checkoutUrl: `${checkoutBase.replace(/\/$/, '')}?pedido=${encodeURIComponent(String(pedido || ''))}`
+      checkoutUrl: data.url,
+      checkout: data
     });
   } catch (e) {
+    console.error('[infinitepay] erro:', e.message);
     res.status(500).json({ ok: false, error: 'Falha ao preparar pagamento.' });
+  }
+});
+
+app.post('/api/webhooks/infinitepay', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const orderNsu = String(body.order_nsu || '').trim();
+    if (!orderNsu) {
+      return res.status(400).json({ ok: false, error: 'order_nsu ausente.' });
+    }
+
+    await updatePedidoStore(orderNsu, {
+      status: 'confirmado',
+      pagamento_status: 'pago',
+      payment_provider: 'infinitepay',
+      payment_method: body.capture_method || '',
+      payment_transaction_nsu: body.transaction_nsu || '',
+      payment_invoice_slug: body.invoice_slug || '',
+      payment_receipt_url: body.receipt_url || '',
+      payment_amount: Number(body.amount || 0) / 100,
+      payment_paid_amount: Number(body.paid_amount || 0) / 100,
+      payment_installments: Number(body.installments || 1),
+      payment_webhook: body,
+      confirmedAt: new Date().toISOString()
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[infinitepay:webhook] erro:', e.message);
+    res.status(400).json({ ok: false, error: e.message });
   }
 });
 

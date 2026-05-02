@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedido recebido | Lemoov Fitness</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #007f3d;
+      --mint: #12c79a;
+      --yellow: #ffd33d;
+      --blue: #183a8f;
+      --ink: #10222c;
+      --soft: #f2fbf7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Montserrat, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 20% 18%, rgba(255, 211, 61, .28), transparent 28rem),
+        radial-gradient(circle at 82% 22%, rgba(24, 58, 143, .18), transparent 26rem),
+        linear-gradient(145deg, #f7fffb 0%, #eefaf8 48%, #fff9dc 100%);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    main {
+      width: min(620px, 100%);
+      background: rgba(255, 255, 255, .9);
+      border: 1px solid rgba(0, 127, 61, .16);
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(16, 34, 44, .12);
+      padding: clamp(28px, 6vw, 54px);
+    }
+    .mark {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--green), var(--mint));
+      color: #fff;
+      font-size: 32px;
+      font-weight: 800;
+      box-shadow: 0 12px 28px rgba(0, 127, 61, .25);
+    }
+    h1 {
+      margin: 24px 0 12px;
+      font-size: clamp(30px, 7vw, 48px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0 0 18px;
+      color: #5d6b76;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+    .pedido {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      margin: 6px 0 24px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: var(--soft);
+      border: 1px solid rgba(0, 127, 61, .14);
+      color: var(--green);
+      font-weight: 800;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    a {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 18px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 800;
+      color: #062019;
+      background: var(--yellow);
+    }
+    a.secondary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--green), var(--blue));
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark">✓</div>
+    <h1>Pedido recebido</h1>
+    <p>Recebemos o retorno do checkout. Assim que a InfinitePay confirmar o pagamento pelo webhook, o pedido fica marcado como pago na área administrativa.</p>
+    <div class="pedido">Pedido <span id="pedido">—</span></div>
+    <div class="actions">
+      <a href="catalogo-produtos.html">Voltar ao catálogo</a>
+      <a class="secondary" href="index.html">Ir para a home</a>
+    </div>
+  </main>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById('pedido').textContent = params.get('pedido') || 'em análise';
+  </script>
+</body>
+</html>
