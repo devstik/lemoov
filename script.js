@@ -1229,16 +1229,7 @@ function renderGrid(){
   lista = ordenar(lista);
   const disponiveis = lista.filter(p => !isProductSoldOut(p));
   const esgotados = lista.filter(p => isProductSoldOut(p));
-  const prioritizeLaunch = (items) => items
-    .map((item, idx) => ({ item, idx }))
-    .sort((a, b) => {
-      const al = a.item?.lancamento ? 1 : 0;
-      const bl = b.item?.lancamento ? 1 : 0;
-      if (al !== bl) return bl - al;
-      return a.idx - b.idx;
-    })
-    .map(({ item }) => item);
-  lista = [...prioritizeLaunch(disponiveis), ...prioritizeLaunch(esgotados)];
+  lista = [...disponiveis, ...esgotados];
 
   const countEl = document.querySelector("#productCount");
   if (countEl) countEl.textContent = "";

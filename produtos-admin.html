@@ -427,6 +427,10 @@ function renderProdForm(p){
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
             <span id="f_ativo_lbl" style="font-size:13px;font-weight:600;color:#22c55e">Visível no site</span>
           </div>
+          <div class="toggle-wrap" id="f_lancamento" data-state="off" role="switch" aria-checked="false">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span id="f_lancamento_lbl" style="font-size:13px;font-weight:600;color:#64748b">Não é lançamento</span>
+          </div>
         </div>
       </div>
       <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="f_desc"></textarea></div>
@@ -452,14 +456,24 @@ function renderProdForm(p){
   $('f_soldout').checked=Boolean(p?.soldOut);
   const fAtivo=$('f_ativo');
   const fAtivoLbl=$('f_ativo_lbl');
+  const fLancamento=$('f_lancamento');
+  const fLancamentoLbl=$('f_lancamento_lbl');
   function setFAtivo(on){
     fAtivo.dataset.state=on?'on':'off';
     fAtivo.setAttribute('aria-checked',String(on));
     fAtivoLbl.textContent=on?'Visível no site':'Oculto no site';
     fAtivoLbl.style.color=on?'#22c55e':'#ef4444';
   }
+  function setFLancamento(on){
+    fLancamento.dataset.state=on?'on':'off';
+    fLancamento.setAttribute('aria-checked',String(on));
+    fLancamentoLbl.textContent=on?'Lançamento':'Não é lançamento';
+    fLancamentoLbl.style.color=on?'#2563eb':'#64748b';
+  }
   setFAtivo(p?.ativo!==false);
+  setFLancamento(Boolean(p?.lancamento));
   fAtivo.onclick=()=>setFAtivo(fAtivo.dataset.state!=='on');
+  fLancamento.onclick=()=>setFLancamento(fLancamento.dataset.state!=='on');
   $('f_desc').value=descTxt;
 
   const cores=Array.isArray(p?.cores)?p.cores:[];
@@ -610,6 +624,7 @@ async function salvarProd(id){
       nome:$('f_nome').value.trim(), categoria:$('f_cat').value.trim(),
       preco:Number($('f_preco').value), precoPromo:$('f_promo').value?Number($('f_promo').value):undefined,
       tamanhos, soldOut:$('f_soldout').checked, ativo:$('f_ativo')?.dataset.state!=='off',
+      lancamento:$('f_lancamento')?.dataset.state==='on',
       desc:descTxt?{texto:descTxt}:undefined, cores
     };
     if(!payload.nome||!payload.categoria||!payload.preco) throw new Error('Preencha nome, categoria e preço.');
