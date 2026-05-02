@@ -61,7 +61,8 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR
   : path.join(__dirname, UPLOAD_PUBLIC_PREFIX);
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const INFINITEPAY_API_URL = process.env.INFINITEPAY_API_URL || 'https://api.checkout.infinitepay.io/links';
-const INFINITEPAY_HANDLE = process.env.INFINITEPAY_HANDLE || process.env.INFINITYPAY_HANDLE || '';
+const INFINITEPAY_HANDLE = (process.env.INFINITEPAY_HANDLE || process.env.INFINITYPAY_HANDLE || '').replace(/^\$/, '');
+const INFINITEPAY_ACCESS_TOKEN = process.env.INFINITEPAY_ACCESS_TOKEN || '';
 const PUBLIC_SITE_URL = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
 
 function readPedidos() {
@@ -475,9 +476,11 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
       order_nsu: orderNsu,
       items: paymentItems
     };
+    const ipHeaders = { 'Content-Type': 'application/json' };
+    if (INFINITEPAY_ACCESS_TOKEN) ipHeaders['Authorization'] = `Bearer ${INFINITEPAY_ACCESS_TOKEN}`;
     const response = await fetch(INFINITEPAY_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: ipHeaders,
       body: JSON.stringify(payload)
     });
     const data = await response.json().catch(() => ({}));
