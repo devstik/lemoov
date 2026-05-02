@@ -694,27 +694,32 @@ function computeColorPrice(prod, colorObj){
   #cart {
     position: fixed !important;
     top: 0 !important;
-    left: 0 !important;
-    transform: none;
-    width: 100vw;
+    right: 0 !important;
+    left: auto !important;
+    transform: translateX(24px);
+    width: min(520px, calc(100vw - 18px));
     height: 100vh;
     max-width: none;
     max-height: none;
-    border-radius: 0;
-    background: linear-gradient(135deg,#fefefe,#f3f8ff 65%, #e7f5ff);
-    box-shadow: none;
+    border-radius: 22px 0 0 22px;
+    background:
+      radial-gradient(circle at 85% 4%, rgba(246,215,77,0.18), transparent 28%),
+      linear-gradient(180deg,#ffffff 0%, #f6fbf8 62%, #eef6ff 100%);
+    box-shadow: -24px 0 70px rgba(4, 31, 43, 0.22);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .2s ease;
+    transition: opacity .22s ease, transform .22s ease;
     z-index: 10001;
     display:flex;
     flex-direction:column;
+    border-left: 1px solid rgba(5, 92, 57, 0.16);
   }
   #cart.show {
     opacity: 1;
+    transform: translateX(0);
     pointer-events: auto;
   }
-  @media (max-width: 1024px){
+  @media (max-width: 640px){
     #cart{
       width: 100vw;
       height: 100vh;
@@ -722,12 +727,97 @@ function computeColorPrice(prod, colorObj){
     }
   }
   #cartBackdrop {
-    position: fixed !important; inset: 0; background: rgba(0,0,0,.45);
+    position: fixed !important; inset: 0; background: rgba(3,15,24,.58);
     opacity: 0; transition: opacity .18s ease; z-index: 10000; pointer-events: none;
+    backdrop-filter: blur(5px);
   }
   #cartBackdrop.show { opacity: 1; pointer-events: auto; }
 
   .cart, .cart * { font-size: 14px; }
+  #cart .cart__header{
+    padding: 22px 24px 18px;
+    background: transparent;
+    border-bottom: 1px solid rgba(5, 92, 57, 0.1);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  #cart .cart__header h3{
+    font-size: 1.1rem;
+    color: #08251f;
+  }
+  #cart .cart__header h3::after{
+    content: "Revise seus itens e conclua com pagamento seguro.";
+    display: block;
+    margin-top: 4px;
+    color: #64746d;
+    font-size: 0.78rem;
+    font-weight: 500;
+  }
+  #cart .cart__close{
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: #f1f6f3;
+    font-size: 1rem;
+  }
+  #cart .cart__list{
+    padding: 10px 20px 0;
+  }
+  #cart .cart__item{
+    background: #ffffff;
+    border: 1px solid rgba(5, 92, 57, 0.1);
+    border-radius: 18px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 14px 34px rgba(17, 58, 52, 0.08);
+  }
+  #cart .cart__item:hover{ background: #ffffff; }
+  #cart .cart__item-media{
+    width: 68px;
+    height: 82px;
+    min-width: 68px;
+    border-radius: 14px;
+    box-shadow: none;
+    background: #f4f7f5;
+  }
+  #cart .cart__item-name{
+    font-size: 0.92rem;
+    color: #08251f;
+  }
+  #cart .cart__item-desc{
+    display: none;
+  }
+  #cart .cart__item-details,
+  #cart .cart__item-qty{
+    color: #62736b;
+    font-size: 0.76rem;
+  }
+  #cart .cart__item-price{
+    color: #075f42;
+    font-size: 0.94rem;
+  }
+  #cart .cart__remove-btn{
+    border: 0;
+    background: #fff0ec;
+    color: #9a3412;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+  #cart .cart__footer{
+    padding: 18px 20px 22px;
+    background: rgba(255,255,255,0.88);
+    border-top: 1px solid rgba(5, 92, 57, 0.1);
+    box-shadow: 0 -18px 40px rgba(17, 58, 52, 0.08);
+  }
+  #cart .cart__total{
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: 0.9rem;
+    color: #20352e;
+  }
+  #cart .cart__total strong{
+    color: #08251f;
+  }
 
   .frete__ui input{
     padding:10px 12px!important;
@@ -741,14 +831,24 @@ function computeColorPrice(prod, colorObj){
   .frete__ui .btn{
     padding:10px 16px!important;
     font-size:0.78rem!important;
-    letter-spacing:0.2em;
-    background:linear-gradient(120deg,#0ce38d,#00a2ff)!important;
-    color:#03121a!important;
+    letter-spacing:0;
+    background:linear-gradient(120deg,#0b7a4f,#0b4f95)!important;
+    color:#ffffff!important;
     border:none!important;
     border-radius:14px!important;
   }
 
-  #btnCheckout{ width:100%; margin-top:10px; padding:10px 12px; font-size:14px; }
+  #btnCheckout{
+    width:100%;
+    margin-top:4px;
+    padding:14px 14px;
+    font-size:0.86rem;
+    border-radius:16px;
+    letter-spacing:0;
+    background: linear-gradient(120deg,#075f42,#0b4f95);
+    color:#fff;
+    box-shadow: 0 14px 30px rgba(11,79,149,0.2);
+  }
 
   dialog.checkout-modal{
     border:none;
@@ -759,7 +859,9 @@ function computeColorPrice(prod, colorObj){
     max-height:none;
     padding:0;
     z-index:10002;
-    background: radial-gradient(circle at 15% 15%, rgba(103,255,196,0.2), transparent 45%), linear-gradient(135deg,#f9fbff,#eef5ff 55%, #0f2d2e 110%);
+    background:
+      radial-gradient(circle at 12% 12%, rgba(246,215,77,0.18), transparent 30%),
+      linear-gradient(135deg,#f8fbf2,#edf7f2 55%, #eaf3ff 100%);
     color:#0d1f2a;
     box-shadow:none;
     overflow-y:auto;
@@ -781,11 +883,11 @@ function computeColorPrice(prod, colorObj){
     background:#ffffff;
   }
   .checkout__title{
-    font-size:0.88rem;
+    font-size:1.02rem;
     font-weight:800;
-    letter-spacing:0.3em;
-    text-transform:uppercase;
-    color:#0c3c2b;
+    letter-spacing:0;
+    text-transform:none;
+    color:#08251f;
   }
   .checkout__subtitle{
     margin:10px 0 0;
@@ -812,7 +914,7 @@ function computeColorPrice(prod, colorObj){
   .checkout__summary{
     background:#ffffff;
     border:1px solid rgba(0,0,0,0.05);
-    border-radius:26px;
+    border-radius:22px;
     padding:22px 24px;
     box-shadow:0 20px 60px rgba(7,20,36,0.08);
   }
@@ -856,7 +958,7 @@ function computeColorPrice(prod, colorObj){
   }
   .checkout__step{
     border:1px solid rgba(0,0,0,0.05);
-    border-radius:24px;
+    border-radius:22px;
     padding:20px 22px;
     display:grid;
     gap:16px;
@@ -920,20 +1022,20 @@ function computeColorPrice(prod, colorObj){
     font-size:0.85rem;
   }
   .checkout__radio{
-    display:flex;
-    gap:14px;
-    align-items:center;
-    flex-wrap:wrap;
+    display:grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap:12px;
   }
   .checkout__radio label{
     display:flex;
     align-items:center;
     gap:8px;
-    padding:10px 18px;
-    border-radius:999px;
+    padding:14px 16px;
+    border-radius:18px;
     background:#f4f8fb;
-    border:1px solid rgba(0,0,0,0.04);
+    border:1px solid rgba(5,92,57,0.1);
     color:#0b1f2a;
+    font-weight:700;
   }
   .checkout__radio input{
     accent-color:#67ffc4;
@@ -953,21 +1055,21 @@ function computeColorPrice(prod, colorObj){
     text-transform:uppercase;
   }
   .checkout-modal .btn--primary{
-    background:linear-gradient(120deg,#0ce38d,#00a2ff);
-    color:#03121a;
+    background:linear-gradient(120deg,#075f42,#0b4f95);
+    color:#ffffff;
     border:none;
     border-radius:18px;
     font-weight:700;
-    letter-spacing:0.25em;
-    text-transform:uppercase;
+    letter-spacing:0;
+    text-transform:none;
   }
   .checkout-modal .btn--ghost{
     background:#f4f8fb;
     color:#0d1f2a;
     border:1px solid rgba(15,45,46,0.15);
     border-radius:18px;
-    letter-spacing:0.2em;
-    text-transform:uppercase;
+    letter-spacing:0;
+    text-transform:none;
   }
   .checkout__cepBtn{
     padding:10px 16px;
@@ -1955,7 +2057,7 @@ function ensureCheckoutButton(){
     const btn = document.createElement("button");
     btn.id = "btnCheckout";
     btn.className = "btn btn--primary";
-    btn.textContent = "Continuar";
+    btn.textContent = "Ir para pagamento";
     btn.addEventListener("click", openCheckoutModal);
     footer.appendChild(btn);
   }
@@ -2557,9 +2659,9 @@ function openCheckoutModal(){
     dlg.innerHTML = `
       <div class="checkout__header">
         <div>
-          <div class="checkout__title">Finalizar no WhatsApp</div>
+          <div class="checkout__title">Checkout Lemoov</div>
           <p class="checkout__muted checkout__subtitle">
-            Coletamos os dados essenciais e abrimos a conversa para concluir tudo por lá.
+            Preencha seus dados e gere o pagamento seguro. PIX e cartão serão processados pela InfinityPay.
           </p>
         </div>
         <button class="btn btn--ghost" id="btnCloseCheckout">Fechar</button>
@@ -2569,7 +2671,7 @@ function openCheckoutModal(){
           <div class="checkout__summary">
             <strong>Resumo do pedido</strong>
             <p class="checkout__muted" style="margin:4px 0 0;">
-              Revise abaixo. O próximo passo já abre o WhatsApp.
+              Revise antes de gerar o pagamento. O estoque é reservado na confirmação do pedido.
             </p>
             <div id="checkoutItems" class="checkout__muted" style="margin-top:6px;"></div>
             <div class="checkout__totals">
@@ -2584,9 +2686,9 @@ function openCheckoutModal(){
           <div class="checkout__grid">
             <div class="checkout__step" id="checkoutStepCep">
               <div class="full">
-                <strong>Entrega via Moto Uber</strong>
+                <strong>1. Entrega</strong>
                 <p class="checkout__muted" style="margin:4px 0 0;">
-                  Informe o endereço completo. O valor é calculado no WhatsApp.
+                  Informe o endereço para confirmar a entrega.
                 </p>
               </div>
               <div>
@@ -2633,9 +2735,9 @@ function openCheckoutModal(){
 
             <div class="checkout__step" id="checkoutStepCliente" aria-hidden="false">
               <div class="full">
-                <strong>Dados do cliente</strong>
+                <strong>2. Dados do cliente</strong>
                 <p class="checkout__muted" style="margin:4px 0 0;">
-                  Informe como deseja ser identificado.
+                  Usaremos esses dados para identificação do pedido.
                 </p>
               </div>
               <div>
@@ -2660,14 +2762,17 @@ function openCheckoutModal(){
               </div>
 
               <div class="full">
-                <strong>Pagamento</strong>
+                <strong>3. Pagamento online</strong>
                 <p class="checkout__muted" style="margin:4px 0 0;">
-                  Escolha como prefere pagar. Finalizamos pelo WhatsApp.
+                  PIX e cartão serão finalizados no ambiente seguro da InfinityPay.
                 </p>
               </div>
               <div class="full checkout__radio">
-                <label><input type="radio" name="pagamento" value="pix" checked> PIX</label>
-                <label><input type="radio" name="pagamento" value="cartao"> Cartão</label>
+                <label><input type="radio" name="pagamento" value="pix" checked> PIX instantâneo</label>
+                <label><input type="radio" name="pagamento" value="cartao"> Cartão de crédito</label>
+              </div>
+              <div class="full checkout__note">
+                Não digitamos dados do cartão nesta página. Quando a InfinityPay estiver configurada, abriremos o link seguro de pagamento.
               </div>
             </div>
           </div>
@@ -2675,7 +2780,7 @@ function openCheckoutModal(){
 
         <div class="checkout__footer">
           <button type="button" class="btn btn--ghost" id="btnCancelarCheckout">Cancelar</button>
-          <button type="submit" class="btn btn--primary" id="btnEnviarPedido">Enviar</button>
+          <button type="submit" class="btn btn--primary" id="btnEnviarPedido">Gerar pagamento</button>
         </div>
       </form>
     `;
@@ -2982,6 +3087,21 @@ async function savePedido(payload){
   }
 }
 
+async function createInfinityPayment(payload){
+  const res = await fetch(`${API_BASE}/api/pagamentos/infinitypay`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data?.ok === false) {
+    const err = new Error(data?.error || "Não foi possível gerar o pagamento.");
+    err.paymentData = data;
+    throw err;
+  }
+  return data;
+}
+
 async function handleSubmitCheckout(ev){
   ev.preventDefault();
   const form = ev.currentTarget;
@@ -2995,7 +3115,7 @@ async function handleSubmitCheckout(ev){
     quantity: getItemQty(p)
   }));
   if (btn) {
-    btn.disabled = true; btn.textContent = "Montando mensagem…";
+    btn.disabled = true; btn.textContent = "Gerando pagamento...";
   }
 
   try {
@@ -3044,7 +3164,7 @@ async function handleSubmitCheckout(ev){
       tamanhoSelecionado: p.tamanhoSelecionado || "UNICO",
       quantidade: getItemQty(p)
     }));
-    const pedidoSalvo = await savePedido({
+    const pedidoPayload = {
       pedido: numeroPedidoSugerido,
       status: "reservado",
       total: totalCompra,
@@ -3061,6 +3181,21 @@ async function handleSubmitCheckout(ev){
       visitor_country: visitorRegion?.country || "",
       pagamento: pagamento || "",
       origem_cep: ORIGIN_CEP
+    };
+    const pagamentoOnline = await createInfinityPayment({
+      pedido: numeroPedidoSugerido,
+      metodo: pagamento,
+      total: totalCompra,
+      currency: "BRL",
+      cliente,
+      endereco,
+      itens: purchaseItems
+    });
+    const pedidoSalvo = await savePedido({
+      ...pedidoPayload,
+      pagamento_status: "aguardando_pagamento",
+      payment_provider: "infinitypay",
+      payment_reference: pagamentoOnline.paymentId || pagamentoOnline.id || ""
     });
     const numeroPedido = pedidoSalvo?.pedido || numeroPedidoSugerido;
     ultimoNumeroPedido = numeroPedido;
@@ -3085,7 +3220,12 @@ async function handleSubmitCheckout(ev){
       cep: endereco.cep || "",
       frete_modo: freteModo || ""
     });
-    openWhatsAppWithMessage(mensagem);
+    if (pagamentoOnline.checkoutUrl) {
+      window.location.href = pagamentoOnline.checkoutUrl;
+    } else {
+      alert("Pedido criado. O pagamento online ainda precisa das credenciais da InfinityPay para gerar o link.");
+      openWhatsAppWithMessage(mensagem);
+    }
 
     // Limpa carrinho e interfaces abertas
     carrinho = [];
@@ -3109,7 +3249,7 @@ async function handleSubmitCheckout(ev){
     alert(err?.message || "Não foi possível preparar seu pedido. Tente novamente.");
   } finally {
     if (btn) {
-      btn.disabled = false; btn.textContent = "Enviar";
+      btn.disabled = false; btn.textContent = "Gerar pagamento";
     }
   }
 }

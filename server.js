@@ -419,6 +419,46 @@ app.post('/api/admin/reset-admin-user', authRequired, async (_req, res) => {
   }
 });
 
+app.post('/api/pagamentos/infinitypay', async (req, res) => {
+  try {
+    const apiKey = process.env.INFINITYPAY_API_KEY || '';
+    const checkoutBase = process.env.INFINITYPAY_CHECKOUT_BASE || '';
+    const { pedido, metodo, total } = req.body || {};
+
+    if (!apiKey) {
+      return res.json({
+        ok: true,
+        configured: false,
+        provider: 'infinitypay',
+        paymentId: `dev-${pedido || Date.now()}`,
+        checkoutUrl: '',
+        message: 'InfinityPay ainda sem credenciais. Pedido segue em modo assistido.'
+      });
+    }
+
+    if (!checkoutBase) {
+      return res.status(501).json({
+        ok: false,
+        configured: true,
+        provider: 'infinitypay',
+        error: 'Defina INFINITYPAY_CHECKOUT_BASE quando a integração InfinityPay for conectada.'
+      });
+    }
+
+    return res.json({
+      ok: true,
+      configured: true,
+      provider: 'infinitypay',
+      paymentId: String(pedido || Date.now()),
+      method: metodo || 'pix',
+      amount: Number(total || 0),
+      checkoutUrl: `${checkoutBase.replace(/\/$/, '')}?pedido=${encodeURIComponent(String(pedido || ''))}`
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'Falha ao preparar pagamento.' });
+  }
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
