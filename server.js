@@ -477,6 +477,19 @@ app.get('/api/admin/produtos', authRequired, async (req, res) => {
   }
 });
 
+// Diagnóstico: mostra ativo de cada produto e cor como salvo no banco
+app.get('/api/admin/debug-ativo', authRequired, async (_req, res) => {
+  try {
+    const produtos = await readProdutosStore();
+    res.json(produtos.map(p => ({
+      id: p.id, nome: p.nome, ativo: p.ativo,
+      cores: (p.cores || []).map(c => ({ nome: c.nome, ativo: c.ativo }))
+    })));
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/admin/produtos', authRequired, async (req, res) => {
   try {
     const produtos = ensureProductIds(await readProdutosStore());
