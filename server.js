@@ -55,6 +55,11 @@ if (!fs.existsSync(DB_PATH)) fs.writeFileSync(DB_PATH, '[]', 'utf-8');
 if (!fs.existsSync(PROD_PATH)) fs.writeFileSync(PROD_PATH, '[]', 'utf-8');
 const IMAGE_DIR = path.join(__dirname, 'image');
 if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
+const UPLOAD_PUBLIC_PREFIX = (process.env.UPLOAD_PUBLIC_PREFIX || 'uploads').replace(/^\/+|\/+$/g, '');
+const UPLOAD_DIR = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR)
+  : path.join(__dirname, UPLOAD_PUBLIC_PREFIX);
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 function readPedidos() {
   try {
@@ -281,7 +286,7 @@ function reserveStock(produtos, itens = []) {
 
 const upload = multer({
   storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, IMAGE_DIR),
+    destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
     filename: (_req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase();
       const base = path.basename(file.originalname, ext).replace(/[^\w\-]+/g, '_');
@@ -546,7 +551,7 @@ app.post('/api/admin/produtos', authRequired, async (req, res) => {
 
 app.post('/api/admin/upload', authRequired, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false });
-  const relPath = path.join('image', req.file.filename).replace(/\\/g, '/');
+  const relPath = path.join(UPLOAD_PUBLIC_PREFIX, req.file.filename).replace(/\\/g, '/');
   res.json({ ok: true, path: relPath });
 });
 
@@ -676,6 +681,9 @@ app.post('/api/admin/pedido', authRequired, async (req, res) => {
 });
 
 app.use(express.static(__dirname)); // serve index.html, script.js, etc.
+if (path.resolve(UPLOAD_DIR) !== path.resolve(path.join(__dirname, UPLOAD_PUBLIC_PREFIX))) {
+  app.use(`/${UPLOAD_PUBLIC_PREFIX}`, express.static(UPLOAD_DIR));
+}
 
 const PORT = process.env.PORT || 3000;
 initDatabase()
