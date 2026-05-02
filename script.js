@@ -736,8 +736,9 @@ function computeColorPrice(prod, colorObj){
   .cart, .cart * { font-size: 14px; }
   #cart .cart__header{
     padding: 22px 24px 18px;
-    background: transparent;
-    border-bottom: 1px solid rgba(5, 92, 57, 0.1);
+    background:
+      linear-gradient(120deg, rgba(11,122,79,0.08), rgba(246,215,77,0.12), rgba(11,79,149,0.07));
+    border-bottom: 1px solid rgba(246, 215, 77, 0.28);
     letter-spacing: 0;
     text-transform: none;
   }
@@ -757,7 +758,8 @@ function computeColorPrice(prod, colorObj){
     width: 38px;
     height: 38px;
     border-radius: 12px;
-    background: #f1f6f3;
+    background: #0b7a4f;
+    color: #f6d74d;
     font-size: 1rem;
   }
   #cart .cart__list{
@@ -766,6 +768,7 @@ function computeColorPrice(prod, colorObj){
   #cart .cart__item{
     background: #ffffff;
     border: 1px solid rgba(5, 92, 57, 0.1);
+    border-left: 4px solid #0b7a4f;
     border-radius: 18px;
     padding: 12px;
     margin-bottom: 12px;
@@ -793,7 +796,7 @@ function computeColorPrice(prod, colorObj){
     font-size: 0.76rem;
   }
   #cart .cart__item-price{
-    color: #075f42;
+    color: #0b4f95;
     font-size: 0.94rem;
   }
   #cart .cart__remove-btn{
@@ -805,8 +808,9 @@ function computeColorPrice(prod, colorObj){
   }
   #cart .cart__footer{
     padding: 18px 20px 22px;
-    background: rgba(255,255,255,0.88);
-    border-top: 1px solid rgba(5, 92, 57, 0.1);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.88), rgba(248,251,242,0.96));
+    border-top: 1px solid rgba(246, 215, 77, 0.28);
     box-shadow: 0 -18px 40px rgba(17, 58, 52, 0.08);
   }
   #cart .cart__total{
@@ -824,9 +828,9 @@ function computeColorPrice(prod, colorObj){
     font-size:0.85rem!important;
     max-width:none!important;
     border-radius:12px!important;
-    background:#f4f8fb!important;
+    background:#fffef4!important;
     color:#0d1f2a!important;
-    border:1px solid rgba(15,45,46,0.15)!important;
+    border:1px solid rgba(11,122,79,0.18)!important;
   }
   .frete__ui .btn{
     padding:10px 16px!important;
@@ -880,7 +884,9 @@ function computeColorPrice(prod, colorObj){
     justify-content:space-between;
     padding:28px 34px 20px;
     border-bottom:1px solid rgba(0,0,0,0.05);
-    background:#ffffff;
+    background:
+      linear-gradient(120deg, rgba(11,122,79,0.08), rgba(246,215,77,0.12), rgba(11,79,149,0.06)),
+      #ffffff;
   }
   .checkout__title{
     font-size:1.02rem;
@@ -913,7 +919,8 @@ function computeColorPrice(prod, colorObj){
   }
   .checkout__summary{
     background:#ffffff;
-    border:1px solid rgba(0,0,0,0.05);
+    border:1px solid rgba(11,122,79,0.12);
+    border-top: 4px solid #f6d74d;
     border-radius:22px;
     padding:22px 24px;
     box-shadow:0 20px 60px rgba(7,20,36,0.08);
@@ -929,7 +936,7 @@ function computeColorPrice(prod, colorObj){
     margin-top:10px;
     padding:10px 12px;
     border-radius:14px;
-    background:#f4f8fb;
+    background:#fffdf0;
     color:#273746;
     font-size:0.82rem;
   }
@@ -957,7 +964,8 @@ function computeColorPrice(prod, colorObj){
     flex-wrap:wrap;
   }
   .checkout__step{
-    border:1px solid rgba(0,0,0,0.05);
+    border:1px solid rgba(11,122,79,0.12);
+    border-top: 4px solid rgba(11,79,149,0.7);
     border-radius:22px;
     padding:20px 22px;
     display:grid;
@@ -1012,7 +1020,7 @@ function computeColorPrice(prod, colorObj){
   .checkout__select:focus{
     outline:none;
     border-color:#1ec28b;
-    box-shadow:0 0 0 3px rgba(30,194,139,0.2);
+    box-shadow:0 0 0 3px rgba(246,215,77,0.28);
   }
   .checkout__input::placeholder{
     color:rgba(30,30,30,0.45);
@@ -1036,6 +1044,11 @@ function computeColorPrice(prod, colorObj){
     border:1px solid rgba(5,92,57,0.1);
     color:#0b1f2a;
     font-weight:700;
+  }
+  .checkout__radio label:has(input:checked){
+    border-color: rgba(11,122,79,0.42);
+    background: linear-gradient(120deg, rgba(246,215,77,0.18), rgba(11,122,79,0.08));
+    box-shadow: 0 10px 24px rgba(11,122,79,0.1);
   }
   .checkout__radio input{
     accent-color:#67ffc4;
