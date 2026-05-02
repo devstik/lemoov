@@ -625,7 +625,13 @@ async function salvarProd(id){
     await loadProdutos();
     if(activeProdId){
       const prod=produtos.find(p=>String(p.id)===activeProdId);
-      if(prod){$('formTitle').textContent=prod.nome;renderProdList()}
+      if(prod){
+        $('formTitle').textContent=prod.nome;
+        renderProdList();
+        // Re-renderiza o form com dados do servidor para garantir que as imagens
+        // salvas fiquem corretamente nos dataset dos color rows
+        renderProdForm(prod);
+      }
     }
     const msg=ocultas?`Produto salvo — ${ocultas} cor${ocultas>1?'es':''} oculta${ocultas>1?'s':''}`:'Produto salvo com sucesso';
     toast(msg,'success');

@@ -43,9 +43,28 @@
       transform: none;
       box-shadow: none;
     }
+    /* Banner topo */
+    .site-banner{width:100%;overflow:hidden;line-height:0;display:block}
+    .site-banner img{
+      width:100%;
+      height:clamp(180px,42vw,520px);
+      object-fit:cover;
+      object-position:center top;
+      display:block;
+    }
+    @media(max-width:640px){
+      .site-banner img{
+        height:58vw;
+        object-position:center center;
+      }
+    }
   </style>
 </head>
 <body>
+
+  <a href="#catalogo" class="site-banner" aria-label="Ver coleção">
+    <img src="image/banner.jpg" alt="Coleção Arena Lemoov Fitness" loading="eager" fetchpriority="high" />
+  </a>
 
   <header class="header">
     <div class="container header__wrap">
