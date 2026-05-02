@@ -148,31 +148,22 @@ async function loadProdutos(){
     fetchList("data/produtos.json")
   ]);
 
-  const latestStamp = (list) => {
-    if (!Array.isArray(list)) return 0;
-    let max = 0;
-    for (const item of list) {
-      const raw = item?.updatedAt || item?.atualizadoEm || item?.updated_at;
-      const ts = raw ? Date.parse(raw) : 0;
-      if (Number.isFinite(ts) && ts > max) max = ts;
-    }
-    return max;
+  // Always prefer the API: it applies ativo filtering and ordem sorting server-side.
+  // Fall back to local JSON only when the API failed or returned nothing.
+  const pickBest = (a, b) => {
+    if (Array.isArray(a) && a.length > 0) return a;
+    if (Array.isArray(b) && b.length > 0) return b;
+    return Array.isArray(a) ? a : [];
   };
 
-  const pickMostRecent = (a, b) => {
-    if (!Array.isArray(a) && !Array.isArray(b)) return [];
-    if (!Array.isArray(a)) return b || [];
-    if (!Array.isArray(b)) return a || [];
-    const aStamp = latestStamp(a);
-    const bStamp = latestStamp(b);
-    if (aStamp && bStamp) return aStamp >= bStamp ? a : b;
-    if (aStamp && !bStamp) return a;
-    if (!aStamp && bStamp) return b;
-    if (a.length !== b.length) return a.length > b.length ? a : b;
-    return a;
-  };
-
-  produtos = pickMostRecent(apiList, localList);
+  let raw = pickBest(apiList, localList);
+  // Belt-and-suspenders: apply ativo filtering and ordem sorting client-side
+  // so the local-JSON fallback still respects visibility and drag order.
+  raw = raw
+    .filter(p => p.ativo !== false)
+    .map(p => ({ ...p, cores: Array.isArray(p.cores) ? p.cores.filter(c => c.ativo !== false) : p.cores }))
+    .sort((a, b) => (Number(a.ordem) || 9999) - (Number(b.ordem) || 9999));
+  produtos = raw;
   return Array.isArray(produtos) && produtos.length > 0;
 }
 
