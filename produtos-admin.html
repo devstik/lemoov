@@ -413,7 +413,7 @@ function renderProdForm(p){
           </label>
           <div class="toggle-wrap" id="f_ativo" data-state="on" role="switch" aria-checked="true">
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span style="font-size:13px;font-weight:500">Visível no site</span>
+            <span id="f_ativo_lbl" style="font-size:13px;font-weight:600;color:#22c55e">Visível no site</span>
           </div>
         </div>
       </div>
@@ -439,13 +439,15 @@ function renderProdForm(p){
   $('f_tam').value=tamTxt;
   $('f_soldout').checked=Boolean(p?.soldOut);
   const fAtivo=$('f_ativo');
-  fAtivo.dataset.state=p?.ativo!==false?'on':'off';
-  fAtivo.setAttribute('aria-checked',String(p?.ativo!==false));
-  fAtivo.onclick=()=>{
-    const on=fAtivo.dataset.state==='on';
-    fAtivo.dataset.state=on?'off':'on';
-    fAtivo.setAttribute('aria-checked',String(!on));
-  };
+  const fAtivoLbl=$('f_ativo_lbl');
+  function setFAtivo(on){
+    fAtivo.dataset.state=on?'on':'off';
+    fAtivo.setAttribute('aria-checked',String(on));
+    fAtivoLbl.textContent=on?'Visível no site':'Oculto no site';
+    fAtivoLbl.style.color=on?'#22c55e':'#ef4444';
+  }
+  setFAtivo(p?.ativo!==false);
+  fAtivo.onclick=()=>setFAtivo(fAtivo.dataset.state!=='on');
   $('f_desc').value=descTxt;
 
   const cores=Array.isArray(p?.cores)?p.cores:[];
@@ -504,7 +506,7 @@ function addColorRow(cor={}){
       </label>
       <div class="toggle-wrap" data-cativo data-state="on" role="switch" aria-checked="true">
         <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        <span style="font-size:13px">Cor visível</span>
+        <span data-cativo-label style="font-size:13px;font-weight:600;color:#22c55e">Visível</span>
       </div>
     </div>`;
 
@@ -514,13 +516,15 @@ function addColorRow(cor={}){
   div.querySelector('[data-ck]').value=fmtStock(cor.estoque);
   div.querySelector('[data-cso]').checked=Boolean(cor.soldOut);
   const togEl=div.querySelector('[data-cativo]');
-  togEl.dataset.state=cor.ativo!==false?'on':'off';
-  togEl.setAttribute('aria-checked',String(cor.ativo!==false));
-  togEl.onclick=()=>{
-    const on=togEl.dataset.state==='on';
-    togEl.dataset.state=on?'off':'on';
-    togEl.setAttribute('aria-checked',String(!on));
-  };
+  const togLbl=div.querySelector('[data-cativo-label]');
+  function setTogState(on){
+    togEl.dataset.state=on?'on':'off';
+    togEl.setAttribute('aria-checked',String(on));
+    togLbl.textContent=on?'Visível':'Oculta';
+    togLbl.style.color=on?'#22c55e':'#ef4444';
+  }
+  setTogState(cor.ativo!==false);
+  togEl.onclick=()=>setTogState(togEl.dataset.state!=='on');
 
   // Image previews
   [[i1,'1'],[i2,'2'],[i3,'3']].forEach(([src,idx])=>{
