@@ -482,7 +482,8 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
     });
     const data = await response.json().catch(() => ({}));
 
-    if (!response.ok || !data.url) {
+    const checkoutUrl = data.checkout_url || data.url || '';
+    if (!response.ok || !checkoutUrl) {
       return res.status(response.status || 502).json({
         ok: false,
         configured: true,
@@ -498,7 +499,7 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
       paymentId: orderNsu,
       method: metodo || 'pix',
       amount: Number(total || 0),
-      checkoutUrl: data.url,
+      checkoutUrl,
       checkout: data
     });
   } catch (e) {
