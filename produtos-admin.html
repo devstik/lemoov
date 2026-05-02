@@ -75,10 +75,15 @@
     .img-slot-label{font-size:10px;color:#64748b;display:block;margin-top:3px;cursor:pointer}
     .img-preview{width:58px;height:58px;border-radius:7px;object-fit:cover;border:1px solid #e2e8f0;display:block;background:#f1f5f9;cursor:pointer}
     .img-placeholder{width:58px;height:58px;border-radius:7px;border:1px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;cursor:pointer;background:#f8fafc}
-    /* Notice */
-    .notice{padding:9px 13px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none}
-    .notice--success{display:block;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
-    .notice--error{display:block;background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+    /* Toast */
+    #toastRoot{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+    .toast{background:#fff;border-radius:14px;padding:13px 18px;box-shadow:0 8px 32px rgba(0,0,0,.14),0 0 0 1px rgba(0,0,0,.06);display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;max-width:340px;pointer-events:auto;transition:opacity .35s,transform .35s;animation:toastIn .3s cubic-bezier(.34,1.56,.64,1)}
+    .toast-ico{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+    .toast--success{border-left:3px solid #22c55e}.toast--success .toast-ico{background:#dcfce7;color:#166534}
+    .toast--error{border-left:3px solid #ef4444}.toast--error .toast-ico{background:#fee2e2;color:#991b1b}
+    @keyframes toastIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+    /* Notice (legado — oculto) */
+    .notice{display:none!important}
     /* Stock */
     .stock-wrap{max-width:580px}
     .size-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:10px}
@@ -270,6 +275,8 @@
   </div>
 </div>
 
+<div id="toastRoot"></div>
+
 <script>
 // ── Helpers ─────────────────────────────────────────────────
 const $  = id  => document.getElementById(id);
@@ -292,10 +299,15 @@ function totalStock(p){
   p.cores.forEach(c=>{if(!c?.estoque||typeof c.estoque!=='object'||Array.isArray(c.estoque))return;m=true;Object.values(c.estoque).forEach(q=>{t+=Number(q)||0})});
   return m?t:null;
 }
-function showNotice(el,msg,type='success'){
-  el.textContent=msg; el.className=`notice notice--${type}`;
-  clearTimeout(el._t); el._t=setTimeout(()=>{el.className='notice';el.textContent=''},3500);
+function toast(msg,type='success'){
+  const root=document.getElementById('toastRoot');
+  const el=document.createElement('div');
+  el.className=`toast toast--${type}`;
+  el.innerHTML=`<span class="toast-ico">${type==='success'?'✓':'✕'}</span><span>${msg}</span>`;
+  root.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(110%)';setTimeout(()=>el.remove(),380)},3500);
 }
+function showNotice(_el,msg,type='success'){toast(msg,type)}
 function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
@@ -608,16 +620,16 @@ async function salvarProd(id){
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Falha ao salvar')}
     const d=await r.json();
     activeProdId=String(d?.item?.id||id||'');
-    // Verificar o que o servidor realmente salvou
-    const coresSalvas=(d?.item?.cores||[]).map(c=>`${c.nome}:${c.ativo===false?'OCULTA':'visível'}`).join(', ');
-    console.log('[salvarProd] servidor confirmou cores:', coresSalvas);
+    const coresItem=d?.item?.cores||[];
+    const ocultas=coresItem.filter(c=>c.ativo===false).length;
     await loadProdutos();
     if(activeProdId){
       const prod=produtos.find(p=>String(p.id)===activeProdId);
       if(prod){$('formTitle').textContent=prod.nome;renderProdList()}
     }
-    showNotice($('saveNotice'),`Salvo! Cores: ${coresSalvas||'—'}`, 'success');
-  }catch(e){ showNotice($('saveNotice'),e.message,'error') }
+    const msg=ocultas?`Produto salvo — ${ocultas} cor${ocultas>1?'es':''} oculta${ocultas>1?'s':''}`:'Produto salvo com sucesso';
+    toast(msg,'success');
+  }catch(e){ toast(e.message,'error') }
   finally{ btn.disabled=false; btn.textContent='Salvar produto' }
 }
 

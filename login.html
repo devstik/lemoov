@@ -3,70 +3,125 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Login | Lemoov</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <title>Acesso | Lemoov</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { margin: 0; background: #f7fafc; }
-    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-    .login-card {
-      width: min(480px, 100%);
-      background: #fff;
-      border-radius: 24px;
-      border: 1px solid rgba(9,24,33,0.12);
-      box-shadow: 0 24px 48px rgba(5,17,30,0.12);
-      padding: 28px;
-    }
-    .login-card h1 { margin: 0 0 6px; }
-    .login-card p { margin: 0 0 18px; color: var(--text-muted); }
-    .login-card label { display:block; font-size: 13px; margin: 12px 0 6px; color:#334155; }
-    .login-card input { width:100%; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(9,24,33,0.2); }
-    .login-actions { display:flex; gap: 10px; margin-top: 16px; align-items:center; }
-    .error { color: #b91c1c; font-size: 13px; margin-top: 8px; display:none; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;min-height:100vh;background:#080c14;display:flex;align-items:center;justify-content:center;overflow:hidden}
+
+    /* Orbs de fundo */
+    .bg{position:fixed;inset:0;z-index:0}
+    .orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.3}
+    .orb-1{width:600px;height:600px;background:radial-gradient(circle,#6366f1,transparent);top:-160px;left:-160px;animation:f1 12s ease-in-out infinite}
+    .orb-2{width:500px;height:500px;background:radial-gradient(circle,#ec4899,transparent);bottom:-120px;right:-120px;animation:f2 14s ease-in-out infinite}
+    .orb-3{width:350px;height:350px;background:radial-gradient(circle,#22c55e,transparent);top:55%;left:55%;animation:f3 10s ease-in-out infinite}
+    @keyframes f1{0%,100%{transform:translate(0,0)}50%{transform:translate(40px,30px)}}
+    @keyframes f2{0%,100%{transform:translate(0,0)}50%{transform:translate(-30px,-25px)}}
+    @keyframes f3{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-45%,-55%)}}
+
+    /* Card glassmorphism */
+    .card{position:relative;z-index:1;width:min(420px,92vw);background:rgba(255,255,255,.05);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(255,255,255,.1);border-radius:28px;padding:44px 40px;box-shadow:0 40px 80px rgba(0,0,0,.5)}
+
+    /* Brand */
+    .brand{text-align:center;margin-bottom:36px}
+    .brand-mark{font-size:30px;font-weight:700;color:#fff;letter-spacing:-1px;line-height:1}
+    .brand-mark em{color:#22c55e;font-style:normal}
+    .brand-sub{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:.14em;text-transform:uppercase;margin-top:6px}
+
+    /* Heading */
+    .card h1{font-size:20px;font-weight:600;color:#fff;margin-bottom:6px}
+    .card p{font-size:13px;color:rgba(255,255,255,.38);margin-bottom:28px}
+
+    /* Fields */
+    .field{margin-bottom:16px}
+    .field label{display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,.32);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px}
+    .field input{width:100%;padding:13px 16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:14px;color:#fff;outline:none;transition:border-color .2s,background .2s;font-family:inherit;caret-color:#22c55e}
+    .field input::placeholder{color:rgba(255,255,255,.22)}
+    .field input:focus{border-color:rgba(34,197,94,.55);background:rgba(255,255,255,.1);box-shadow:0 0 0 3px rgba(34,197,94,.08)}
+
+    /* Button */
+    .btn-in{width:100%;padding:14px;background:#22c55e;border:none;border-radius:12px;font-size:14px;font-weight:600;color:#fff;cursor:pointer;margin-top:4px;transition:background .2s,transform .1s,box-shadow .2s;font-family:inherit;letter-spacing:.02em;position:relative;overflow:hidden}
+    .btn-in::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,0);transition:background .2s}
+    .btn-in:hover{background:#16a34a;box-shadow:0 10px 30px rgba(34,197,94,.35)}
+    .btn-in:active{transform:scale(.98)}
+    .btn-in:disabled{opacity:.55;cursor:not-allowed}
+    .btn-in.ok{background:#15803d}
+
+    /* Error */
+    .err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;border-radius:10px;padding:10px 14px;font-size:13px;margin-top:14px;display:none;text-align:center;animation:shake .4s ease}
+    @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
+    /* Back link */
+    .back{display:block;text-align:center;margin-top:22px;font-size:13px;color:rgba(255,255,255,.25);text-decoration:none;transition:color .2s}
+    .back:hover{color:rgba(255,255,255,.65)}
   </style>
 </head>
 <body>
-  <div class="login-wrap">
-    <div class="login-card">
-      <p class="section-eyebrow">Acesso restrito</p>
-      <h1>Entrar</h1>
-      <p>Use seu usuário e senha para acessar o painel.</p>
-      <form id="loginForm">
-        <label>Usuário</label>
-        <input type="text" id="loginUser" required />
-        <label>Senha</label>
-        <input type="password" id="loginPass" required />
-        <div class="login-actions">
-          <button class="btn btn--primary" type="submit">Entrar</button>
-          <a class="btn btn--ghost" href="/">Voltar ao site</a>
-        </div>
-        <div class="error" id="loginError">Usuário ou senha inválidos.</div>
-      </form>
-    </div>
+  <div class="bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
   </div>
+
+  <div class="card">
+    <div class="brand">
+      <div class="brand-mark">Lem<em>oov</em></div>
+      <div class="brand-sub">Painel administrativo</div>
+    </div>
+    <h1>Entrar</h1>
+    <p>Acesso restrito à equipe Lemoov.</p>
+    <form id="loginForm">
+      <div class="field">
+        <label>Usuário</label>
+        <input type="text" id="loginUser" placeholder="seu usuário" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" required />
+      </div>
+      <button class="btn-in" type="submit" id="btnLogin">Entrar</button>
+      <div class="err" id="loginError">Usuário ou senha incorretos.</div>
+    </form>
+    <a class="back" href="/">← Voltar ao site</a>
+  </div>
+
   <script>
     const form = document.getElementById('loginForm');
-    const err = document.getElementById('loginError');
+    const errEl = document.getElementById('loginError');
+    const btn = document.getElementById('btnLogin');
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      err.style.display = 'none';
+      errEl.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Entrando…';
       const user = document.getElementById('loginUser').value.trim();
       const pass = document.getElementById('loginPass').value;
-      const params = new URLSearchParams(location.search);
-      const redirect = params.get('redirect') || '/api/produtos-admin';
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user, pass, redirect })
-      });
-      if (!res.ok) {
-        err.style.display = '';
-        return;
+      const redirect = new URLSearchParams(location.search).get('redirect') || '/api/produtos-admin';
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user, pass, redirect })
+        });
+        if (!res.ok) {
+          errEl.style.display = '';
+          errEl.style.animation = 'none';
+          requestAnimationFrame(() => { errEl.style.animation = ''; });
+          btn.disabled = false;
+          btn.textContent = 'Entrar';
+          return;
+        }
+        const data = await res.json();
+        btn.classList.add('ok');
+        btn.textContent = '✓ Acesso liberado';
+        setTimeout(() => { location.href = data.redirect || '/api/produtos-admin'; }, 500);
+      } catch {
+        errEl.textContent = 'Erro de conexão. Tente novamente.';
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
       }
-      const data = await res.json();
-      location.href = data.redirect || '/api/produtos-admin';
     });
   </script>
 </body>
