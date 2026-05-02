@@ -2663,9 +2663,9 @@ function openCheckoutModal(){
     dlg.innerHTML = `
       <div class="checkout__header">
         <div>
-          <div class="checkout__title">Checkout Lemoov</div>
+          <div class="checkout__title">Finalizar Pedido</div>
           <p class="checkout__muted checkout__subtitle">
-            Preencha seus dados e gere o pagamento seguro. PIX e cartão serão processados pela InfinityPay.
+            Seus dados pessoais e de pagamento são coletados com segurança pela InfinitePay.
           </p>
         </div>
         <button class="btn btn--ghost" id="btnCloseCheckout">Fechar</button>
@@ -2675,7 +2675,7 @@ function openCheckoutModal(){
           <div class="checkout__summary">
             <strong>Resumo do pedido</strong>
             <p class="checkout__muted" style="margin:4px 0 0;">
-              Revise antes de gerar o pagamento. O estoque é reservado na confirmação do pedido.
+              Revise antes de gerar o pagamento. O estoque é reservado na confirmação.
             </p>
             <div id="checkoutItems" class="checkout__muted" style="margin-top:6px;"></div>
             <div class="checkout__totals">
@@ -2688,71 +2688,17 @@ function openCheckoutModal(){
           </div>
 
           <div class="checkout__grid">
-            <div class="checkout__step" id="checkoutStepCep">
+            <div class="checkout__step">
               <div class="full">
-                <strong>1. Entrega</strong>
+                <strong>1. Seus dados</strong>
                 <p class="checkout__muted" style="margin:4px 0 0;">
-                  Informe o endereço para confirmar a entrega.
+                  Usados para identificar seu pedido e pré-preencher o checkout.
                 </p>
               </div>
-              <div>
-                <label class="checkout__label">CEP (opcional)</label>
-                <div class="checkout__row checkout__row--stack">
-                  <input name="cep" class="checkout__input" id="ckCep"
-                    placeholder="00000-000" inputmode="numeric" autocomplete="postal-code">
-                  <button type="button" class="btn btn--ghost checkout__cepBtn" id="btnLocateCep">Usar CEP do cálculo</button>
-                </div>
-                <p class="checkout__link">Não sabe CEP? <a href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noopener">Consultar nos Correios</a></p>
-                <p class="checkout__status" id="checkoutCepMsg" data-status="info">CEP ajuda a confirmar a entrega.</p>
-              </div>
-              <div>
-                <label class="checkout__label">Rua *</label>
-                <input required name="rua" class="checkout__input" id="ckRua"
-                  autocomplete="address-line1" placeholder="Rua e complemento">
-              </div>
-              <div>
-                <label class="checkout__label">Número *</label>
-                <input required name="numero" class="checkout__input" id="ckNumero"
-                  inputmode="numeric" autocomplete="address-line2" placeholder="Ex.: 123">
-              </div>
-              <div>
-                <label class="checkout__label">Bairro *</label>
-                <input required name="bairro" class="checkout__input" id="ckBairro"
-                  autocomplete="address-level3" placeholder="Ex.: Centro">
-              </div>
-              <div>
-                <label class="checkout__label">Cidade *</label>
-                <input required name="cidade" class="checkout__input" id="ckCidade"
-                  autocomplete="address-level2" placeholder="Cidade">
-              </div>
-              <div>
-                <label class="checkout__label">UF *</label>
-                <input required name="uf" class="checkout__input" id="ckUF" maxlength="2"
-                  autocomplete="address-level1" placeholder="Ex.: CE">
-              </div>
               <div class="full">
-                <label class="checkout__label">Complemento (opcional)</label>
-                <input name="complemento" class="checkout__input" id="ckCompl"
-                  placeholder="Casa, bloco, ponto de referência" autocomplete="address-line3">
-              </div>
-            </div>
-
-            <div class="checkout__step" id="checkoutStepCliente" aria-hidden="false">
-              <div class="full">
-                <strong>2. Dados do cliente</strong>
-                <p class="checkout__muted" style="margin:4px 0 0;">
-                  Usaremos esses dados para identificação do pedido.
-                </p>
-              </div>
-              <div>
                 <label class="checkout__label">Nome completo *</label>
                 <input required name="nome" class="checkout__input" autocomplete="name"
                   placeholder="Ex.: Carla Souza">
-              </div>
-              <div>
-                <label class="checkout__label">Data de nascimento *</label>
-                <input required type="text" name="nascimento" class="checkout__input" id="ckNascimento"
-                  inputmode="numeric" autocomplete="bday" placeholder="DD/MM/AAAA" maxlength="10">
               </div>
               <div>
                 <label class="checkout__label">Telefone (WhatsApp)</label>
@@ -2764,11 +2710,22 @@ function openCheckoutModal(){
                 <input type="email" name="email" class="checkout__input" autocomplete="email"
                   placeholder="seuemail@exemplo.com">
               </div>
-
               <div class="full">
-                <strong>3. Pagamento online</strong>
+                <label class="checkout__label">CEP (opcional)</label>
+                <div class="checkout__row checkout__row--stack">
+                  <input name="cep" class="checkout__input" id="ckCep"
+                    placeholder="00000-000" inputmode="numeric" autocomplete="postal-code">
+                  <button type="button" class="btn btn--ghost checkout__cepBtn" id="btnLocateCep">Usar CEP do cálculo</button>
+                </div>
+                <p class="checkout__status" id="checkoutCepMsg" data-status="info">CEP ajuda a confirmar a entrega.</p>
+              </div>
+            </div>
+
+            <div class="checkout__step">
+              <div class="full">
+                <strong>2. Pagamento via InfinitePay</strong>
                 <p class="checkout__muted" style="margin:4px 0 0;">
-                  PIX e cartão serão finalizados no ambiente seguro da InfinityPay.
+                  Você será redirecionado para o ambiente seguro da InfinitePay. Endereço, CPF e dados do cartão são preenchidos lá.
                 </p>
               </div>
               <div class="full checkout__radio">
@@ -2776,7 +2733,7 @@ function openCheckoutModal(){
                 <label><input type="radio" name="pagamento" value="cartao"> Cartão de crédito</label>
               </div>
               <div class="full checkout__note">
-                Não digitamos dados do cartão nesta página. Quando a InfinityPay estiver configurada, abriremos o link seguro de pagamento.
+                Seus dados do passo 1 já chegam pré-preenchidos na InfinitePay para agilizar o pagamento.
               </div>
             </div>
           </div>
@@ -2784,71 +2741,45 @@ function openCheckoutModal(){
 
         <div class="checkout__footer">
           <button type="button" class="btn btn--ghost" id="btnCancelarCheckout">Cancelar</button>
-          <button type="submit" class="btn btn--primary" id="btnEnviarPedido">Gerar pagamento</button>
+          <button type="submit" class="btn btn--primary" id="btnEnviarPedido">Ir para pagamento</button>
         </div>
       </form>
     `;
-    const ckCep = dlg.querySelector("#ckCep");
-    if (ckCep){
-      ckCep.required = true;
-      ckCep.placeholder = "00000-000";
-    }
-document.body.appendChild(dlg);
+    document.body.appendChild(dlg);
 
-    // Binds do modal
     dlg.querySelector("#btnCloseCheckout").addEventListener("click", closeCheckoutModal);
     dlg.querySelector("#btnCancelarCheckout").addEventListener("click", closeCheckoutModal);
 
-    // CEP do checkout: normaliza + auto-preenche endereço
+    const ckCep = dlg.querySelector("#ckCep");
     const cepMsg = dlg.querySelector("#checkoutCepMsg");
     const setCepStatus = (text, status = "info") => {
       if (!cepMsg) return;
       cepMsg.textContent = text;
       cepMsg.dataset.status = status;
     };
-    const fillAddressByCep = async (raw) => {
-      setCepStatus("Consultando CEP…", "loading");
-      const addr = await getAddressByCEP(raw);
-      if (addr) {
-        el("#ckRua").value = addr.rua || "";
-        el("#ckBairro").value = addr.bairro || "";
-        el("#ckCidade").value = addr.cidade || "";
-        el("#ckUF").value = addr.uf || "";
-        setCepStatus("Endereço carregado automaticamente. Confira os dados.", "ok");
-      } else {
-        setCepStatus("Não encontramos este CEP. Preencha manualmente os campos abaixo.", "warn");
-      }
-    };
-    const handleCepInput = async () => {
+    const handleCepInput = () => {
       const raw = normalizeCEP(ckCep.value);
       ckCep.value = formatCEPForInput(raw);
-      if (raw.length === 8) {
-        await fillAddressByCep(raw);
-        setCepStatus("CEP ok. Confira o endereço abaixo.", "ok");
-      } else if (!raw) {
-        setCepStatus("Digite o CEP completo para continuar.", "warn");
-      } else {
-        setCepStatus("CEP incompleto. Digite 8 números.", "warn");
-      }
+      if (raw.length === 8) setCepStatus("CEP ok.", "ok");
+      else if (raw) setCepStatus("CEP incompleto.", "warn");
     };
-    ckCep.addEventListener("input", handleCepInput);
-    ckCep.addEventListener("blur", handleCepInput);
-    const locateCepBtn = dlg.querySelector("#btnLocateCep");
-    if (locateCepBtn){
-      locateCepBtn.disabled = !((enderecoAutofill?.cep && enderecoAutofill.cep.length === 8) || (cepAtual && cepAtual.length === 8));
-      locateCepBtn.addEventListener("click", () => {
-        const cepToUse = (enderecoAutofill?.cep && enderecoAutofill.cep.length === 8)
-          ? enderecoAutofill.cep
-          : (cepAtual && cepAtual.length === 8 ? cepAtual : "");
-        if (!cepToUse) {
-          alert("Calcule o frete ou informe o CEP manualmente.");
-          return;
-        }
-        ckCep.value = formatCEPForInput(cepToUse);
-        handleCepInput();
-      });
+    if (ckCep) {
+      ckCep.addEventListener("input", handleCepInput);
+      ckCep.addEventListener("blur", handleCepInput);
+      const locateCepBtn = dlg.querySelector("#btnLocateCep");
+      if (locateCepBtn) {
+        locateCepBtn.disabled = !((enderecoAutofill?.cep && enderecoAutofill.cep.length === 8) || (cepAtual && cepAtual.length === 8));
+        locateCepBtn.addEventListener("click", () => {
+          const cepToUse = (enderecoAutofill?.cep && enderecoAutofill.cep.length === 8)
+            ? enderecoAutofill.cep
+            : (cepAtual && cepAtual.length === 8 ? cepAtual : "");
+          if (!cepToUse) { alert("Calcule o frete ou informe o CEP manualmente."); return; }
+          ckCep.value = formatCEPForInput(cepToUse);
+          handleCepInput();
+        });
+      }
+      handleCepInput();
     }
-    handleCepInput();
 
     const telefoneInput = dlg.querySelector('input[name="telefone"]');
     if (telefoneInput && !telefoneInput._lemoovMask) {
@@ -2856,16 +2787,6 @@ document.body.appendChild(dlg);
       telefoneInput.addEventListener("input", () => {
         telefoneInput.value = formatPhoneForInput(telefoneInput.value);
       });
-      telefoneInput.value = formatPhoneForInput(telefoneInput.value);
-    }
-
-    const nascimentoInput = dlg.querySelector("#ckNascimento");
-    if (nascimentoInput && !nascimentoInput._lemoovMask) {
-      nascimentoInput._lemoovMask = true;
-      nascimentoInput.addEventListener("input", () => {
-        nascimentoInput.value = formatBirthForInput(nascimentoInput.value);
-      });
-      nascimentoInput.value = formatBirthForInput(nascimentoInput.value);
     }
 
     dlg.querySelector("#checkoutForm").addEventListener("submit", handleSubmitCheckout);
@@ -3126,34 +3047,16 @@ async function handleSubmitCheckout(ev){
     const fdUI = new FormData(form);
     const cliente = {
       nome: (fdUI.get("nome") || "").toString().trim(),
-      nascimento: (fdUI.get("nascimento") || "").toString(),
       telefone: formatPhoneForInput((fdUI.get("telefone") || "").toString()),
       email: (fdUI.get("email") || "").toString().trim(),
     };
     const endereco = {
       cep: normalizeCEP((fdUI.get("cep") || "").toString()),
-      rua: (fdUI.get("rua") || "").toString().trim(),
-      numero: (fdUI.get("numero") || "").toString().trim(),
-      bairro: (fdUI.get("bairro") || "").toString().trim(),
-      cidade: (fdUI.get("cidade") || "").toString().trim(),
-      uf: (fdUI.get("uf") || "").toString().trim(),
-      complemento: (fdUI.get("complemento") || "").toString().trim()
     };
     const pagamento = (fdUI.get("pagamento") || "pix").toString();
 
     const faltantes = [];
     if (!cliente.nome) faltantes.push("nome completo");
-    if (!cliente.nascimento || !/^\d{2}\/\d{2}\/\d{4}$/.test(cliente.nascimento)) {
-      faltantes.push("data de nascimento (DD/MM/AAAA)");
-    }
-    if (!cliente.telefone) faltantes.push("telefone/WhatsApp");
-    if (!endereco.rua) faltantes.push("rua");
-    if (!endereco.numero) faltantes.push("número");
-    if (!endereco.bairro) faltantes.push("bairro");
-    if (!endereco.cidade) faltantes.push("cidade");
-    if (!endereco.uf) faltantes.push("UF");
-    if (!pagamento) faltantes.push("forma de pagamento");
-    if (!endereco.cep || endereco.cep.length !== 8) faltantes.push("CEP válido");
     if (faltantes.length) {
       throw new Error("Preencha: " + faltantes.join(", ") + ".");
     }
@@ -3178,13 +3081,14 @@ async function handleSubmitCheckout(ev){
       itensEstoque,
       frete_modo: freteModo || "",
       cep: endereco.cep || "",
-      cidade: endereco.cidade || "",
-      uf: endereco.uf || "",
       visitor_city: visitorRegion?.city || "",
       visitor_region: visitorRegion?.region || "",
       visitor_country: visitorRegion?.country || "",
       pagamento: pagamento || "",
-      origem_cep: ORIGIN_CEP
+      origem_cep: ORIGIN_CEP,
+      cliente_nome: cliente.nome || "",
+      cliente_telefone: cliente.telefone || "",
+      cliente_email: cliente.email || "",
     };
     const pagamentoOnline = await createInfinityPayment({
       pedido: numeroPedidoSugerido,
@@ -3239,7 +3143,7 @@ async function handleSubmitCheckout(ev){
     if (dlg) {
       const formEl = dlg.querySelector("#checkoutForm");
       if (formEl) formEl.reset();
-      ["ckRua","ckNumero","ckBairro","ckCidade","ckUF","ckCompl","ckCep"].forEach(id => {
+      ["ckCep"].forEach(id => {
         const input = el(`#${id}`);
         if (input) input.value = "";
       });

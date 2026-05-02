@@ -448,7 +448,7 @@ app.post('/api/admin/reset-admin-user', authRequired, async (_req, res) => {
 
 app.post('/api/pagamentos/infinitypay', async (req, res) => {
   try {
-    const { pedido, metodo, total, itens } = req.body || {};
+    const { pedido, metodo, total, itens, cliente, endereco } = req.body || {};
     const orderNsu = String(pedido || Date.now());
     const paymentItems = normalizePaymentItems(itens);
 
@@ -475,6 +475,20 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
       order_nsu: orderNsu,
       items: paymentItems
     };
+
+    if (cliente?.nome || cliente?.email || cliente?.telefone) {
+      payload.customer = {};
+      if (cliente.nome) payload.customer.name = cliente.nome;
+      if (cliente.email) payload.customer.email = cliente.email;
+      if (cliente.telefone) {
+        const digits = cliente.telefone.replace(/\D/g, '');
+        payload.customer.phone_number = digits.startsWith('55') ? `+${digits}` : `+55${digits}`;
+      }
+    }
+
+    if (endereco?.cep) {
+      payload.address = { cep: String(endereco.cep).replace(/\D/g, '') };
+    }
     const response = await fetch(INFINITEPAY_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
