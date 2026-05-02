@@ -598,6 +598,11 @@ function getAvailableSizesForColor(prod, colorIndex){
   if (!baseSizes.length) return stockSizes;
   return baseSizes.filter((size) => hasStockForSize(cor, size));
 }
+function getAllSizesForColor(prod, colorIndex){
+  const cor = (prod.cores || [])[colorIndex];
+  if (Array.isArray(cor?.tamanhos) && cor.tamanhos.length) return cor.tamanhos;
+  return prod.tamanhos || [];
+}
 function getDisplayName(prod, colorIndex){
   const baseName = String(prod?.nome || "").trim();
   if (!baseName) return "";
@@ -1142,7 +1147,7 @@ function renderGrid(){
     let selectedColorIndex = 0;
     let availableForColor = getAvailableSizesForColor(p, selectedColorIndex);
     let selectedSize = availableForColor[0] || null;
-    const requiresSize = Array.isArray(p.tamanhos) && p.tamanhos.length > 0;
+    const requiresSize = () => getAllSizesForColor(p, selectedColorIndex).length > 0;
 
     const desc0 = resolveDesc(p, 0);
     const short0 = formatShortDetalhamento(desc0);
@@ -1202,7 +1207,7 @@ function renderGrid(){
     function refreshAddButton(){
       const soldOut = isVariantSoldOut(p, selectedColorIndex);
       const thereIsAvailable = availableForColor && availableForColor.length;
-      const canAdd = !requiresSize || (thereIsAvailable && selectedSize);
+      const canAdd = !requiresSize() || (thereIsAvailable && selectedSize);
       addBtn.disabled = !canAdd;
       if (canAdd) {
         addBtn.textContent = "Adicionar ao carrinho";
@@ -1240,8 +1245,9 @@ function renderGrid(){
         buildSwatches(p, (idx, c) => {
           selectedColorIndex = idx;
           availableForColor = getAvailableSizesForColor(p, selectedColorIndex);
+          const cardSizes = getAllSizesForColor(p, selectedColorIndex);
           selectedSize = applySizeAvailability(
-            sizesWrap, (p.tamanhos || []), availableForColor,
+            sizesWrap, cardSizes, availableForColor,
             (t)=>{ selectedSize = t; refreshAddButton(); }
           );
           if (nameEl) nameEl.textContent = getDisplayName(p, idx);
@@ -1267,10 +1273,11 @@ function renderGrid(){
       colorsWrap.innerHTML = "<span class='muted'>Única cor</span>";
     }
 
-    // Tamanhos
-    if (p.tamanhos && p.tamanhos.length) {
+    // Tamanhos (usa a cor inicial, índice 0)
+    const cardSizes0 = getAllSizesForColor(p, 0);
+    if (cardSizes0.length) {
       selectedSize = applySizeAvailability(
-        sizesWrap, p.tamanhos, availableForColor,
+        sizesWrap, cardSizes0, availableForColor,
         (t)=>{ selectedSize = t; refreshAddButton(); }
       );
     } else {
@@ -1287,7 +1294,7 @@ function renderGrid(){
 
       const thereIsAvailable = availableForColor && availableForColor.length;
 
-      if (requiresSize && (!thereIsAvailable || !selectedSize)) {
+      if (requiresSize() && (!thereIsAvailable || !selectedSize)) {
         alert("Selecione um tamanho disponível para essa cor.");
         return;
       }
@@ -1297,7 +1304,7 @@ function renderGrid(){
         openVendaModal({
           prod: p,
           corIndex: selectedColorIndex,
-          tamanho: requiresSize ? selectedSize : undefined,
+          tamanho: requiresSize() ? selectedSize : undefined,
           imagem: (p.cores && p.cores[selectedColorIndex]) ? getColorImage(p.cores[selectedColorIndex]) : undefined,
           descricao: descAtual,
           sourceEl: artigo.querySelector(".product-card__media img") || artigo
@@ -1315,7 +1322,7 @@ function renderGrid(){
         categoria: p.categoria,
         preco: priceNow,
         corSelecionada: (p.cores && p.cores[selectedColorIndex]) ? p.cores[selectedColorIndex].nome : undefined,
-        tamanhoSelecionado: requiresSize ? selectedSize : undefined,
+        tamanhoSelecionado: requiresSize() ? selectedSize : undefined,
         imagemSelecionada: (p.cores && p.cores[selectedColorIndex]) ? getColorImage(p.cores[selectedColorIndex]) : undefined,
         descricaoCurta: descAtual
       }, artigo.querySelector(".product-card__media img") || artigo);
@@ -1607,7 +1614,7 @@ function abrirModal(prodOrIndex){
   produtoAtual = prod;
   corIndexAtual = 0;
 
-  const allSizes = produtoAtual.tamanhos || [];
+  let allSizes = getAllSizesForColor(produtoAtual, 0);
   tamanhoAtual = null;
 
   const imgInicial = (produtoAtual.cores && produtoAtual.cores.length) ? getColorImage(produtoAtual.cores[0]) : "";
@@ -1665,6 +1672,7 @@ function abrirModal(prodOrIndex){
         setMainImage(el("#modalImg"), c, 0);
         el("#modalNome").textContent = getDisplayName(produtoAtual, corIndexAtual);
 
+        allSizes = getAllSizesForColor(produtoAtual, corIndexAtual);
         const avail = getAvailableSizesForColor(produtoAtual, corIndexAtual);
         tamanhoAtual = applySizeAvailability(el("#modalSizes"), allSizes, avail, (t)=> { tamanhoAtual = t; updateAddButtonState(); });
         el("#modalDesc").innerHTML = formatDescricaoHTML(resolveDesc(produtoAtual, corIndexAtual));
