@@ -342,9 +342,100 @@
 </head>
 <body class="catalog-landing">
 
-  <a href="#grid" class="site-banner" aria-label="Ver coleção">
-    <img src="image/banner.jpeg" alt="Coleção Arena Lemoov Fitness" loading="eager" fetchpriority="high" />
-  </a>
+  <div class="site-banner" style="position:relative;">
+    <a href="#grid" aria-label="Ver coleção" style="display:contents;">
+      <img src="image/banner.jpeg" alt="Coleção Arena Lemoov Fitness" loading="eager" fetchpriority="high" />
+    </a>
+    <canvas id="confettiCanvas" aria-hidden="true" style="
+      position:absolute;inset:0;width:100%;height:100%;
+      pointer-events:none;z-index:10;"></canvas>
+  </div>
+
+  <script>
+  (function(){
+    const canvas = document.getElementById('confettiCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const COLORS = ['#009C3B','#009C3B','#FFDF00','#FFDF00','#002776','#ffffff'];
+    const TOTAL  = 120;
+    let pieces   = [];
+    let raf      = null;
+    let running  = false;
+
+    function resize(){
+      canvas.width  = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+
+    function randomBetween(a,b){ return a + Math.random()*(b-a); }
+
+    function spawn(){
+      pieces = [];
+      for(let i=0;i<TOTAL;i++){
+        const size = randomBetween(6,13);
+        pieces.push({
+          x:      randomBetween(0, canvas.width),
+          y:      randomBetween(-canvas.height*0.5, -10),
+          w:      size,
+          h:      size * randomBetween(0.4,1),
+          r:      randomBetween(0, Math.PI*2),
+          dr:     randomBetween(-0.12,0.12),
+          vx:     randomBetween(-1.2,1.2),
+          vy:     randomBetween(2.5,5.5),
+          color:  COLORS[Math.floor(Math.random()*COLORS.length)],
+          alpha:  1,
+          fade:   randomBetween(0.004,0.009),
+          shape:  Math.random()<0.5?'rect':'circle',
+        });
+      }
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      let alive = false;
+      for(const p of pieces){
+        p.x  += p.vx;
+        p.y  += p.vy;
+        p.vy += 0.07; // gravidade suave
+        p.r  += p.dr;
+        p.alpha -= p.fade;
+        if(p.alpha<=0) continue;
+        alive = true;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0,p.alpha);
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.r);
+        ctx.fillStyle = p.color;
+        if(p.shape==='circle'){
+          ctx.beginPath();
+          ctx.arc(0,0,p.w/2,0,Math.PI*2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+        }
+        ctx.restore();
+      }
+      if(alive){ raf=requestAnimationFrame(draw); }
+      else { running=false; ctx.clearRect(0,0,canvas.width,canvas.height); }
+    }
+
+    function launch(){
+      if(running) return;
+      running=true;
+      resize();
+      spawn();
+      raf=requestAnimationFrame(draw);
+    }
+
+    // dispara ao carregar e ao hover/touch no banner
+    window.addEventListener('load', ()=>{ setTimeout(launch, 300); });
+    canvas.parentElement.addEventListener('mouseenter', launch);
+    canvas.parentElement.addEventListener('touchstart', launch, {passive:true});
+
+    // redimensiona sem parar animação
+    window.addEventListener('resize', resize, {passive:true});
+  })();
+  </script>
 
   <header class="header">
     <div class="container header__wrap">
