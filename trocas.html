@@ -10,7 +10,7 @@
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="Lemoov Fitness" />
   <meta property="og:locale" content="pt_BR" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=8" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -19,36 +19,613 @@
     window.LEMOOV_GA_ID = window.LEMOOV_GA_ID || 'G-XXXXXXXXXXXX';
     window.LEMOOV_PIXEL_ID = window.LEMOOV_PIXEL_ID || '000000000000000';
   </script>
+  <style>
+    /* ============================================================
+       POLICY PAGE — scoped to .policy-page
+    ============================================================ */
+
+    /* ---- Global base reset for this page ---- */
+    .policy-page {
+      background: #f4f7f5;
+      color: #1a2a1e;
+    }
+
+    /* ---- Header ---- */
+    .policy-page .header {
+      position: sticky;
+      top: 0;
+      z-index: 900;
+      background: linear-gradient(110deg, rgba(4,33,29,.98) 0%, rgba(8,66,45,.97) 50%, rgba(7,39,86,.97) 100%);
+      border-bottom: 2px solid rgba(247,211,74,.42);
+      box-shadow: 0 10px 28px rgba(4,31,43,.18);
+      padding: 0;
+    }
+    .policy-page .header__wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 58px;
+      padding: 0 24px;
+      position: relative;
+    }
+    .policy-page .logo {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      margin: 0;
+      flex-grow: 0;
+      text-align: center;
+    }
+    .policy-page .logo a {
+      color: #f6d74d;
+      font-size: 1.08rem;
+      letter-spacing: 0.22em;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-shadow: 0 8px 18px rgba(0,0,0,.22);
+    }
+    .policy-page .logo a span {
+      color: rgba(245,251,255,.88);
+      font-size: 0.74em;
+      letter-spacing: 0.32em;
+    }
+    .policy-page .header__back {
+      color: rgba(255,223,0,.7);
+      font-size: .82rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color .2s;
+      white-space: nowrap;
+    }
+    .policy-page .header__back:hover {
+      color: #FFDF00;
+    }
+
+    /* ---- Page Hero ---- */
+    .policy-page .page-hero {
+      background: linear-gradient(135deg, #009C3B 0%, #004d20 40%, #002776 100%);
+      color: #fff;
+      padding: 72px 0 64px;
+      text-align: center;
+    }
+    .policy-page .page-hero__eyebrow {
+      display: inline-block;
+      color: #FFDF00;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .policy-page .page-hero h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(2rem, 5vw, 2.9rem);
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 18px;
+      line-height: 1.15;
+    }
+    .policy-page .page-hero > .container > p {
+      color: rgba(255,255,255,.85);
+      font-size: 1.05rem;
+      max-width: 620px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* ---- Policy Grid ---- */
+    .policy-page .policy__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 22px;
+      padding: 56px 0;
+    }
+
+    /* ---- Process Timeline ---- */
+    .policy-page .process-timeline {
+      grid-column: 1 / -1;
+      background: #fff;
+      border-radius: 20px;
+      border: 1.5px solid rgba(0,156,59,.18);
+      box-shadow: 0 6px 24px rgba(0,39,118,.07);
+      padding: 32px 28px;
+      margin-bottom: 8px;
+    }
+    .policy-page .process-timeline__label {
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: #009C3B;
+      margin: 0 0 24px;
+    }
+    .policy-page .process-steps {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      position: relative;
+    }
+    .policy-page .process-step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+    .policy-page .process-step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 22px;
+      left: calc(50% + 22px);
+      right: calc(-50% + 22px);
+      height: 2px;
+      border-top: 2px dashed #009C3B;
+      opacity: .45;
+    }
+    .policy-page .process-step__circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #009C3B 0%, #007a2f 100%);
+      color: #fff;
+      font-size: .95rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,156,59,.28);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .policy-page .process-step__icon {
+      margin-top: 10px;
+      font-size: 1.2rem;
+      color: #002776;
+    }
+    .policy-page .process-step__title {
+      margin-top: 6px;
+      font-size: .8rem;
+      font-weight: 700;
+      color: #0a1628;
+      line-height: 1.3;
+    }
+    .policy-page .process-step__sub {
+      margin-top: 3px;
+      font-size: .72rem;
+      color: #6b7a8d;
+      line-height: 1.4;
+    }
+
+    /* ---- Policy Cards ---- */
+    .policy-page .policy-card {
+      background: #fff;
+      border-radius: 18px;
+      border-left: 4px solid #009C3B;
+      box-shadow: 0 6px 24px rgba(0,39,118,.09);
+      padding: 28px 26px;
+      transition: transform .22s ease, box-shadow .22s ease;
+    }
+    .policy-page .policy-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 36px rgba(0,39,118,.14);
+    }
+    .policy-page .policy-card h3 {
+      color: #002776;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 0 0 12px;
+      line-height: 1.3;
+    }
+    .policy-page .policy-card p {
+      font-size: .93rem;
+      color: #4a5568;
+      line-height: 1.7;
+      margin: 0 0 10px;
+    }
+    .policy-page .policy-card p:last-child {
+      margin-bottom: 0;
+    }
+    .policy-page .policy-card strong {
+      color: #009C3B;
+      font-weight: 700;
+    }
+    .policy-page .policy-card ul,
+    .policy-page .policy-card ol {
+      color: #4a5568;
+      font-size: .91rem;
+      line-height: 1.75;
+      padding-left: 1.25rem;
+      margin: 8px 0 10px;
+    }
+    .policy-page .policy-card ul li,
+    .policy-page .policy-card ol li {
+      margin-bottom: 4px;
+    }
+    .policy-page .policy-card ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    .policy-page .policy-card ul li::before {
+      content: '✔';
+      color: #009C3B;
+      font-size: .78rem;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    .policy-page .policy-card ol {
+      list-style: decimal;
+    }
+    .policy-page .policy-card ol li::marker {
+      color: #002776;
+      font-weight: 700;
+    }
+
+    /* ---- CTA Section ---- */
+    .policy-page .policy-cta {
+      background: linear-gradient(135deg, #002776 0%, #009C3B 100%);
+      padding: 64px 0;
+      color: #fff;
+    }
+    .policy-page .policy-cta__wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 32px;
+    }
+    .policy-page .policy-cta__eyebrow {
+      display: inline-block;
+      color: #FFDF00;
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .policy-page .policy-cta h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.3rem, 3vw, 1.75rem);
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 10px;
+      line-height: 1.2;
+      max-width: 500px;
+    }
+    .policy-page .policy-cta > .container .policy-cta__wrap > div > p {
+      color: rgba(255,255,255,.8);
+      font-size: .95rem;
+      line-height: 1.65;
+      max-width: 460px;
+      margin: 0;
+    }
+
+    /* ---- WhatsApp Button Override ---- */
+    .policy-page .btn--whats {
+      background: linear-gradient(120deg, #25D366 0%, #128C7E 100%);
+      color: #fff;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: .95rem;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform .2s ease, box-shadow .2s ease;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .policy-page .btn--whats:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(37,211,102,.35);
+    }
+    .policy-page .btn--pulse {
+      animation: pulse-whats 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse-whats {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(37,211,102,.4); }
+      50%       { box-shadow: 0 0 0 10px rgba(37,211,102,0); }
+    }
+
+    /* ---- Footer Override ---- */
+    .policy-page .footer {
+      background: linear-gradient(135deg, #061d19 0%, #0a2a52 100%);
+      color: rgba(255,255,255,.85);
+    }
+    .policy-page .footer__title {
+      color: #FFDF00;
+      font-size: .8rem;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      margin: 0 0 14px;
+    }
+    .policy-page .footer__list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .policy-page .footer__list li {
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .policy-page .footer__list a,
+    .policy-page .footer__list span {
+      color: rgba(255,255,255,.75);
+      text-decoration: none;
+      font-size: .88rem;
+      transition: color .2s;
+    }
+    .policy-page .footer__list p {
+      color: rgba(255,255,255,.75);
+      font-size: .88rem;
+      margin: 0;
+    }
+    .policy-page .footer__list a:hover {
+      color: #FFDF00;
+    }
+    .policy-page .footer__tagline {
+      color: rgba(255,255,255,.6);
+      font-size: .85rem;
+      line-height: 1.6;
+      margin: 10px 0 0;
+    }
+    .policy-page .footer__copyright {
+      color: rgba(255,255,255,.5);
+      font-size: .8rem;
+    }
+    .policy-page .footer__grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 40px;
+      padding: 52px 0 36px;
+    }
+    .policy-page .footer__bottom {
+      border-top: 1px solid rgba(255,255,255,.1);
+      padding: 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .policy-page .footer__logo {
+      height: 48px;
+      width: auto;
+      filter: brightness(0) invert(1);
+      opacity: .9;
+    }
+    .policy-page .footer__socials {
+      display: flex;
+      gap: 10px;
+    }
+    .policy-page .footer__socials a {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(0,156,59,.2);
+      border: 1.5px solid rgba(255,223,0,.28);
+      color: #FFDF00;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .88rem;
+      text-decoration: none;
+      transition: background .2s, transform .2s;
+    }
+    .policy-page .footer__socials a:hover {
+      background: rgba(0,156,59,.42);
+      transform: translateY(-2px);
+    }
+
+    /* ---- Cookie Banner ---- */
+    .policy-page .cookie-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: linear-gradient(110deg, rgba(4,33,29,.98) 0%, rgba(7,39,86,.97) 100%);
+      border-top: 2px solid rgba(247,211,74,.42);
+      color: rgba(255,255,255,.88);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: .85rem;
+    }
+    .policy-page .cookie-banner p {
+      margin: 0;
+      line-height: 1.5;
+    }
+    .policy-page .cookie-banner a {
+      color: #FFDF00;
+      text-decoration: underline;
+    }
+    .policy-page .cookie-banner .btn--primary {
+      background: linear-gradient(120deg, #FFDF00 0%, #f6c800 100%);
+      color: #06321f;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: .85rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform .18s;
+    }
+    .policy-page .cookie-banner .btn--primary:hover {
+      transform: translateY(-1px);
+    }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 768px) {
+      .policy-page .page-hero {
+        padding: 52px 0 44px;
+      }
+      .policy-page .policy__grid {
+        padding: 36px 0;
+        gap: 16px;
+      }
+      .policy-page .footer__grid {
+        grid-template-columns: 1fr;
+        gap: 28px;
+        padding: 36px 0 24px;
+      }
+      .policy-page .policy-cta__wrap {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .policy-page .process-steps {
+        flex-direction: column;
+        gap: 20px;
+        align-items: stretch;
+      }
+      .policy-page .process-step {
+        flex-direction: row;
+        text-align: left;
+        align-items: center;
+        gap: 14px;
+      }
+      .policy-page .process-step:not(:last-child)::after {
+        display: none;
+      }
+      .policy-page .process-step__icon {
+        margin-top: 0;
+      }
+      .policy-page .process-step__body {
+        display: flex;
+        flex-direction: column;
+      }
+      .policy-page .process-step__title,
+      .policy-page .process-step__sub {
+        margin-top: 0;
+      }
+      .policy-page .footer__bottom {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+    }
+    @media (max-width: 480px) {
+      .policy-page .header__wrap {
+        min-height: 54px;
+        padding: 0 14px;
+      }
+      .policy-page .logo a {
+        font-size: .92rem;
+        letter-spacing: .14em;
+      }
+      .policy-page .logo a span {
+        font-size: .68em;
+      }
+      .policy-page .cookie-banner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+    @media (min-width: 1180px) {
+      .policy-page .container {
+        width: min(100% - 40px, 1140px);
+      }
+    }
+  </style>
 </head>
-<body>
+<body class="policy-page">
+
   <header class="header">
     <div class="container header__wrap">
+      <a href="catalogo-produtos.html" class="header__back">&#8592; Catálogo</a>
       <h1 class="logo">
         <a href="index.html">Lemoov <span>Fitness</span></a>
       </h1>
+      <div style="width:80px;"></div>
     </div>
   </header>
 
   <main class="policy">
+
     <section class="page-hero">
       <div class="container">
         <p class="page-hero__eyebrow">Políticas Lemoov</p>
         <h2>Trocas e Devoluções</h2>
         <p>Processos simples e humanizados para garantir que sua peça favorita tenha o caimento perfeito. Confira abaixo os prazos, condições e como solicitar atendimento.</p>
+        <a href="https://wa.me/558587408457?text=Ol%C3%A1%2C%20gostaria%20de%20solicitar%20uma%20troca" class="btn btn--whats" target="_blank" rel="noopener" style="margin-top:24px;display:inline-flex;align-items:center;gap:8px;"><i class="fab fa-whatsapp"></i> Iniciar troca agora</a>
       </div>
     </section>
 
     <section class="policy__grid container">
+
+      <!-- Process Timeline -->
+      <div class="process-timeline">
+        <p class="process-timeline__label">Como funciona a troca</p>
+        <div class="process-steps">
+
+          <div class="process-step">
+            <div class="process-step__circle">1</div>
+            <div class="process-step__body">
+              <span class="process-step__icon"><i class="fab fa-whatsapp"></i></span>
+              <span class="process-step__title">Solicitar</span>
+              <span class="process-step__sub">Entre em contato pelo WhatsApp com nome e número do pedido</span>
+            </div>
+          </div>
+
+          <div class="process-step">
+            <div class="process-step__circle">2</div>
+            <div class="process-step__body">
+              <span class="process-step__icon"><i class="fas fa-box"></i></span>
+              <span class="process-step__title">Enviar peça</span>
+              <span class="process-step__sub">Embale com cuidado e envie conforme nossas instruções</span>
+            </div>
+          </div>
+
+          <div class="process-step">
+            <div class="process-step__circle">3</div>
+            <div class="process-step__body">
+              <span class="process-step__icon"><i class="fas fa-search"></i></span>
+              <span class="process-step__title">Análise</span>
+              <span class="process-step__sub">Verificamos as condições da peça recebida</span>
+            </div>
+          </div>
+
+          <div class="process-step">
+            <div class="process-step__circle">4</div>
+            <div class="process-step__body">
+              <span class="process-step__icon"><i class="fas fa-check-circle"></i></span>
+              <span class="process-step__title">Troca / Crédito</span>
+              <span class="process-step__sub">Enviamos o novo item ou liberamos crédito para você</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Card 1 -->
       <article class="policy-card">
-        <h3>💚 Política de Troca Lemoov</h3>
+        <h3>Política de Troca Lemoov</h3>
         <p>Queremos que você viva a melhor experiência com a Lemoov — por isso, criamos uma política de troca simples, transparente e feita para cuidar de você.</p>
       </article>
+
+      <!-- Card 2 -->
       <article class="policy-card">
-        <h3>📅 Prazo para troca</h3>
+        <h3>Prazo para troca</h3>
         <p>Aceitamos trocas em até <strong>7 dias corridos</strong> após o recebimento da sua peça.</p>
       </article>
+
+      <!-- Card 3 -->
       <article class="policy-card">
-        <h3>✨ Condições da peça</h3>
+        <h3>Condições da peça</h3>
         <p>Para garantir a qualidade e higiene, só realizamos troca se o item estiver:</p>
         <ul>
           <li>Sem sinais de uso, odores, manchas ou danos.</li>
@@ -57,8 +634,10 @@
         </ul>
         <p><strong>Importante:</strong> não realizamos troca de peças claras (mais sensíveis) e peças sem etiqueta não são elegíveis.</p>
       </article>
+
+      <!-- Card 4 -->
       <article class="policy-card">
-        <h3>📦 Como solicitar</h3>
+        <h3>Como solicitar</h3>
         <ol>
           <li>Envie mensagem para nosso WhatsApp informando nome completo e número do pedido.</li>
           <li>Conte o motivo da troca para orientarmos a melhor solução.</li>
@@ -66,18 +645,23 @@
         </ol>
         <p>Após a peça chegar e ser aprovada na análise, enviamos o novo item ou liberamos crédito para troca.</p>
       </article>
+
+      <!-- Card 5 -->
       <article class="policy-card">
-        <h3>🚚 Custos de frete</h3>
+        <h3>Custos de frete</h3>
         <ul>
           <li><strong>Troca por tamanho ou preferência:</strong> frete de envio por conta do cliente.</li>
           <li><strong>Troca por defeito de fabricação:</strong> frete por nossa conta.</li>
         </ul>
         <p>Se o motivo for defeito, envie um vídeo com detalhes via WhatsApp para agilizarmos o atendimento.</p>
       </article>
+
+      <!-- Card 6 -->
       <article class="policy-card">
-        <h3>💚 Nosso compromisso</h3>
+        <h3>Nosso compromisso</h3>
         <p>Queremos que você se sinta confiante, segura e totalmente satisfeita com sua Lemoov. Estamos prontas para ajudar com carinho, atenção e transparência em todas as etapas.</p>
       </article>
+
     </section>
 
     <section class="policy-cta">
@@ -92,11 +676,13 @@
         </a>
       </div>
     </section>
+
   </main>
 
   <footer class="footer">
     <div class="container">
       <div class="footer__grid">
+
         <div class="footer__brand">
           <img src="image/logo_lemoov_semfundo.png" alt="Lemoov Logo" class="footer__logo" loading="lazy" decoding="async">
           <p class="footer__tagline">Moda fitness premium criada em Fortaleza para todas as pessoas em movimento.</p>
@@ -127,6 +713,7 @@
             <li><a href="trocas.html">Trocas e devoluções</a></li>
           </ul>
         </div>
+
       </div>
 
       <div class="footer__bottom">
@@ -143,10 +730,12 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
+
   <div class="cookie-banner" id="cookieBanner" role="region" aria-label="Aviso de cookies">
     <p>Usamos cookies e registramos IP/cidade para personalizar frete e ofertas. Veja nossa <a href="privacidade.html" target="_blank" rel="noopener">Política de privacidade</a>.</p>
     <button class="btn btn--primary" id="btnAcceptCookies">Aceitar e continuar</button>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>

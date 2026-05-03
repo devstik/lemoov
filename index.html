@@ -27,40 +27,103 @@
     window.LEMOOV_IMAGE_BASE = '';
   </script>
 
-  <!-- Ajuste visual: tamanhos indisponíveis (borrado/desativado) e botão desabilitado -->
   <style>
+    /* ── Tamanhos indisponíveis ── */
     .size[aria-disabled="true"]{
       filter: blur(0.8px) grayscale(80%);
-      opacity: 0.45;
-      pointer-events: none;
-      cursor: not-allowed;
-      border-color: #ddd !important;
-      box-shadow: none !important;
+      opacity: 0.45; pointer-events: none; cursor: not-allowed;
+      border-color: #ddd !important; box-shadow: none !important;
     }
     .btn[disabled], .btn[disabled]:hover{
-      opacity: .6;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
+      opacity: .6; cursor: not-allowed; transform: none; box-shadow: none;
+    }
+
+    /* ── Header Brazil-flag ── */
+    body .header {
+      position: sticky; top: 0; z-index: 200;
+      background: linear-gradient(110deg, rgba(4,33,29,.98) 0%, rgba(8,66,45,.97) 50%, rgba(7,39,86,.97) 100%);
+      border-bottom: 2px solid rgba(247,211,74,.42);
+      box-shadow: 0 10px 28px rgba(4,31,43,.18);
+    }
+    body .header .logo a { color: #f6d74d; }
+    body .header .logo a span { color: rgba(245,251,255,.88); }
+    body .header .btn-icon { color: #f6d74d; background: rgba(255,255,255,.08); border-color: rgba(255,211,74,.2); }
+    body .header .badge { background: #FFDF00; color: #06321f; }
+
+    /* ── Hero ── */
+    .hero__eyebrow { color: #009C3B; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; font-size: .78rem; }
+    .hero__actions .btn--primary {
+      background: linear-gradient(120deg, #009C3B 0%, #002776 100%);
+      color: #FFDF00; font-weight: 800; border: none;
+    }
+    .hero__actions .btn--ghost { border-color: rgba(0,156,59,.4); color: #009C3B; }
+
+    /* ── Benefits ── */
+    .benefits { background: linear-gradient(135deg, #f8fbf2 0%, #eef7ff 100%); }
+    .benefits__icon { background: linear-gradient(135deg, #009C3B, #002776); color: #FFDF00 !important; border-radius: 16px; }
+
+    /* ── Social proof ── */
+    .social-proof { background: #fff; }
+    .social-proof__stars { color: #FFDF00 !important; }
+
+    /* ── Trust / FAQ ── */
+    .trust-card { border-radius: 18px; }
+    .trust-card--faq details summary { color: #002776; font-weight: 700; }
+    .trust-card--faq details[open] summary { color: #009C3B; }
+    .policy-link {
+      background: linear-gradient(120deg, #009C3B 0%, #002776 100%);
+      color: #FFDF00 !important; border-radius: 12px; font-weight: 800; padding: 10px 22px;
+      text-decoration: none; display: inline-block;
+    }
+
+    /* ── Buy CTA ── */
+    .buy-cta { background: linear-gradient(135deg, #002776 0%, #009C3B 100%); border-radius: 18px; }
+    .buy-cta__eyebrow { color: #FFDF00 !important; }
+    .buy-cta h3, .buy-cta p { color: #fff !important; }
+    .buy-cta .btn--primary {
+      background: #FFDF00; color: #002776; font-weight: 800; border: none;
+    }
+    .buy-cta .btn--ghost { border-color: rgba(255,223,0,.5); color: #FFDF00; }
+
+    /* ── Blog preview ── */
+    .blog-preview { background: #f8fbf2; }
+    .section-eyebrow { color: #009C3B; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; font-size: .78rem; }
+
+    /* ── Social feed ── */
+    .social-feed { background: linear-gradient(135deg, #061d19 0%, #0a2a52 100%); }
+    .social-feed .section-eyebrow { color: #FFDF00; }
+    .social-feed h3 { color: #fff; }
+
+    /* ── Footer ── */
+    .footer { background: linear-gradient(135deg, #061d19 0%, #0a2a52 100%); }
+    .footer__title { color: #FFDF00 !important; }
+    .footer__tagline, .footer__list span, .footer__list p { color: rgba(255,255,255,.6) !important; }
+    .footer__list a { color: rgba(255,255,255,.8) !important; }
+    .footer__copyright { color: rgba(255,255,255,.4) !important; }
+    .footer__socials a { background: rgba(255,255,255,.08); border: 1px solid rgba(255,223,0,.2); color: #f6d74d; }
+    .footer__socials a:hover { background: rgba(0,156,59,.3); }
+
+    /* ── Cookie banner ── */
+    .cookie-banner { background: #0a2a52; border-top: 2px solid rgba(255,223,0,.3); color: rgba(255,255,255,.85); }
+    .cookie-banner .btn--primary {
+      background: linear-gradient(120deg, #009C3B, #002776); color: #FFDF00; border: none;
     }
   </style>
 </head>
-<body>
+<body class="home-page">
 
   <header class="header">
-    <div class="container header__wrap">
-        <!-- Logo centralizado -->
-        <h1 class="logo">
-          <a href="index.html">Lemoov <span>Fitness</span></a>
-        </h1>
-
-        <!-- Icons de usuário/carrinho -->
-        <nav class="nav">
-          <button id="openCart" class="btn-icon" aria-label="Abrir carrinho">
-            <i id="cartIcon" class="fas fa-shopping-cart"></i>
-            <span id="cartCount" class="badge">0</span>
-          </button>
-        </nav>
+    <div class="container header__wrap" style="display:flex;align-items:center;justify-content:space-between;min-height:58px;padding:0 24px;position:relative;">
+      <a href="catalogo-produtos.html" style="color:rgba(255,223,0,.7);font-size:.82rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:5px;">⚡ Catálogo</a>
+      <h1 class="logo" style="position:absolute;left:50%;transform:translateX(-50%);margin:0;">
+        <a href="index.html">Lemoov <span>Fitness</span></a>
+      </h1>
+      <nav class="nav" style="width:80px;display:flex;justify-content:flex-end;">
+        <button id="openCart" class="btn-icon" aria-label="Abrir carrinho">
+          <i id="cartIcon" class="fas fa-shopping-cart"></i>
+          <span id="cartCount" class="badge">0</span>
+        </button>
+      </nav>
     </div>
   </header>
   <!-- Hero -->
@@ -224,11 +287,11 @@
         <div class="buy-cta__wrap">
           <div>
             <p class="buy-cta__eyebrow">Compra rápida</p>
-            <h3>Escolha a peça e finalize no WhatsApp.</h3>
-            <p>Frete local via Moto Uber ou SEDEX informado no atendimento.</p>
+            <h3>Escolha a peça e pague com segurança pela InfinitePay.</h3>
+            <p>Entrega grátis até 2 km · R$ 12 em Fortaleza · Fora da cidade calculado via WhatsApp.</p>
           </div>
           <div class="buy-cta__actions">
-            <button class="btn btn--primary" id="openCartCta">Abrir carrinho</button>
+            <button class="btn btn--primary" id="openCartCta">Ver carrinho</button>
             <a class="btn btn--ghost" href="#grid">Ver produtos</a>
           </div>
         </div>
@@ -301,20 +364,24 @@
   </dialog>
   <!-- Modal de escolha (Conjunto/Top/Legging) -->
   <dialog id="vendaModal" class="modal venda-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vendaTitle">
-    <div class="modal__header">
-      <button class="modal__close" id="closeVendaModal" aria-label="Fechar">✕</button>
-    </div>
     <article class="venda-modal__content">
-      <h2 id="vendaTitle"></h2>
-      <p class="venda-modal__note">Adicione o conjunto ou a peça individual.</p>
-      <p id="vendaMeta" class="venda-modal__meta"></p>
-      <div id="vendaOptions" class="venda-options"></div>
-      <div class="venda-total">
-        <span>Total</span>
-        <strong id="vendaTotal">R$ 0,00</strong>
+      <div class="venda-modal__header">
+        <div class="venda-modal__header-text">
+          <h2 id="vendaTitle"></h2>
+          <p id="vendaMeta" class="venda-modal__meta"></p>
+        </div>
+        <button class="venda-modal__close" id="closeVendaModal" aria-label="Fechar">✕</button>
       </div>
-      <div class="venda-actions">
-        <button id="vendaAddBtn" class="btn btn--primary">Adicionar ao carrinho</button>
+      <div class="venda-modal__body">
+        <p class="venda-modal__note">Adicione o conjunto ou a peça individual.</p>
+        <div id="vendaOptions" class="venda-options"></div>
+        <div class="venda-total">
+          <span>Total</span>
+          <strong id="vendaTotal">R$ 0,00</strong>
+        </div>
+        <div class="venda-actions">
+          <button id="vendaAddBtn" class="btn btn--primary">Adicionar ao carrinho</button>
+        </div>
       </div>
     </article>
   </dialog>
