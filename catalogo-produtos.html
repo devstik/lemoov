@@ -356,8 +356,8 @@
     const canvas = document.getElementById('confettiCanvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const COLORS = ['#009C3B','#009C3B','#FFDF00','#FFDF00','#002776','#ffffff'];
-    const TOTAL  = 350;
+    const COLORS = ['#009C3B','#009C3B','#FFDF00','#FFDF00','#002776','#002776','#ffffff'];
+    const TOTAL  = 720;
     let pieces   = [];
     let raf      = null;
     let running  = false;
@@ -372,20 +372,26 @@
     function spawn(){
       pieces = [];
       for(let i=0;i<TOTAL;i++){
-        const size = randomBetween(6,13);
+        const burst = Math.random();
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const fromSide = burst < 0.34;
+        const size = randomBetween(5,15);
         pieces.push({
-          x:      randomBetween(0, canvas.width),
-          y:      randomBetween(-canvas.height*0.5, -10),
+          x:      fromSide ? (side < 0 ? randomBetween(-40, 80) : randomBetween(canvas.width - 80, canvas.width + 40)) : randomBetween(0, canvas.width),
+          y:      fromSide ? randomBetween(canvas.height * 0.12, canvas.height * 0.78) : randomBetween(-canvas.height*0.85, -10),
           w:      size,
-          h:      size * randomBetween(0.4,1),
+          h:      size * randomBetween(0.35,1.15),
           r:      randomBetween(0, Math.PI*2),
-          dr:     randomBetween(-0.12,0.12),
-          vx:     randomBetween(-1.2,1.2),
-          vy:     randomBetween(2.5,5.5),
+          dr:     randomBetween(-0.18,0.18),
+          vx:     fromSide ? randomBetween(2.8,7.4) * -side : randomBetween(-1.8,1.8),
+          vy:     fromSide ? randomBetween(-5.8,-1.2) : randomBetween(2.8,6.8),
           color:  COLORS[Math.floor(Math.random()*COLORS.length)],
           alpha:  1,
-          fade:   randomBetween(0.004,0.009),
-          shape:  Math.random()<0.5?'rect':'circle',
+          fade:   randomBetween(0.0022,0.0065),
+          gravity: randomBetween(0.045,0.095),
+          swing:  randomBetween(0.018,0.06),
+          wave:   randomBetween(0, Math.PI*2),
+          shape:  Math.random()<0.62?'rect':(Math.random()<0.5?'circle':'stripe'),
         });
       }
     }
@@ -394,9 +400,10 @@
       ctx.clearRect(0,0,canvas.width,canvas.height);
       let alive = false;
       for(const p of pieces){
-        p.x  += p.vx;
+        p.wave += p.swing;
+        p.x  += p.vx + Math.sin(p.wave) * 0.45;
         p.y  += p.vy;
-        p.vy += 0.07; // gravidade suave
+        p.vy += p.gravity; // gravidade suave
         p.r  += p.dr;
         p.alpha -= p.fade;
         if(p.alpha<=0) continue;
@@ -410,6 +417,8 @@
           ctx.beginPath();
           ctx.arc(0,0,p.w/2,0,Math.PI*2);
           ctx.fill();
+        } else if (p.shape === 'stripe') {
+          ctx.fillRect(-p.w/2,-p.h/2,p.w*1.7,Math.max(2,p.h*0.35));
         } else {
           ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
         }
@@ -420,7 +429,11 @@
     }
 
     function launch(){
-      if(running) return;
+      if(running && pieces.length) {
+        const extra = pieces.slice(0, Math.floor(TOTAL * 0.22)).map(p => ({ ...p, y: randomBetween(-canvas.height * 0.35, -10), alpha: 1 }));
+        pieces.push(...extra);
+        return;
+      }
       running=true;
       resize();
       spawn();
