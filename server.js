@@ -56,10 +56,13 @@ if (!fs.existsSync(PROD_PATH)) fs.writeFileSync(PROD_PATH, '[]', 'utf-8');
 const IMAGE_DIR = path.join(__dirname, 'image');
 if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
 const UPLOAD_PUBLIC_PREFIX = (process.env.UPLOAD_PUBLIC_PREFIX || 'uploads').replace(/^\/+|\/+$/g, '');
+// Default: one level above __dirname (outside the nodejs/ deploy folder) so uploads
+// survive git-based redeploys on Hostinger. Set UPLOAD_DIR in .env to override.
 const UPLOAD_DIR = process.env.UPLOAD_DIR
   ? path.resolve(process.env.UPLOAD_DIR)
-  : path.join(__dirname, UPLOAD_PUBLIC_PREFIX);
+  : path.join(__dirname, '..', UPLOAD_PUBLIC_PREFIX);
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+console.log(`[uploads] salvando em: ${UPLOAD_DIR}`);
 const INFINITEPAY_API_URL = process.env.INFINITEPAY_API_URL || 'https://api.checkout.infinitepay.io/links';
 const INFINITEPAY_HANDLE = (process.env.INFINITEPAY_HANDLE || process.env.INFINITYPAY_HANDLE || '').replace(/^\$/, '');
 const PUBLIC_SITE_URL = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
