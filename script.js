@@ -3072,7 +3072,6 @@ async function handleSubmitCheckout(ev){
     ultimoNumeroPedido = numeroPedido;
     const pedidoEl = el("#ckPedido");
     if (pedidoEl) pedidoEl.textContent = numeroPedido;
-    const mensagem = buildWhatsMessage({ cliente, endereco, pagamento }, { numeroPedido });
     trackEvent("purchase", {
       currency: "BRL",
       value: totalCompra,
@@ -3080,23 +3079,10 @@ async function handleSubmitCheckout(ev){
       items: purchaseItems,
       item_count: purchaseItems.length
     });
-    trackEvent("purchase_whatsapp", {
-      currency: "BRL",
-      value: totalCompra,
-      transaction_id: numeroPedido,
-      item_count: purchaseItems.length,
-      city: endereco.cidade || visitorRegion?.city || "",
-      region: endereco.uf || visitorRegion?.region || "",
-      country: visitorRegion?.country || "Brasil",
-      cep: endereco.cep || "",
-      frete_modo: freteModo || ""
-    });
     if (pagamentoOnline.checkoutUrl) {
-      openWhatsAppWithMessage(mensagem);
-      setTimeout(() => { window.location.href = pagamentoOnline.checkoutUrl; }, 400);
+      window.location.href = pagamentoOnline.checkoutUrl;
     } else {
-      alert("Pedido criado. O pagamento online ainda precisa das credenciais da InfinityPay para gerar o link.");
-      openWhatsAppWithMessage(mensagem);
+      alert("Pedido criado, mas não foi possível gerar o link de pagamento. Entre em contato com a Lemoov.");
     }
 
     // Limpa carrinho e interfaces abertas
