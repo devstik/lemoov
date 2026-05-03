@@ -89,8 +89,9 @@ let produtos = [];
 
 const FILTER_CARDS = [
   { label: "Macacão & Macaquinho", categories: ["Macacão","Macaquinho"], tagline: "Movimento total", image: "image/Macacao/preto.jpg" },
-  { label: "Conjuntos Legging", categories: ["Conjunto Legging"], tagline: "Mix & Match", image: "image/Conjunto_Calca/iris_branco_0384.jpg" },
-  { label: "Shorts & Top", categories: ["Conjunto Short"], tagline: "Movimento livre", image: "image/Conjunto_Short/sunmoov_branco_0355.jpg" },
+  { label: "Tops", categories: ["Top"], tagline: "Base do conjunto", image: "image/Top/top_iris_1.jpeg" },
+  { label: "Shorts", categories: ["Short"], tagline: "Movimento livre", image: "image/Conjunto_Short/sunmoov_branco_0355.jpg" },
+  { label: "Leggings", categories: ["Legging"], tagline: "Mix & Match", image: "image/Conjunto_Calca/iris_branco_0384.jpg" },
   { label: "Blusas & Coletes", categories: ["Blusa"], tagline: "Camadas leves", image: "image/Blusa/IMG_0350.JPG" }
 ];
 const API_BASE = window.LEMOOV_API_BASE || "";
@@ -506,31 +507,6 @@ function appendSwatchContent(button, colorObj){
   img.alt = colorObj?.nome || "";
   button.appendChild(img);
 }
-function hasVendaOptions(prod){
-  return Array.isArray(prod?.opcoesVenda) && prod.opcoesVenda.length > 0;
-}
-function getVendaOptions(prod, colorObj){
-  if (!hasVendaOptions(prod)) return [];
-  const basePrice = Number(prod?.preco) || 0;
-  const colorPrice = computeColorPrice(prod, colorObj);
-  const basePromo = (colorPrice.original && colorPrice.final < colorPrice.original)
-    ? colorPrice.final
-    : (Number(prod?.precoPromo) || 0);
-  return prod.opcoesVenda
-    .map((opt) => ({
-      tipo: String(opt.tipo || "").trim(),
-      preco: Number(opt.preco) || 0,
-      precoPromo: (() => {
-        const rawPromo = Number(opt.precoPromo) || 0;
-        if (rawPromo > 0) return rawPromo;
-        if (String(opt.tipo).trim() === "Conjunto" && basePromo > 0 && basePromo < basePrice) {
-          return basePromo;
-        }
-        return 0;
-      })()
-    }))
-    .filter((opt) => opt.tipo && opt.preco >= 0);
-}
 function isVariantSoldOut(prod, colorIndex = 0){
   if (prod && prod.soldOut) return true;
   const cor = (prod && prod.cores) ? prod.cores[colorIndex] : null;
@@ -580,7 +556,6 @@ function getDisplayName(prod, colorIndex){
   return corNome === "branco" ? "Short Sun Moov" : baseName;
 }
 function getCardNote(prod, colorIndex){
-  if (hasVendaOptions(prod)) return "Adicione o conjunto ou a peça individual.";
   if (prod?.nome === "Blusa Duda") return "Preço referente somente à blusa.";
   return getDisplayName(prod, colorIndex) === "Short Sun Moov"
     ? "Preço referente somente ao short."
@@ -1348,19 +1323,6 @@ function renderGrid(){
         return;
       }
 
-      if (hasVendaOptions(p)) {
-        const descAtual = formatShortDetalhamento(resolveDesc(p, selectedColorIndex));
-        openVendaModal({
-          prod: p,
-          corIndex: selectedColorIndex,
-          tamanho: requiresSize() ? selectedSize : undefined,
-          imagem: (p.cores && p.cores[selectedColorIndex]) ? getColorImage(p.cores[selectedColorIndex]) : undefined,
-          descricao: descAtual,
-          sourceEl: artigo.querySelector(".product-card__media img") || artigo
-        });
-        return;
-      }
-
       const priceNow = computeColorPrice(p, (p.cores||[])[selectedColorIndex]).final;
 
       const descAtual = formatShortDetalhamento(resolveDesc(p, selectedColorIndex));
@@ -1458,188 +1420,6 @@ function enableGridCarousel(options = {}) {
 }
 function attachCarouselAfterRender() {
   enableGridCarousel();
-}
-
-/* ------------------------------------------------------------
-   Modal de escolha (Conjunto/Top/Legging)
------------------------------------------------------------- */
-let vendaModalState = null;
-function openVendaModal({ prod, corIndex = 0, tamanho, imagem, descricao, sourceEl }){
-  const modal = el("#vendaModal");
-  const corSelecionada = (prod && prod.cores && prod.cores[corIndex]) ? prod.cores[corIndex] : null;
-  const options = getVendaOptions(prod, corSelecionada);
-  if (!modal || !options.length) return;
-
-  const produtoModal = el("#modal");
-  if (produtoModal && produtoModal.open) fecharModal();
-
-  const titulo = el("#vendaTitle");
-  if (titulo) titulo.textContent = getDisplayName(prod, corIndex);
-
-  const metaBits = [
-    prod.cores && prod.cores[corIndex] ? `Cor: ${prod.cores[corIndex].nome}` : null,
-    tamanho ? `Tamanho: ${tamanho}` : null
-  ].filter(Boolean);
-  const meta = el("#vendaMeta");
-  if (meta) meta.textContent = metaBits.join(" | ");
-
-  const optionsWrap = el("#vendaOptions");
-  if (optionsWrap) {
-    optionsWrap.innerHTML = options.map((opt) => {
-      const promo = Number(opt.precoPromo) || 0;
-      const hasPromo = promo > 0 && promo < opt.preco;
-      const priceHtml = hasPromo
-        ? `<span class="venda-option__price"><s>${formatBRL(opt.preco)}</s> ${formatBRL(promo)}</span>`
-        : `<span class="venda-option__price">${formatBRL(opt.preco)}</span>`;
-      const priceValue = hasPromo ? promo : opt.preco;
-      return `
-        <div class="venda-option" data-tipo="${opt.tipo}" data-preco="${priceValue}">
-          <div class="venda-option__info">
-            <strong>${opt.tipo}</strong>
-            ${priceHtml}
-          </div>
-          <div class="venda-option__qty">
-            <label>Qtd</label>
-            <input type="number" min="0" max="10" value="0" inputmode="numeric">
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  if (optionsWrap) {
-    const nomeProduto = String(prod?.nome || "").trim().toLowerCase();
-    const tamanhoNorm = String(tamanho || "").trim().toUpperCase();
-    const bloqueiaConjuntoTop = nomeProduto === "conjunto cacau"
-      && (tamanhoNorm === "P" || tamanhoNorm === "GG");
-    const bloqueiaConjuntoShort = (nomeProduto === "conjunto cacau" || nomeProduto === "conjunto manteiga")
-      && tamanhoNorm === "M";
-    if (bloqueiaConjuntoTop || bloqueiaConjuntoShort) {
-      optionsWrap.querySelectorAll(".venda-option").forEach((row) => {
-        const tipo = row.dataset.tipo;
-        const disableForTop = bloqueiaConjuntoTop && (tipo === "Conjunto" || tipo === "Top");
-        const disableForShort = bloqueiaConjuntoShort && (tipo === "Conjunto" || tipo === "Short");
-        if (disableForTop || disableForShort) {
-          row.dataset.disabled = "true";
-          row.classList.add("venda-option--disabled");
-          const input = row.querySelector("input");
-          if (input) {
-            input.value = "0";
-            input.disabled = true;
-          }
-        }
-      });
-    }
-  }
-
-  const totalEl = el("#vendaTotal");
-  const recalcTotal = () => {
-    if (!optionsWrap || !totalEl) return;
-    let total = 0;
-    optionsWrap.querySelectorAll(".venda-option").forEach((row) => {
-      const preco = Number(row.dataset.preco) || 0;
-      const qtyInput = row.querySelector("input");
-      const qty = Math.max(0, Number(qtyInput?.value) || 0);
-      total += preco * qty;
-    });
-    totalEl.textContent = formatBRL(total);
-  };
-
-  optionsWrap?.querySelectorAll("input").forEach((input) => {
-    input.addEventListener("input", recalcTotal);
-  });
-  recalcTotal();
-
-  vendaModalState = {
-    prod,
-    corIndex,
-    tamanho,
-    imagem,
-    descricao,
-    sourceEl
-  };
-
-  if (typeof modal.showModal === "function") {
-    if (!modal.open) modal.showModal();
-  }
-  modal.classList.add("show");
-  modal.setAttribute("aria-hidden","false");
-  const closeBtn = el("#closeVendaModal");
-  if (closeBtn) closeBtn.focus();
-}
-function closeVendaModal(){
-  const modal = el("#vendaModal");
-  if (!modal) return;
-  if (typeof modal.close === "function" && modal.open) {
-    modal.close();
-  } else {
-    modal.classList.remove("show");
-    modal.setAttribute("aria-hidden","true");
-  }
-  vendaModalState = null;
-}
-const closeVendaBtn = el("#closeVendaModal");
-if (closeVendaBtn) closeVendaBtn.onclick = closeVendaModal;
-const vendaModalEl = el("#vendaModal");
-if (vendaModalEl) {
-  vendaModalEl.addEventListener("close", () => {
-    vendaModalEl.classList.remove("show");
-    vendaModalEl.setAttribute("aria-hidden","true");
-    vendaModalState = null;
-  });
-}
-const vendaAddBtn = el("#vendaAddBtn");
-if (vendaAddBtn) {
-  vendaAddBtn.addEventListener("click", () => {
-    if (!vendaModalState) return;
-    const { prod, corIndex, tamanho, imagem, descricao, sourceEl } = vendaModalState;
-    const optionsWrap = el("#vendaOptions");
-    if (!optionsWrap) return;
-
-    let totalQty = 0;
-    const nomeProduto = String(prod?.nome || "").trim().toLowerCase();
-    const tamanhoNorm = String(tamanho || "").trim().toUpperCase();
-    const bloqueiaConjuntoTop = nomeProduto === "conjunto cacau"
-      && (tamanhoNorm === "P" || tamanhoNorm === "GG");
-    const bloqueiaConjuntoShort = (nomeProduto === "conjunto cacau" || nomeProduto === "conjunto manteiga")
-      && tamanhoNorm === "M";
-    optionsWrap.querySelectorAll(".venda-option").forEach((row) => {
-      const tipo = row.dataset.tipo;
-      if (bloqueiaConjuntoTop && (tipo === "Conjunto" || tipo === "Top")) {
-        return;
-      }
-      if (bloqueiaConjuntoShort && (tipo === "Conjunto" || tipo === "Short")) {
-        return;
-      }
-      if (row.dataset.disabled === "true") return;
-      const preco = Number(row.dataset.preco) || 0;
-      const qtyInput = row.querySelector("input");
-      const qty = Math.max(0, Number(qtyInput?.value) || 0);
-      if (!qty) return;
-      totalQty += qty;
-      addCarrinho({
-        productId: prod.id,
-        colorIndex: corIndex,
-        nome: getDisplayName(prod, corIndex),
-        categoria: prod.categoria,
-        preco,
-        quantidade: qty,
-        tipoSelecionado: tipo,
-        corSelecionada: (prod.cores && prod.cores[corIndex]) ? prod.cores[corIndex].nome : undefined,
-        tamanhoSelecionado: tamanho,
-        imagemSelecionada: imagem,
-        descricaoCurta: descricao
-      }, sourceEl);
-    });
-
-    if (totalQty === 0) {
-      alert("Escolha a quantidade do conjunto ou das peças individuais.");
-      return;
-    }
-
-    closeVendaModal();
-    openCart();
-  });
 }
 
 /* ------------------------------------------------------------
@@ -1792,19 +1572,6 @@ function abrirModal(prodOrIndex){
 
     if (!canAdd){
       alert("Selecione um tamanho disponível para essa cor.");
-      return;
-    }
-
-    if (hasVendaOptions(produtoAtual)) {
-      const descricaoCurta = formatShortDetalhamento(resolveDesc(produtoAtual, corIndexAtual));
-      openVendaModal({
-        prod: produtoAtual,
-        corIndex: corIndexAtual,
-        tamanho: requiresSize ? tamanhoAtual : undefined,
-        imagem: cor ? getColorImage(cor) : undefined,
-        descricao: descricaoCurta,
-        sourceEl: el(".modal__media img") || el("#modalImg") || el("#modal")
-      });
       return;
     }
 
@@ -2159,9 +1926,7 @@ if (backdrop && cart) backdrop.addEventListener("click", closeCart);
 document.addEventListener("keydown", (e)=> {
   if (e.key === "Escape") {
     const dlg = el("#checkoutModal");
-    const vendaDlg = el("#vendaModal");
     if (dlg && dlg.open) closeCheckoutModal();
-    else if (vendaDlg && vendaDlg.open) closeVendaModal();
     else if (cart && cart.classList.contains("show")) closeCart();
   }
 });

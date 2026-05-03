@@ -337,16 +337,15 @@
     "id": 3
   },
   {
-    "nome": "Top e Legging Paty",
-    "categoria": "Conjunto Legging",
-    "preco": 149.9,
+    "nome": "Top Paty",
+    "categoria": "Top",
+    "preco": 1,
     "tamanhos": [
       "P",
       "M",
       "G",
       "GG"
     ],
-    "soldOut": true,
     "desc": {
       "tecido": "Poliamida com elastano",
       "tecnologias": [
@@ -357,9 +356,8 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "recortes": "Top com sustentação para treino e dia a dia",
       "extras": [
-        "Bolsos laterais",
         "busto forrado",
         "toque macio",
         "alças reguláveis"
@@ -445,13 +443,123 @@
         "soldOut": true
       }
     ],
-    "id": 4
+    "id": 33,
+    "ativo": true
   },
   {
-    "nome": "Top e Short Sófia",
-    "categoria": "Conjunto Short",
-    "preco": 129.9,
-    "soldOut": true,
+    "nome": "Legging Paty",
+    "categoria": "Legging",
+    "preco": 1,
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Legging com cintura alta",
+      "extras": [
+        "Bolsos laterais",
+        "busto forrado",
+        "toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Azul",
+        "imagem": "image/Conjunto_Calca/azul1.jpg",
+        "tamanhos": [
+          "P"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Azul",
+        "imagem": "image/Conjunto_Calca/azul2.jpg",
+        "tamanhos": [
+          "P"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Cinza",
+        "imagem": "image/Conjunto_Calca/cinza1.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "GG"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Cinza",
+        "imagem": "image/Conjunto_Calca/cinza2.jpg",
+        "tamanhos": [
+          "P",
+          "M",
+          "GG"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Grafite",
+        "imagem": "image/Conjunto_Calca/grafite1.jpg",
+        "tamanhos": [
+          "P",
+          "M"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Grafite",
+        "imagem": "image/Conjunto_Calca/grafite2.jpg",
+        "tamanhos": [
+          "P",
+          "M"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Verde",
+        "imagem": "image/Conjunto_Calca/verde1.jpg",
+        "tamanhos": [
+          "P",
+          "GG"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Verde",
+        "imagem": "image/Conjunto_Calca/verde2.jpg",
+        "tamanhos": [
+          "P",
+          "GG"
+        ],
+        "soldOut": true
+      }
+    ],
+    "id": 34,
+    "ativo": true
+  },
+  {
+    "nome": "Top Sófia",
+    "categoria": "Top",
+    "preco": 1,
     "tamanhos": [
       "P",
       "M",
@@ -467,7 +575,67 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "recortes": "Top com sustentação para treino e dia a dia",
+      "extras": [
+        "busto forrado",
+        "toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Verde Água",
+        "imagem": "image/Conjunto_Short/verde_agua1.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Verde Água",
+        "imagem": "image/Conjunto_Short/verde_agua2.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Verde Água",
+        "imagem": "image/Conjunto_Short/verde_agua3.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      }
+    ],
+    "id": 35,
+    "ativo": true
+  },
+  {
+    "nome": "Short Sófia",
+    "categoria": "Short",
+    "preco": 1,
+    "tamanhos": [
+      "P",
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short com cintura alta",
       "extras": [
         "Bolsos laterais",
         "busto forrado",
@@ -506,13 +674,13 @@
         ]
       }
     ],
-    "id": 7
+    "id": 36,
+    "ativo": true
   },
   {
-    "nome": "Top e Short Paty",
-    "categoria": "Conjunto Short",
-    "preco": 129.9,
-    "soldOut": true,
+    "nome": "Top Paty (8)",
+    "categoria": "Top",
+    "preco": 1,
     "tamanhos": [
       "P",
       "M",
@@ -529,9 +697,8 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "recortes": "Top com sustentação para treino e dia a dia",
       "extras": [
-        "Bolsos laterais",
         "busto forrado",
         "alças reguláveis",
         "toque macio"
@@ -627,12 +794,133 @@
         }
       }
     ],
-    "id": 8
+    "id": 37,
+    "ativo": true
   },
   {
-    "nome": "Top e Short Sun Moov",
-    "categoria": "Conjunto Short",
-    "preco": 79.9,
+    "nome": "Short Paty",
+    "categoria": "Short",
+    "preco": 1,
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short com cintura alta",
+      "extras": [
+        "Bolsos laterais",
+        "busto forrado",
+        "toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Cinza",
+        "imagem": "image/Conjunto_Short/cinza1.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Cinza",
+        "imagem": "image/Conjunto_Short/cinza2.jpg",
+        "tamanhos": [
+          "M",
+          "G"
+        ]
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/preto1.jpg",
+        "tamanhos": [
+          "G",
+          "GG"
+        ],
+        "desc": {
+          "tecido": "Poliamida com elastano",
+          "tecnologias": [
+            "UPF 50+",
+            "4-way stretch",
+            "secagem rápida",
+            "antiodor"
+          ],
+          "compressao": "Alta",
+          "transparencia": "Zero",
+          "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+          "extras": [
+            "Bolsos laterais",
+            "busto forrado",
+            "alças reguláveis",
+            "toque macio",
+            "Peso ~315 g (G/GG)"
+          ],
+          "indicacao": [
+            "treino",
+            "corrida",
+            "yoga",
+            "dia a dia"
+          ]
+        }
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/preto2.jpg",
+        "tamanhos": [
+          "G",
+          "GG"
+        ],
+        "desc": {
+          "tecido": "Poliamida com elastano",
+          "tecnologias": [
+            "UPF 50+",
+            "4-way stretch",
+            "secagem rápida",
+            "antiodor"
+          ],
+          "compressao": "Alta",
+          "transparencia": "Zero",
+          "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+          "extras": [
+            "Bolsos laterais",
+            "busto forrado",
+            "alças reguláveis",
+            "toque macio",
+            "Peso ~315 g (G/GG)"
+          ],
+          "indicacao": [
+            "treino",
+            "corrida",
+            "yoga",
+            "dia a dia"
+          ]
+        }
+      }
+    ],
+    "id": 38,
+    "ativo": true
+  },
+  {
+    "nome": "Top Sun Moov",
+    "categoria": "Top",
+    "preco": 1,
     "tamanhos": [
       "P",
       "M",
@@ -648,7 +936,96 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Recortes estratégicos na região íntima; costuras reforçadas",
+      "recortes": "Top com sustentação para treino e dia a dia",
+      "extras": [
+        "Peça forrada",
+        "toque macio"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "yoga",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Branco",
+        "imagem": "image/Conjunto_Short/sunmoov_branco_0355.jpg",
+        "tamanhos": [
+          "P"
+        ]
+      },
+      {
+        "nome": "Branco",
+        "imagem": "image/Conjunto_Short/sunmoov_branco_0356.jpg",
+        "tamanhos": [
+          "P"
+        ]
+      },
+      {
+        "nome": "Branco",
+        "imagem": "image/Conjunto_Short/sunmoov_branco_0357.jpg",
+        "tamanhos": [
+          "P"
+        ]
+      },
+      {
+        "nome": "Chocolate",
+        "imagem": "image/Conjunto_Short/sunmov_chocolate2.jpg",
+        "tamanhos": [
+          "M"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Chocolate",
+        "imagem": "image/Conjunto_Short/sunmov_chocolate2.jpg",
+        "tamanhos": [
+          "M"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/sunmov_preto1.jpg",
+        "tamanhos": [
+          "M"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/sunmov_preto2.jpg",
+        "tamanhos": [
+          "M"
+        ],
+        "soldOut": true
+      }
+    ],
+    "id": 39,
+    "ativo": true
+  },
+  {
+    "nome": "Short Sun Moov",
+    "categoria": "Short",
+    "preco": 1,
+    "tamanhos": [
+      "P",
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "UPF 50+",
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short com cintura alta",
       "extras": [
         "Bolso interno",
         "Bolsos laterais",
@@ -718,29 +1095,13 @@
         "soldOut": true
       }
     ],
-    "id": 9
+    "id": 40,
+    "ativo": true
   },
   {
-    "nome": "Conjunto Manteiga",
-    "categoria": "Conjunto Short",
-    "preco": 129.9,
-    "precoPromo": 90.9,
-    "opcoesVenda": [
-      {
-        "tipo": "Conjunto",
-        "preco": 129.9
-      },
-      {
-        "tipo": "Top",
-        "preco": 59.9,
-        "precoPromo": 40.9
-      },
-      {
-        "tipo": "Short",
-        "preco": 70.0,
-        "precoPromo": 54.9
-      }
-    ],
+    "nome": "Top Manteiga",
+    "categoria": "Top",
+    "preco": 59.9,
     "tamanhos": [
       "M"
     ],
@@ -753,10 +1114,47 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Cós alto estruturado com costuras reforçadas",
+      "recortes": "Top com sustentação para treino e dia a dia",
       "extras": [
         "Top com alças reguláveis",
-        "Top forrado com entrada para bojo",
+        "Top forrado com entrada para bojo"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Manteiga",
+        "imagem": "image/Top/top_manteiga.jpeg",
+        "tamanhos": [
+          "M"
+        ]
+      }
+    ],
+    "id": 25,
+    "precoPromo": 40.9
+  },
+  {
+    "nome": "Short Manteiga",
+    "categoria": "Short",
+    "preco": 70,
+    "tamanhos": [
+      "M"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short com cintura alta",
+      "extras": [
         "Short forrado",
         "Cós alto"
       ],
@@ -789,30 +1187,13 @@
         ]
       }
     ],
-    "id": 10,
-    "soldOut": false
+    "id": 26,
+    "precoPromo": 54.9
   },
   {
-    "nome": "Conjunto Cacau",
-    "categoria": "Conjunto Short",
-    "preco": 129.9,
-    "precoPromo": 90.9,
-    "opcoesVenda": [
-      {
-        "tipo": "Conjunto",
-        "preco": 129.9
-      },
-      {
-        "tipo": "Top",
-        "preco": 59.9,
-        "precoPromo": 40.9
-      },
-      {
-        "tipo": "Short",
-        "preco": 70.0,
-        "precoPromo": 54.9
-      }
-    ],
+    "nome": "Top Cacau",
+    "categoria": "Top",
+    "preco": 59.9,
     "tamanhos": [
       "M"
     ],
@@ -825,10 +1206,47 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Cós alto estruturado com costuras reforçadas",
+      "recortes": "Top com sustentação para treino e dia a dia",
       "extras": [
         "Top com alças reguláveis",
-        "Top forrado com entrada para bojo",
+        "Top forrado com entrada para bojo"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Cacau",
+        "imagem": "image/Top/top_chocolate.jpeg",
+        "tamanhos": [
+          "M"
+        ]
+      }
+    ],
+    "id": 27,
+    "precoPromo": 40.9
+  },
+  {
+    "nome": "Short Cacau",
+    "categoria": "Short",
+    "preco": 70,
+    "tamanhos": [
+      "M"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short com cintura alta",
+      "extras": [
         "Short forrado",
         "Cós alto"
       ],
@@ -861,18 +1279,17 @@
         ]
       }
     ],
-    "id": 11
+    "id": 28,
+    "precoPromo": 54.9
   },
   {
-    "nome": "Conjunto Sun Moov Rosa",
-    "categoria": "Conjunto Short",
-    "preco": 129.9,
-    "precoPromo": 123.41,
+    "nome": "Top Sun Moov Rosa",
+    "categoria": "Top",
+    "preco": 1,
     "tamanhos": [
       "M",
       "G"
     ],
-    "soldOut": true,
     "desc": {
       "tecido": "Poliamida com elastano",
       "tecnologias": [
@@ -882,10 +1299,68 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Cós alto estruturado com costuras reforçadas",
+      "recortes": "Top com sustentação para treino e dia a dia",
       "extras": [
         "Top com alças reguláveis",
-        "Top forrado com entrada para bojo",
+        "Top forrado com entrada para bojo"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Sun Moov Rosa",
+        "imagem": "image/Conjunto_Short/sunmoov_rosa1.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Sun Moov Rosa",
+        "imagem": "image/Conjunto_Short/sunmoov_rosa2.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Sun Moov Rosa",
+        "imagem": "image/Conjunto_Short/sunmoov_rosa3.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      }
+    ],
+    "id": 41,
+    "ativo": true
+  },
+  {
+    "nome": "Short Sun Moov Rosa",
+    "categoria": "Short",
+    "preco": 1,
+    "tamanhos": [
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short com cintura alta",
+      "extras": [
         "Short forrado",
         "Cós alto"
       ],
@@ -924,18 +1399,17 @@
         "soldOut": true
       }
     ],
-    "id": 12
+    "id": 42,
+    "ativo": true
   },
   {
-    "nome": "Conjunto Aurora",
-    "categoria": "Conjunto Short",
-    "preco": 129.9,
-    "precoPromo": 123.41,
+    "nome": "Top Aurora",
+    "categoria": "Top",
+    "preco": 1,
     "tamanhos": [
       "M",
       "G"
     ],
-    "soldOut": true,
     "desc": {
       "tecido": "Poliamida com elastano",
       "tecnologias": [
@@ -945,10 +1419,59 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Cós alto estruturado com costuras reforçadas",
+      "recortes": "Top com sustentação para treino e dia a dia",
       "extras": [
         "Top com alças reguláveis",
-        "Top forrado com entrada para bojo",
+        "Top forrado com entrada para bojo"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
+      {
+        "nome": "Aurora",
+        "imagem": "image/Conjunto_Short/conjunto_aurora1.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      },
+      {
+        "nome": "Aurora",
+        "imagem": "image/Conjunto_Short/conjunto_aurora2.jpeg",
+        "tamanhos": [
+          "M",
+          "G"
+        ],
+        "soldOut": true
+      }
+    ],
+    "id": 43,
+    "ativo": true
+  },
+  {
+    "nome": "Short Aurora",
+    "categoria": "Short",
+    "preco": 1,
+    "tamanhos": [
+      "M",
+      "G"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida",
+        "antiodor"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short com cintura alta",
+      "extras": [
         "Short forrado",
         "Cós alto"
       ],
@@ -978,13 +1501,14 @@
         "soldOut": true
       }
     ],
-    "id": 13
+    "id": 44,
+    "ativo": true
   },
   {
     "nome": "Top Layla",
-    "categoria": "Conjunto Short",
+    "categoria": "Top",
     "preco": 59.9,
-    "precoPromo": 35.0,
+    "precoPromo": 35,
     "tamanhos": [
       "M",
       "G"
@@ -997,7 +1521,7 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Modelagem que abraça sem apertar",
+      "recortes": "Top com sustentação para treino e dia a dia",
       "extras": [
         "Top forrado",
         "Entrada para bojo",
@@ -1168,7 +1692,7 @@
   {
     "nome": "Blusa Duda",
     "categoria": "Blusa",
-    "preco": 35.0,
+    "preco": 35,
     "tamanhos": [
       "P",
       "M",
@@ -1249,23 +1773,53 @@
     "id": 19
   },
   {
-    "nome": "Conjunto Iris",
-    "categoria": "Conjunto Legging",
-    "preco": 139.9,
-    "opcoesVenda": [
+    "nome": "Top Iris",
+    "categoria": "Top",
+    "preco": 49.9,
+    "tamanhos": [
+      "P",
+      "M",
+      "G",
+      "GG"
+    ],
+    "desc": {
+      "tecido": "Poliamida 300g",
+      "tecnologias": [],
+      "compressao": null,
+      "transparencia": null,
+      "recortes": "Top com sustentação para treino e dia a dia",
+      "extras": [
+        "Forrado",
+        "Top com alça e elástico embutido",
+        "Entrada para bojo"
+      ],
+      "indicacao": [
+        "treino",
+        "dia a dia"
+      ]
+    },
+    "cores": [
       {
-        "tipo": "Conjunto",
-        "preco": 139.9
-      },
-      {
-        "tipo": "Top",
-        "preco": 49.9
-      },
-      {
-        "tipo": "Legging",
-        "preco": 89.9
+        "nome": "Iris",
+        "imagens": [
+          "image/Top/top_iris_1.jpeg",
+          "image/Top/top_iris_2.jpeg",
+          "image/Top/top_iris_3.jpeg"
+        ],
+        "tamanhos": [
+          "P",
+          "M",
+          "G",
+          "GG"
+        ]
       }
     ],
+    "id": 29
+  },
+  {
+    "nome": "Legging Iris",
+    "categoria": "Legging",
+    "preco": 89.9,
     "tamanhos": [
       "P",
       "M",
@@ -1278,9 +1832,7 @@
       "transparencia": null,
       "recortes": "Legging com cintura alta",
       "extras": [
-        "Forrado",
-        "Top com alça e elástico embutido",
-        "Entrada para bojo"
+        "Forrado"
       ],
       "indicacao": [
         "treino",
@@ -1317,27 +1869,13 @@
         "swatch": "#9bb8d4"
       }
     ],
-    "id": 20
+    "id": 30
   },
   {
-    "nome": "Legging Elara + Top Iris",
-    "categoria": "Conjunto Legging",
-    "preco": 144.9,
+    "nome": "Legging Elara",
+    "categoria": "Legging",
+    "preco": 95,
     "lancamento": true,
-    "opcoesVenda": [
-      {
-        "tipo": "Conjunto",
-        "preco": 144.9
-      },
-      {
-        "tipo": "Top",
-        "preco": 49.9
-      },
-      {
-        "tipo": "Legging",
-        "preco": 95.0
-      }
-    ],
     "tamanhos": [
       "P",
       "M",
@@ -1349,10 +1887,8 @@
       "tecnologias": [],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Legging com cintura alta e bolsos laterais",
+      "recortes": "Legging com cintura alta",
       "extras": [
-        "Top Iris forrado com entrada para bojo",
-        "Alças com excelente sustentação",
         "Toque macio"
       ],
       "indicacao": [
@@ -1377,14 +1913,12 @@
         ]
       }
     ],
-    "id": 23
-  }
-  ,
+    "id": 31
+  },
   {
-    "nome": "Conjunto Layla",
-    "categoria": "Conjunto Short",
-    "preco": 134.9,
-    "precoPromo": 95.0,
+    "nome": "Top Layla (21)",
+    "categoria": "Top",
+    "preco": 1,
     "tamanhos": [
       "M"
     ],
@@ -1396,7 +1930,7 @@
       ],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Short com bolso nas laterais",
+      "recortes": "Top com sustentação para treino e dia a dia",
       "extras": [
         "Top forrado",
         "Entrada para bojo",
@@ -1424,27 +1958,58 @@
         ]
       }
     ],
-    "id": 21
+    "id": 45,
+    "ativo": true
   },
   {
-    "nome": "Short Ciclista + Top Iris",
-    "categoria": "Conjunto Short",
-    "preco": 134.9,
-    "lancamento": true,
-    "opcoesVenda": [
+    "nome": "Short Layla",
+    "categoria": "Short",
+    "preco": 1,
+    "tamanhos": [
+      "M"
+    ],
+    "desc": {
+      "tecido": "Poliamida com elastano",
+      "tecnologias": [
+        "4-way stretch",
+        "secagem rápida"
+      ],
+      "compressao": "Média",
+      "transparencia": "Zero",
+      "recortes": "Short com cintura alta",
+      "extras": [
+        "Cintura alta"
+      ],
+      "indicacao": [
+        "treino",
+        "corrida",
+        "dia a dia"
+      ]
+    },
+    "cores": [
       {
-        "tipo": "Conjunto",
-        "preco": 134.9
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/layla_short_0001.jpg",
+        "tamanhos": [
+          "M"
+        ]
       },
       {
-        "tipo": "Top",
-        "preco": 49.9
-      },
-      {
-        "tipo": "Short",
-        "preco": 85.0
+        "nome": "Preto",
+        "imagem": "image/Conjunto_Short/layla_short_0002.jpg",
+        "tamanhos": [
+          "M"
+        ]
       }
     ],
+    "id": 46,
+    "ativo": true
+  },
+  {
+    "nome": "Short Ciclista",
+    "categoria": "Short",
+    "preco": 85,
+    "lancamento": true,
     "tamanhos": [
       "P",
       "M",
@@ -1456,10 +2021,8 @@
       "tecnologias": [],
       "compressao": "Média",
       "transparencia": "Zero",
-      "recortes": "Short ciclista com bolsos laterais",
+      "recortes": "Short com cintura alta",
       "extras": [
-        "Top Iris forrado com entrada para bojo",
-        "Alças com excelente sustentação",
         "Toque macio"
       ],
       "indicacao": [
@@ -1500,6 +2063,6 @@
         ]
       }
     ],
-    "id": 22
+    "id": 32
   }
 ]
