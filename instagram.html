@@ -6,134 +6,123 @@
   <title>Lemoov • Link na bio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700;800&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
   <style>
     :root {
       --green:  #009C3B;
       --yellow: #FFDF00;
       --navy:   #002776;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
+    html, body {
+      height: 100%;
+      overflow: hidden;
       font-family: "Manrope", system-ui, sans-serif;
-      min-height: 100dvh;
-      background: url("image/copa_brasil/copa_brasil_07.jpeg") center top / cover no-repeat fixed;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
     }
 
-    /* gradient escurece só a metade inferior, modelo fica limpa no topo */
-    body::before {
-      content: "";
+    /* fundo fixo — sem parallax bugado no mobile */
+    .bg {
       position: fixed;
       inset: 0;
+      z-index: -2;
+      background: url("image/copa_brasil/copa_brasil_07.jpeg") center top / cover no-repeat;
+    }
+    .bg-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
       background: linear-gradient(
         180deg,
-        rgba(0,0,0,0.00)  0%,
-        rgba(0,0,0,0.00) 35%,
-        rgba(0,39,118,0.70) 65%,
-        rgba(0,20,70,0.96) 100%
+        rgba(0,0,0,0.08)   0%,
+        rgba(0,0,0,0.00)  28%,
+        rgba(0,39,118,0.62) 62%,
+        rgba(0,15,60,0.96) 100%
       );
-      pointer-events: none;
-      z-index: 0;
     }
 
+    /* frame ocupa toda a tela, sem scroll */
     .frame {
       position: relative;
       z-index: 1;
       width: min(480px, 100%);
-      min-height: 100dvh;
+      height: 100dvh;
+      margin: 0 auto;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: clamp(20px, 4vh, 36px) 20px 40px;
+      justify-content: space-between;
+      padding: clamp(18px, 4vh, 32px) 20px clamp(20px, 4vh, 36px);
     }
 
-    /* ── Logo pill ── */
-    .logo-wrap {
+    /* ── Logo inline SVG ── */
+    .logo-mark {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 10px 22px;
-      border-radius: 999px;
-      background: rgba(0, 39, 118, 0.55);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1.5px solid rgba(255, 223, 0, 0.35);
-      box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+      gap: 2px;
+      /* drop-shadow garante símbolo branco visível sobre o fundo claro da foto */
+      filter:
+        drop-shadow(0 1px 6px rgba(0,0,0,0.45))
+        drop-shadow(0 0 2px rgba(0,0,0,0.3));
     }
-    .logo-wrap img {
-      height: clamp(36px, 8vw, 48px);
-      width: auto;
+    .logo-symbol {
       display: block;
-      filter: brightness(1.1) drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+      width: clamp(54px, 14vw, 68px);
+      height: auto;
+    }
+    .logo-wordmark {
+      font-size: clamp(30px, 7.5vw, 38px);
+      font-weight: 300;
+      line-height: 1;
+      letter-spacing: -0.5px;
+    }
+    .logo-le   { color: var(--yellow); }
+    .logo-moov { color: var(--green);  }
+    .logo-fitness {
+      font-family: "Dancing Script", cursive;
+      font-size: clamp(14px, 3.5vw, 18px);
+      font-weight: 700;
+      color: var(--navy);
+      align-self: flex-end;
+      margin-top: -4px;
+      margin-right: 2px;
     }
 
-    /* ── Badge Copa Brasil ── */
+    /* ── Badge ── */
     .badge {
-      margin-top: 14px;
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      padding: 5px 15px 5px 12px;
+      padding: 5px 14px 5px 11px;
       border-radius: 999px;
-      font-size: 11.5px;
+      font-size: 11px;
       font-weight: 800;
       letter-spacing: 0.07em;
       text-transform: uppercase;
       color: var(--navy);
       background: var(--yellow);
-      box-shadow: 0 4px 18px rgba(255,223,0,0.5);
-    }
-
-    /* ── Spacer empurra links para baixo da modelo ── */
-    .spacer { flex: 1; min-height: clamp(180px, 35vh, 320px); }
-
-    /* ── Headline ── */
-    .headline {
-      width: 100%;
-      text-align: center;
-      margin-bottom: 22px;
-    }
-    .headline__title {
-      font-size: clamp(22px, 5.5vw, 28px);
-      font-weight: 800;
-      color: #ffffff;
-      line-height: 1.15;
-      text-shadow: 0 2px 12px rgba(0,0,0,0.4);
-      letter-spacing: -0.01em;
-    }
-    .headline__title span {
-      color: var(--yellow);
-    }
-    .headline__sub {
-      margin-top: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      color: rgba(255,255,255,0.8);
-      text-shadow: 0 1px 6px rgba(0,0,0,0.5);
-      letter-spacing: 0.02em;
+      box-shadow: 0 4px 18px rgba(255,223,0,0.55);
     }
 
     /* ── Links ── */
     .links {
       width: 100%;
       display: grid;
-      gap: 12px;
+      gap: 10px;
     }
 
     .cta {
       display: grid;
-      grid-template-columns: 40px 1fr 28px;
+      grid-template-columns: 36px 1fr 22px;
       align-items: center;
       gap: 4px;
-      padding: 14px 16px;
-      border-radius: 18px;
+      padding: 10px 14px;
+      border-radius: 14px;
       text-decoration: none;
       font-weight: 700;
-      font-size: 15px;
+      font-size: 14.5px;
       letter-spacing: 0.01em;
       transition: transform 0.18s ease, box-shadow 0.18s ease;
       border: none;
@@ -142,62 +131,50 @@
 
     .cta--green {
       background: linear-gradient(120deg, #00b845 0%, #007a2f 100%);
-      color: #ffffff;
-      box-shadow: 0 6px 22px rgba(0,156,59,0.50);
+      color: #fff;
+      box-shadow: 0 5px 18px rgba(0,156,59,0.50);
     }
-    .cta--green:hover { box-shadow: 0 10px 30px rgba(0,156,59,0.60); transform: translateY(-2px); }
+    .cta--green:hover  { transform: translateY(-2px); box-shadow: 0 8px 26px rgba(0,156,59,0.60); }
 
     .cta--yellow {
       background: linear-gradient(120deg, #FFE833 0%, #f0cc00 100%);
       color: var(--navy);
-      box-shadow: 0 6px 22px rgba(255,223,0,0.45);
+      box-shadow: 0 5px 18px rgba(255,223,0,0.45);
     }
-    .cta--yellow:hover { box-shadow: 0 10px 30px rgba(255,223,0,0.55); transform: translateY(-2px); }
+    .cta--yellow:hover { transform: translateY(-2px); box-shadow: 0 8px 26px rgba(255,223,0,0.55); }
 
     .cta--navy {
       background: linear-gradient(120deg, #003ba3 0%, var(--navy) 100%);
-      color: #ffffff;
-      box-shadow: 0 6px 22px rgba(0,39,118,0.50);
+      color: #fff;
+      box-shadow: 0 5px 18px rgba(0,39,118,0.50);
     }
-    .cta--navy:hover { box-shadow: 0 10px 30px rgba(0,39,118,0.60); transform: translateY(-2px); }
+    .cta--navy:hover   { transform: translateY(-2px); box-shadow: 0 8px 26px rgba(0,39,118,0.60); }
 
     .cta__icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 10px;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
       display: grid;
       place-items: center;
       background: rgba(255,255,255,0.18);
       flex-shrink: 0;
     }
     .cta--yellow .cta__icon { background: rgba(0,39,118,0.12); }
-    .cta__icon svg { width: 19px; height: 19px; display: block; }
-
+    .cta__icon svg { width: 17px; height: 17px; display: block; }
     .cta__label { text-align: center; }
-
-    .cta__arrow {
-      font-size: 18px;
-      text-align: right;
-      opacity: 0.6;
-      line-height: 1;
-    }
+    .cta__arrow { font-size: 17px; text-align: right; opacity: 0.55; line-height: 1; }
     .cta--yellow .cta__arrow { color: var(--navy); }
 
     /* ── Divider ── */
     .divider {
-      width: 100%;
       display: flex;
       align-items: center;
       gap: 10px;
-      margin: 4px 0;
+      margin: 2px 0;
     }
-    .divider__line {
-      flex: 1;
-      height: 1px;
-      background: rgba(255,255,255,0.15);
-    }
+    .divider__line { flex: 1; height: 1px; background: rgba(255,255,255,0.18); }
     .divider__text {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -206,35 +183,50 @@
 
     /* ── Footer ── */
     .footer-note {
-      margin-top: 20px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 500;
       text-align: center;
-      color: rgba(255,255,255,0.65);
+      color: rgba(255,255,255,0.6);
       text-shadow: 0 1px 6px rgba(0,0,0,0.5);
-    }
-
-    @media (max-width: 380px) {
-      .cta { font-size: 14px; padding: 13px 14px; }
     }
   </style>
 </head>
 <body>
+
+  <div class="bg" aria-hidden="true"></div>
+  <div class="bg-overlay" aria-hidden="true"></div>
+
   <main class="frame">
 
-    <div class="logo-wrap">
-      <img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness">
+    <!-- Logo reproduced in SVG com cores da bandeira -->
+    <div class="logo-mark">
+      <svg class="logo-symbol" viewBox="0 0 100 62" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- cabeça -->
+        <circle cx="50" cy="8" r="4.5" fill="white"/>
+        <!-- braço esquerdo -->
+        <path d="M47 12 C38 19 20 26 5 48"
+              stroke="white" stroke-width="3.2" fill="none"
+              stroke-linecap="round"/>
+        <!-- braço direito -->
+        <path d="M53 12 C63 19 76 28 94 40"
+              stroke="white" stroke-width="3.2" fill="none"
+              stroke-linecap="round"/>
+        <!-- loop corpo (lóbulo esquerdo) -->
+        <path d="M22 46 C28 30 42 36 42 46 C42 56 56 60 64 46"
+              stroke="white" stroke-width="3.2" fill="none"
+              stroke-linecap="round"/>
+      </svg>
+
+      <div class="logo-wordmark">
+        <span class="logo-le">Le</span><span class="logo-moov">moov</span>
+      </div>
+      <div class="logo-fitness">Fitness</div>
     </div>
 
-    <span class="badge">🇧🇷 Coleção Copa Brasil 2026</span>
+    <!-- Badge -->
+    <span class="badge">🇧🇷 Coleção Seleção Lemoov 2026</span>
 
-    <div class="spacer"></div>
-
-    <div class="headline">
-      <p class="headline__title">Moda fitness <span>premium</span><br>com a alma do Brasil.</p>
-      <p class="headline__sub">Escolha seu look e treine com estilo</p>
-    </div>
-
+    <!-- Botões -->
     <div class="links">
 
       <a class="cta cta--green" href="https://lemoov.com.br/catalogo-produtos.html" target="_blank" rel="noopener">
@@ -280,7 +272,7 @@
 
     </div>
 
-    <p class="footer-note">Atendimento seg–sex · 9h às 18h</p>
+    <p class="footer-note">Atendimento seg–sex · 8h às 18h</p>
 
   </main>
 </body>
