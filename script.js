@@ -561,6 +561,24 @@ function setMainImageForProduct(imgEl, prod, colorIndex, index = 0) {
   imgEl.dataset.imgCount = String(imgs.length);
   return true;
 }
+let swatchTooltipEl = null;
+function showSwatchTooltip(button) {
+  const label = button?.dataset?.colorName || button?.getAttribute("aria-label") || "";
+  if (!label) return;
+  if (!swatchTooltipEl) {
+    swatchTooltipEl = document.createElement("div");
+    swatchTooltipEl.className = "color-tooltip";
+    document.body.appendChild(swatchTooltipEl);
+  }
+  swatchTooltipEl.textContent = label;
+  const rect = button.getBoundingClientRect();
+  swatchTooltipEl.style.left = `${rect.left + rect.width / 2}px`;
+  swatchTooltipEl.style.top = `${Math.max(rect.top - 8, 12)}px`;
+  swatchTooltipEl.hidden = false;
+}
+function hideSwatchTooltip() {
+  if (swatchTooltipEl) swatchTooltipEl.hidden = true;
+}
 function getColorStock(cor){
   return cor && cor.estoque && typeof cor.estoque === "object" && !Array.isArray(cor.estoque)
     ? cor.estoque
@@ -591,10 +609,16 @@ function setMainImage(imgEl, colorObj, index = 0){
   return true;
 }
 function appendSwatchContent(button, colorObj){
+  const colorName = String(colorObj?.nome || "").trim();
+  if (colorName) button.dataset.colorName = colorName;
   const dot = document.createElement("span");
   dot.className = "swatch__dot";
   dot.style.setProperty("--swatch-color", getSwatchColor(colorObj));
   button.appendChild(dot);
+  button.addEventListener("mouseenter", () => showSwatchTooltip(button));
+  button.addEventListener("focus", () => showSwatchTooltip(button));
+  button.addEventListener("mouseleave", hideSwatchTooltip);
+  button.addEventListener("blur", hideSwatchTooltip);
 }
 function isVariantSoldOut(prod, colorIndex = 0){
   if (prod && prod.soldOut) return true;
@@ -1122,6 +1146,21 @@ function computeColorPrice(prod, colorObj){
 
   .product-desc-list{ margin: 8px 0 0; padding-left: 18px; line-height: 1.45; }
   .product-card__desc{ color: var(--text-muted, #666); font-size: .92rem; }
+  .color-tooltip{
+    position: fixed;
+    z-index: 10020;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
+    padding: 6px 9px;
+    border-radius: 999px;
+    background: rgba(6, 29, 25, 0.92);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.18);
+  }
 
   @media (max-width:640px){
     .checkout__grid{ grid-template-columns:1fr; }
@@ -1280,6 +1319,7 @@ function renderGrid(){
           <span class="product-card__badge product-card__badge--launch" data-badge-launch style="display:none;">
             <span class="badge-launch">Lançamento</span>
           </span>
+          <span class="product-card__photo-hint" data-photo-hint>Clique para ver mais fotos</span>
         </figure>
         <div class="product-card__info">
           <h3 class="product-card__name" data-card-name>${getDisplayName(p, selectedColorIndex)}</h3>
@@ -1315,6 +1355,7 @@ function renderGrid(){
     const addBtn = artigo.querySelector("[data-add-quick]");
     const nameEl = artigo.querySelector("[data-card-name]");
     const noteEl = artigo.querySelector("[data-card-note]");
+    const photoHint = artigo.querySelector("[data-photo-hint]");
 
     if ($badgeLaunch) {
       $badgeLaunch.style.display = p.lancamento ? "" : "none";
@@ -1351,9 +1392,17 @@ function renderGrid(){
       }
       $final.textContent = formatBRL(pr.final);
     }
+    function updatePhotoHint(){
+      const imgs = getColorGroupImages(p, selectedColorIndex);
+      const hasMorePhotos = imgs.length > 1;
+      if (photoHint) photoHint.dataset.visible = hasMorePhotos ? "true" : "false";
+      const media = artigo.querySelector(".product-card__media");
+      if (media) media.dataset.clickable = hasMorePhotos ? "true" : "false";
+    }
 
     const mainImage = artigo.querySelector(".product-card__media img");
     if (mainImage) setMainImageForProduct(mainImage, p, 0, 0);
+    updatePhotoHint();
 
     // Cores
     if (p.cores && p.cores.length) {
@@ -1379,6 +1428,7 @@ function renderGrid(){
             }
           }
           updateCardPrice(idx);
+          updatePhotoHint();
           refreshAddButton();
         }, 0, mainImage, (idx)=>{
           const d = resolveDesc(p, idx);
@@ -1402,6 +1452,7 @@ function renderGrid(){
     }
 
     updateCardPrice(0);
+    updatePhotoHint();
     refreshAddButton();
 
     // Botão "Adicionar"

@@ -11,7 +11,7 @@
   <meta property="og:site_name" content="Lemoov Fitness" />
   <meta property="og:locale" content="pt_BR" />
   <meta property="og:image" content="image/Conjunto_Calca/iris_branco_0384.jpg" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -182,20 +182,28 @@
       aspect-ratio: 4 / 5;
       border-radius: 16px 16px 0 0;
     }
+    .catalog-landing .product-card__media[data-clickable="true"] {
+      cursor: pointer;
+    }
     .catalog-landing .product-card__photo-hint {
       position: absolute;
-      right: 7px;
-      bottom: 7px;
+      left: 50%;
+      bottom: 9px;
       z-index: 2;
       display: none;
-      padding: 4px 7px;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: calc(100% - 18px);
+      padding: 6px 10px;
       border-radius: 999px;
       background: rgba(6, 29, 25, 0.78);
       color: #fff;
-      font-size: 0.58rem;
+      font-size: 0.62rem;
       font-weight: 800;
       letter-spacing: 0.04em;
       text-transform: uppercase;
+      line-height: 1.05;
+      text-align: center;
       backdrop-filter: blur(6px);
     }
     .catalog-landing .product-card__photo-hint[data-visible="true"] {
@@ -574,6 +582,6 @@
   </aside>
   <div id="cartBackdrop" class="backdrop"></div>
 
-  <script src="script.js?v=11"></script>
+  <script src="script.js?v=12"></script>
 </body>
 </html>
