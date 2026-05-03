@@ -1126,6 +1126,36 @@ img, video {
   width: 80px;
 }
 
+@media (min-width: 1100px) {
+  .filters-cards {
+    width: min(calc(100vw - 64px), 1880px);
+    margin-left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .filters-cards__grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .filters-cards__grid .collection-card {
+    min-height: clamp(320px, 24vw, 400px);
+  }
+
+  .filters-cards__grid .collection-card .collection-card__content {
+    padding: clamp(16px, 1.6vw, 24px);
+  }
+
+  .filters-cards__grid .collection-card .collection-card__content p {
+    font-size: clamp(0.68rem, 0.72vw, 0.85rem);
+    letter-spacing: 0.2em;
+  }
+
+  .filters-cards__grid .collection-card .collection-card__content h3 {
+    font-size: clamp(1.25rem, 1.75vw, 1.8rem);
+  }
+}
+
 .floating-toggle-group {
   position: fixed;
   bottom: 24px;

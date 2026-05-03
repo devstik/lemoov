@@ -2,14 +2,15 @@
 const WHATS_NUMBER = "558587408457"; // seu número (DDI+DDD+telefone)
 const PIX_KEY = "61000111000100";    // chave PIX (não exibida no checkout)
 const CARD_PAYMENT_LINK = "";        // opcional: link de pagamento p/ cartão. Se vazio, não aparece.
-// Entrega local via Moto Uber (valor combinado no WhatsApp)
-const ORIGIN_CEP = "60360415";
-const ORIGIN_COORDS = { lat: -3.7404691, lng: -38.5897018 };
+// Entrega local via Moto Uber
+const ORIGIN_CEP = "60360760";
+const ORIGIN_COORDS = { lat: -3.7435155, lng: -38.5898999 };
 const ORDER_SEQ_STORAGE_KEY = "lemoovOrderSeq";
 
 const DELIVERY_MODE_LABEL = "Entrega via Moto Uber";
 const DELIVERY_FREE_RADIUS_KM = 2;
-const DELIVERY_FORTALEZA_PRICE = 12;
+const DELIVERY_FORTALEZA_CAUCAIA_PRICE = 12;
+const DELIVERY_MARACANAU_PRICE = 14;
 let freteAtual = 0;
 let cepAtual = "";
 let entregaDisponivel = false;
@@ -170,10 +171,49 @@ function normalizeCityName(value) {
     .toLowerCase();
 }
 
-function isFortalezaCity(city, uf) {
+function isCearaCity(city, uf, cityName) {
   if (!city || !uf) return false;
   if (String(uf).trim().toUpperCase() !== "CE") return false;
-  return normalizeCityName(city) === normalizeCityName("Fortaleza");
+  return normalizeCityName(city) === normalizeCityName(cityName);
+}
+function getLocalDeliveryPrice(city, uf) {
+  if (isCearaCity(city, uf, "Fortaleza") || isCearaCity(city, uf, "Caucaia")) {
+    return DELIVERY_FORTALEZA_CAUCAIA_PRICE;
+  }
+  if (isCearaCity(city, uf, "Maracanaú") || isCearaCity(city, uf, "Maracanau")) {
+    return DELIVERY_MARACANAU_PRICE;
+  }
+  return null;
+}
+function getDeliveryModeLabel(mode) {
+  if (mode === "uber_free") return `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
+  if (mode === "local_12") return `R$ ${DELIVERY_FORTALEZA_CAUCAIA_PRICE},00`;
+  if (mode === "local_14") return `R$ ${DELIVERY_MARACANAU_PRICE},00`;
+  return "Consultar via WhatsApp";
+}
+function isFixedFreteMode(mode = freteModo) {
+  return mode === "uber_free" || mode === "local_12" || mode === "local_14";
+}
+function buildPaymentItems() {
+  const items = buildCartItems();
+  if (entregaDisponivel && isFixedFreteMode() && freteAtual > 0) {
+    items.push({
+      item_name: "Frete",
+      item_category: "Entrega",
+      price: freteAtual,
+      quantity: 1
+    });
+  }
+  return items;
+}
+function buildCartItems() {
+  const items = carrinho.map(p => ({
+    item_name: p.nome,
+    item_category: p.categoria,
+    price: p.preco,
+    quantity: getItemQty(p)
+  }));
+  return items;
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -1865,14 +1905,14 @@ function atualizarCart(){
       freteEl.textContent = "Informe o CEP";
     } else if (freteModo === "uber_free") {
       freteEl.textContent = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
-    } else if (freteModo === "fortaleza") {
-      freteEl.textContent = `R$ ${DELIVERY_FORTALEZA_PRICE},00`;
+    } else if (freteModo === "local_12" || freteModo === "local_14") {
+      freteEl.textContent = getDeliveryModeLabel(freteModo);
     } else {
-      freteEl.textContent = "Via WhatsApp";
+      freteEl.textContent = "Consultar via WhatsApp";
     }
   }
 
-  const fixedFrete = freteModo === "uber_free" || freteModo === "fortaleza";
+  const fixedFrete = isFixedFreteMode();
   const totalLabel = entregaDisponivel
     ? (fixedFrete ? formatBRL(totalComFrete) : `${formatBRL(totalComFrete)} + frete`)
     : formatBRL(totalComFrete);
@@ -2280,15 +2320,6 @@ async function calcularEntregaPorCEP(cepRaw) {
     return;
   }
 
-  const inFortaleza = city && uf && isFortalezaCity(city, uf);
-
-  if (!inFortaleza && city && uf) {
-    freteModo = "whatsapp";
-    if (freteMsg) freteMsg.textContent = "Fora de Fortaleza — frete calculado e enviado via WhatsApp.";
-    atualizarCart();
-    return;
-  }
-
   if (hasCoords && origin) {
     const km = haversineKm(origin.lat, origin.lng, coords.lat, coords.lng);
     if (km <= DELIVERY_FREE_RADIUS_KM) {
@@ -2300,9 +2331,25 @@ async function calcularEntregaPorCEP(cepRaw) {
     }
   }
 
-  freteModo = "fortaleza";
-  freteAtual = DELIVERY_FORTALEZA_PRICE;
-  if (freteMsg) freteMsg.textContent = `Entrega em Fortaleza — R$ ${DELIVERY_FORTALEZA_PRICE},00.`;
+  const localPrice = getLocalDeliveryPrice(city, uf);
+  if (localPrice === DELIVERY_FORTALEZA_CAUCAIA_PRICE) {
+    freteModo = "local_12";
+    freteAtual = DELIVERY_FORTALEZA_CAUCAIA_PRICE;
+    if (freteMsg) freteMsg.textContent = `Entrega em ${city || "Fortaleza/Caucaia"} — R$ ${DELIVERY_FORTALEZA_CAUCAIA_PRICE},00.`;
+    atualizarCart();
+    return;
+  }
+  if (localPrice === DELIVERY_MARACANAU_PRICE) {
+    freteModo = "local_14";
+    freteAtual = DELIVERY_MARACANAU_PRICE;
+    if (freteMsg) freteMsg.textContent = `Entrega em Maracanaú — R$ ${DELIVERY_MARACANAU_PRICE},00.`;
+    atualizarCart();
+    return;
+  }
+
+  freteModo = "whatsapp";
+  freteAtual = 0;
+  if (freteMsg) freteMsg.textContent = "Cidade fora da área de valor fixo — favor consultar via WhatsApp.";
   atualizarCart();
 }
 
@@ -2529,13 +2576,13 @@ function openCheckoutModal(){
   let freteResumo = "Informe o CEP";
   if (entregaDisponivel) {
     if (freteModo === "uber_free") freteResumo = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
-    else if (freteModo === "fortaleza") freteResumo = `R$ ${DELIVERY_FORTALEZA_PRICE},00`;
-    else freteResumo = "Via WhatsApp";
+    else if (freteModo === "local_12" || freteModo === "local_14") freteResumo = getDeliveryModeLabel(freteModo);
+    else freteResumo = "Consultar via WhatsApp";
   }
   el("#ckFrete").textContent = freteResumo;
   const freteVia = el("#ckFreteVia");
   if (freteVia) freteVia.textContent = "";
-  const fixedFrete2 = freteModo === "uber_free" || freteModo === "fortaleza";
+  const fixedFrete2 = isFixedFreteMode();
   let totalLabel = formatBRL(total);
   if (entregaDisponivel) {
     totalLabel = fixedFrete2 ? formatBRL(total) : `${formatBRL(total)} + frete`;
@@ -2544,7 +2591,7 @@ function openCheckoutModal(){
   const freteNote = el("#checkoutFreteNote");
   if (freteNote) {
     if (freteModo === "whatsapp") {
-      freteNote.textContent = "Fora de Fortaleza — frete calculado e enviado via WhatsApp.";
+      freteNote.textContent = "Cidade fora da área de valor fixo — favor consultar via WhatsApp.";
       freteNote.style.display = "";
     } else {
       freteNote.textContent = "";
@@ -2592,12 +2639,7 @@ function openCheckoutModal(){
     locateBtnGlobal.disabled = !hasCep;
   }
 
-  const checkoutItemsPayload = carrinho.map(p => ({
-    item_name: p.nome,
-    item_category: p.categoria,
-    price: p.preco,
-    quantity: getItemQty(p)
-  }));
+  const checkoutItemsPayload = buildCartItems();
   trackEvent("start_checkout", {
     currency: "BRL",
     value: total,
@@ -2677,13 +2719,13 @@ function buildWhatsMessage(data, options = {}) {
   linhas.push(`Produtos: ${formatBRL(subtotal)}`);
   let freteLabel = "A calcular";
   if (entregaDisponivel) {
-    if (freteModo === "sedex") freteLabel = `Entrega via SEDEX. Valor calculado no WhatsApp.${freteInfo}`;
-    else if (freteModo === "uber_free") freteLabel = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)${freteInfo}`;
-    else freteLabel = `Entrega via Moto Uber. Valor calculado no WhatsApp.${freteInfo}`;
+    if (freteModo === "uber_free") freteLabel = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)${freteInfo}`;
+    else if (freteModo === "local_12" || freteModo === "local_14") freteLabel = `${getDeliveryModeLabel(freteModo)}${freteInfo}`;
+    else freteLabel = `Consultar via WhatsApp.${freteInfo}`;
   }
   linhas.push(`Frete: ${freteLabel}`);
   const totalLabel = entregaDisponivel
-    ? (freteModo === "uber_free" ? formatBRL(total) : `${formatBRL(total)} + frete`)
+    ? (isFixedFreteMode() ? formatBRL(total) : `${formatBRL(total)} + frete`)
     : formatBRL(total);
   linhas.push(`Total: ${totalLabel}`);
 
@@ -2746,12 +2788,8 @@ async function handleSubmitCheckout(ev){
   const btn = el("#btnEnviarPedido");
   const subtotalCompra = getCartSubtotal();
   const totalCompra = subtotalCompra + (entregaDisponivel ? (freteAtual||0) : 0);
-  const purchaseItems = carrinho.map(p => ({
-    item_name: p.nome,
-    item_category: p.categoria,
-    price: p.preco,
-    quantity: getItemQty(p)
-  }));
+  const purchaseItems = buildCartItems();
+  const paymentItems = buildPaymentItems();
   if (btn) {
     btn.disabled = true; btn.textContent = "Gerando pagamento...";
   }
@@ -2828,7 +2866,7 @@ async function handleSubmitCheckout(ev){
       currency: "BRL",
       cliente,
       endereco,
-      itens: purchaseItems
+      itens: paymentItems
     });
     const pedidoSalvo = await savePedido({
       ...pedidoPayload,
@@ -2920,15 +2958,15 @@ function ensureFreteShownOnce(){
   try{
     const lbl = document.querySelector("#cartFreteLabel");
     const val = document.querySelector("#cartFreteValue");
-    if (freteModo === "sedex" && val) {
-      if (lbl) lbl.textContent = "Frete:";
-      val.textContent = "SEDEX (a calcular)";
-    } else if (freteModo === "uber_free" && val) {
+    if (freteModo === "uber_free" && val) {
       if (lbl) lbl.textContent = "Frete:";
       val.textContent = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
-    } else if (freteModo === "uber_pending" && val) {
+    } else if ((freteModo === "local_12" || freteModo === "local_14") && val) {
       if (lbl) lbl.textContent = "Frete:";
-      val.textContent = "Moto Uber (a calcular)";
+      val.textContent = getDeliveryModeLabel(freteModo);
+    } else if (freteModo === "whatsapp" && val) {
+      if (lbl) lbl.textContent = "Frete:";
+      val.textContent = "Consultar via WhatsApp";
     } else if (typeof freteAtual === "number" && isFinite(freteAtual) && freteAtual > 0){
       if (lbl) lbl.textContent = "Frete:";
       if (val) val.textContent = formatBRL(freteAtual);
