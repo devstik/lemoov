@@ -6,151 +6,282 @@
   <title>Lemoov • Link na bio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --ink: #101010;
-      --white: #ffffff;
-      --pill: rgba(48, 46, 46, 0.45);
-      --pill-border: rgba(255, 255, 255, 0.35);
+      --green:  #009C3B;
+      --yellow: #FFDF00;
+      --navy:   #002776;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      margin: 0;
       font-family: "Manrope", system-ui, sans-serif;
-      color: var(--white);
-      min-height: 100vh;
-      background: url("image/modelo_fundo.jpeg") center top / cover no-repeat;
+      min-height: 100dvh;
+      background: url("image/copa_brasil/copa_brasil_07.jpeg") center top / cover no-repeat fixed;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
-      padding: 24px 14px 40px;
     }
+
+    /* gradient escurece só a metade inferior, modelo fica limpa no topo */
     body::before {
       content: "";
       position: fixed;
       inset: 0;
-      background: linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.35) 65%, rgba(0,0,0,0.45) 100%);
+      background: linear-gradient(
+        180deg,
+        rgba(0,0,0,0.00)  0%,
+        rgba(0,0,0,0.00) 35%,
+        rgba(0,39,118,0.70) 65%,
+        rgba(0,20,70,0.96) 100%
+      );
       pointer-events: none;
+      z-index: 0;
     }
+
     .frame {
-      width: min(520px, 100%);
-      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+      width: min(480px, 100%);
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      gap: 18px;
-      padding-top: clamp(8px, 3vh, 24px);
-      position: relative;
-      z-index: 1;
+      padding: clamp(20px, 4vh, 36px) 20px 40px;
     }
-    .watermark {
-      width: clamp(120px, 26vw, 160px);
-      height: clamp(120px, 26vw, 160px);
-      display: grid;
-      place-items: center;
-      opacity: 0.88;
-      filter: drop-shadow(0 10px 24px rgba(0,0,0,0.25)) saturate(1.15) contrast(1.12);
-      margin-top: 0;
-      margin-bottom: clamp(12px, 3vh, 22px);
+
+    /* ── Logo pill ── */
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 22px;
+      border-radius: 999px;
+      background: rgba(0, 39, 118, 0.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1.5px solid rgba(255, 223, 0, 0.35);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.25);
     }
-    .watermark img {
+    .logo-wrap img {
+      height: clamp(36px, 8vw, 48px);
+      width: auto;
+      display: block;
+      filter: brightness(1.1) drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+    }
+
+    /* ── Badge Copa Brasil ── */
+    .badge {
+      margin-top: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 15px 5px 12px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--navy);
+      background: var(--yellow);
+      box-shadow: 0 4px 18px rgba(255,223,0,0.5);
+    }
+
+    /* ── Spacer empurra links para baixo da modelo ── */
+    .spacer { flex: 1; min-height: clamp(180px, 35vh, 320px); }
+
+    /* ── Headline ── */
+    .headline {
       width: 100%;
-      height: auto;
+      text-align: center;
+      margin-bottom: 22px;
     }
+    .headline__title {
+      font-size: clamp(22px, 5.5vw, 28px);
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.15;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+      letter-spacing: -0.01em;
+    }
+    .headline__title span {
+      color: var(--yellow);
+    }
+    .headline__sub {
+      margin-top: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.8);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.5);
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Links ── */
     .links {
       width: 100%;
       display: grid;
-      gap: 14px;
-      margin-top: clamp(160px, 30vh, 260px);
+      gap: 12px;
     }
+
     .cta {
       display: grid;
-      grid-template-columns: 44px 1fr 30px;
+      grid-template-columns: 40px 1fr 28px;
       align-items: center;
-      padding: 14px 18px;
-      border-radius: 999px;
+      gap: 4px;
+      padding: 14px 16px;
+      border-radius: 18px;
       text-decoration: none;
-      font-weight: 600;
-      color: var(--white);
-      background: var(--pill);
-      border: 1px solid var(--pill-border);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 16px 28px rgba(0,0,0,0.25);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.01em;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      border: none;
     }
-    .cta:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 18px 34px rgba(0,0,0,0.28);
+    .cta:active { transform: scale(0.97); }
+
+    .cta--green {
+      background: linear-gradient(120deg, #00b845 0%, #007a2f 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 22px rgba(0,156,59,0.50);
     }
+    .cta--green:hover { box-shadow: 0 10px 30px rgba(0,156,59,0.60); transform: translateY(-2px); }
+
+    .cta--yellow {
+      background: linear-gradient(120deg, #FFE833 0%, #f0cc00 100%);
+      color: var(--navy);
+      box-shadow: 0 6px 22px rgba(255,223,0,0.45);
+    }
+    .cta--yellow:hover { box-shadow: 0 10px 30px rgba(255,223,0,0.55); transform: translateY(-2px); }
+
+    .cta--navy {
+      background: linear-gradient(120deg, #003ba3 0%, var(--navy) 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 22px rgba(0,39,118,0.50);
+    }
+    .cta--navy:hover { box-shadow: 0 10px 30px rgba(0,39,118,0.60); transform: translateY(-2px); }
+
     .cta__icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
       display: grid;
       place-items: center;
-      background: rgba(0,0,0,0.35);
-      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.18);
+      flex-shrink: 0;
     }
-    .cta__icon svg {
-      width: 18px;
-      height: 18px;
+    .cta--yellow .cta__icon { background: rgba(0,39,118,0.12); }
+    .cta__icon svg { width: 19px; height: 19px; display: block; }
+
+    .cta__label { text-align: center; }
+
+    .cta__arrow {
+      font-size: 18px;
+      text-align: right;
+      opacity: 0.6;
+      line-height: 1;
     }
-    .cta__label {
+    .cta--yellow .cta__arrow { color: var(--navy); }
+
+    /* ── Divider ── */
+    .divider {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 4px 0;
+    }
+    .divider__line {
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,0.15);
+    }
+    .divider__text {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* ── Footer ── */
+    .footer-note {
+      margin-top: 20px;
+      font-size: 12.5px;
+      font-weight: 500;
       text-align: center;
-      font-size: 15px;
-      letter-spacing: 0.2px;
+      color: rgba(255,255,255,0.65);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.5);
     }
-    .cta__dots {
-      font-size: 20px;
-      text-align: center;
-      opacity: 0.7;
-    }
-    .note {
-      margin: 0;
-      font-size: 13px;
-      opacity: 0.8;
-      text-align: center;
-      text-shadow: 0 6px 14px rgba(0,0,0,0.3);
-    }
-    @media (max-width: 420px) {
-      .cta { padding: 12px 14px; }
-      .cta__label { font-size: 14px; }
+
+    @media (max-width: 380px) {
+      .cta { font-size: 14px; padding: 13px 14px; }
     }
   </style>
 </head>
 <body>
   <main class="frame">
-    <div class="watermark">
-      <img src="image/logo_lemoov_semfundo.png" alt="Lemoov">
+
+    <div class="logo-wrap">
+      <img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness">
+    </div>
+
+    <span class="badge">🇧🇷 Coleção Copa Brasil 2026</span>
+
+    <div class="spacer"></div>
+
+    <div class="headline">
+      <p class="headline__title">Moda fitness <span>premium</span><br>com a alma do Brasil.</p>
+      <p class="headline__sub">Escolha seu look e treine com estilo</p>
     </div>
 
     <div class="links">
-      <a class="cta" href="https://wa.me/558587408457" target="_blank" rel="noopener">
+
+      <a class="cta cta--green" href="https://lemoov.com.br/catalogo-produtos.html" target="_blank" rel="noopener">
         <span class="cta__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
-            <path d="M20.4 3.6A11.2 11.2 0 0 0 12 0a11.3 11.3 0 0 0-9.8 16.9L0 24l7.4-2a11.3 11.3 0 0 0 4.6 1 11.3 11.3 0 0 0 8-3.3 11.2 11.2 0 0 0 3.3-8 11.2 11.2 0 0 0-3.3-8.1Z" fill="#ffffff" opacity="0.2"/>
-            <path d="M8.4 6.9c.2-.4.5-.4.8-.4h.7c.2 0 .5 0 .7.5.2.5.9 2.2 1 2.4.1.2.1.4 0 .6l-.4.6c-.1.2-.3.4-.1.8.1.4.7 1.3 1.5 2.1.8.8 1.6 1.4 2 1.5.4.1.6.1.8-.1l.7-.4c.2-.1.4-.1.6 0 .2.1 1.9.9 2.2 1 .3.1.5.2.5.4 0 .2 0 1.2-.5 1.8-.5.6-1.4 1.3-3 1.1-1.5-.2-3.4-1.2-5.3-3-1.9-1.9-3.1-4.2-3.3-5.6-.2-1.4.6-2.2.8-2.6Z" fill="#ffffff"/>
+            <rect x="3" y="3" width="7" height="7" rx="1.5" fill="#fff"/>
+            <rect x="14" y="3" width="7" height="7" rx="1.5" fill="#fff" opacity=".7"/>
+            <rect x="3" y="14" width="7" height="7" rx="1.5" fill="#fff" opacity=".7"/>
+            <rect x="14" y="14" width="7" height="7" rx="1.5" fill="#fff" opacity=".5"/>
           </svg>
         </span>
-        <span class="cta__label">Conversar no WhatsApp</span>
-        <span class="cta__dots">⋮</span>
+        <span class="cta__label">Ver catálogo completo</span>
+        <span class="cta__arrow">›</span>
       </a>
 
-      <a class="cta" href="https://lemoovfitness.stoqui.shop/?utm_source=ig&utm_medium=social&utm_content=link_in_bio&fbclid=PAb21jcARgRdlleHRuA2FlbQIxMQBzcnRjBmFwcF9pZA81NjcwNjczNDMzNTI0MjcAAadf_jj-X5Wm1Bpp1Hia5a7aY6itzu1jfDXvQybqp-QL3uKHF8KvSVSrTBnoww_aem_LmfbI651IyYtaUKTyeDTOQ" target="_blank" rel="noopener">
+      <a class="cta cta--yellow" href="https://wa.me/558587408457" target="_blank" rel="noopener">
         <span class="cta__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
-            <path d="M4 4h16v16H4z" stroke="#ffffff" stroke-width="1.6" opacity="0.45"/>
-            <path d="M8 12h8M12 8v8" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M20.4 3.6A11.2 11.2 0 0 0 12 0a11.3 11.3 0 0 0-9.8 16.9L0 24l7.4-2a11.3 11.3 0 0 0 4.6 1 11.3 11.3 0 0 0 8-3.3 11.2 11.2 0 0 0 3.3-8 11.2 11.2 0 0 0-3.3-8.1Z" fill="#002776" opacity="0.15"/>
+            <path d="M8.4 6.9c.2-.4.5-.4.8-.4h.7c.2 0 .5 0 .7.5.2.5.9 2.2 1 2.4.1.2.1.4 0 .6l-.4.6c-.1.2-.3.4-.1.8.1.4.7 1.3 1.5 2.1.8.8 1.6 1.4 2 1.5.4.1.6.1.8-.1l.7-.4c.2-.1.4-.1.6 0 .2.1 1.9.9 2.2 1 .3.1.5.2.5.4 0 .2 0 1.2-.5 1.8-.5.6-1.4 1.3-3 1.1-1.5-.2-3.4-1.2-5.3-3-1.9-1.9-3.1-4.2-3.3-5.6-.2-1.4.6-2.2.8-2.6Z" fill="#002776"/>
           </svg>
         </span>
-        <span class="cta__label">Abrir catálogo</span>
-        <span class="cta__dots">⋮</span>
+        <span class="cta__label">Falar no WhatsApp</span>
+        <span class="cta__arrow">›</span>
       </a>
+
+      <div class="divider">
+        <div class="divider__line"></div>
+        <span class="divider__text">também estamos em</span>
+        <div class="divider__line"></div>
+      </div>
+
+      <a class="cta cta--navy" href="https://lemoovfitness.stoqui.shop/?utm_source=ig&utm_medium=social&utm_content=link_in_bio" target="_blank" rel="noopener">
+        <span class="cta__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 6h18M16 10a4 4 0 01-8 0" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="cta__label">Loja Stoqui</span>
+        <span class="cta__arrow">›</span>
+      </a>
+
     </div>
 
-    <p class="note">Atendimento de segunda a sexta, 9h às 18h.</p>
+    <p class="footer-note">Atendimento seg–sex · 9h às 18h</p>
+
   </main>
 </body>
 </html>
