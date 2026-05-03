@@ -811,6 +811,7 @@ function computeColorPrice(prod, colorObj){
   }
   #btnCheckout:hover{ filter: brightness(1.08); box-shadow: 0 12px 36px rgba(0,39,118,.3); }
 
+  dialog.checkout-modal:not([open]){ display:none !important; }
   dialog.checkout-modal{
     border:none;
     border-radius:0;
@@ -2035,11 +2036,17 @@ function restoreCheckoutScroll(){
 function closeCheckoutModal(){
   const dlg = el("#checkoutModal");
   if (dlg) {
-    if (dlg.open && typeof dlg.close === "function") dlg.close();
+    if (typeof dlg.close === "function") dlg.close();
     dlg.removeAttribute("open");
+    dlg.style.display = "none";
     dlg.setAttribute("aria-hidden","true");
   }
   restoreCheckoutScroll();
+}
+
+function _reopenCheckoutModalDisplay(){
+  const dlg = el("#checkoutModal");
+  if (dlg) dlg.style.display = "";
 }
 
 function atualizarCart(){
@@ -2628,7 +2635,7 @@ function openCheckoutModal(){
             Seus dados pessoais e de pagamento são coletados com segurança pela InfinitePay.
           </p>
         </div>
-        <button class="btn btn--ghost" id="btnCloseCheckout">Fechar</button>
+        <button type="button" class="btn btn--ghost" id="btnCloseCheckout">Fechar</button>
       </div>
       <form id="checkoutForm">
         <div class="checkout__body">
@@ -2848,6 +2855,7 @@ function openCheckoutModal(){
     item_count: getCartCount()
   });
   rememberCheckoutScroll();
+  _reopenCheckoutModalDisplay();
   dlg.showModal();
 }
 
