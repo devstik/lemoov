@@ -401,20 +401,24 @@
 
   <!-- Modal de escolha (Conjunto/Top/Legging) -->
   <dialog id="vendaModal" class="modal venda-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="vendaTitle">
-    <div class="modal__header">
-      <button class="modal__close" id="closeVendaModal" aria-label="Fechar">✕</button>
-    </div>
     <article class="venda-modal__content">
-      <h2 id="vendaTitle"></h2>
-      <p class="venda-modal__note">Adicione o conjunto ou a peça individual.</p>
-      <p id="vendaMeta" class="venda-modal__meta"></p>
-      <div id="vendaOptions" class="venda-options"></div>
-      <div class="venda-total">
-        <span>Total</span>
-        <strong id="vendaTotal">R$ 0,00</strong>
+      <div class="venda-modal__header">
+        <div class="venda-modal__header-text">
+          <h2 id="vendaTitle"></h2>
+          <p id="vendaMeta" class="venda-modal__meta"></p>
+        </div>
+        <button class="venda-modal__close" id="closeVendaModal" aria-label="Fechar">✕</button>
       </div>
-      <div class="venda-actions">
-        <button id="vendaAddBtn" class="btn btn--primary">Adicionar ao carrinho</button>
+      <div class="venda-modal__body">
+        <p class="venda-modal__note">Adicione o conjunto ou a peça individual.</p>
+        <div id="vendaOptions" class="venda-options"></div>
+        <div class="venda-total">
+          <span>Total</span>
+          <strong id="vendaTotal">R$ 0,00</strong>
+        </div>
+        <div class="venda-actions">
+          <button id="vendaAddBtn" class="btn btn--primary">Adicionar ao carrinho</button>
+        </div>
       </div>
     </article>
   </dialog>
