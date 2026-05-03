@@ -3015,6 +3015,10 @@ async function handleSubmitCheckout(ev){
     };
     const endereco = {
       cep: normalizeCEP((fdUI.get("cep") || "").toString()),
+      rua:    enderecoAutofill?.rua    || "",
+      bairro: enderecoAutofill?.bairro || "",
+      cidade: enderecoAutofill?.cidade || "",
+      uf:     enderecoAutofill?.uf     || "",
     };
     const pagamento = (fdUI.get("pagamento") || "pix").toString();
 
@@ -3044,6 +3048,10 @@ async function handleSubmitCheckout(ev){
       itensEstoque,
       frete_modo: freteModo || "",
       cep: endereco.cep || "",
+      cidade: endereco.cidade || "",
+      uf: endereco.uf || "",
+      bairro: endereco.bairro || "",
+      rua: endereco.rua || "",
       visitor_city: visitorRegion?.city || "",
       visitor_region: visitorRegion?.region || "",
       visitor_country: visitorRegion?.country || "",
@@ -3052,6 +3060,16 @@ async function handleSubmitCheckout(ev){
       cliente_nome: cliente.nome || "",
       cliente_telefone: cliente.telefone || "",
       cliente_email: cliente.email || "",
+      cliente: {
+        nome:     cliente.nome || "",
+        telefone: cliente.telefone || "",
+        email:    cliente.email || "",
+        cep:      endereco.cep || "",
+        cidade:   endereco.cidade || "",
+        uf:       endereco.uf || "",
+        bairro:   endereco.bairro || "",
+        rua:      endereco.rua || "",
+      },
     };
     const pagamentoOnline = await createInfinityPayment({
       pedido: numeroPedidoSugerido,

@@ -66,7 +66,7 @@
     <div class="card-head">Todos os pedidos</div>
     <div style="overflow-x:auto">
       <table>
-        <thead><tr><th>Pedido</th><th>Cliente</th><th>Status</th><th>Itens</th><th>Pagamento</th><th>Subtotal</th><th>Taxa</th><th>Total</th><th>Data</th></tr></thead>
+        <thead><tr><th>Pedido</th><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Cidade/UF</th><th>Status</th><th>Itens</th><th>Subtotal</th><th>Total</th><th>Data</th></tr></thead>
         <tbody id="tblPedidos"></tbody>
       </table>
     </div>
@@ -91,46 +91,52 @@
     const r=await fetch('/api/pedidos');
     if(!r.ok){document.body.innerHTML+='<p style="color:red">Sem acesso.</p>';return}
     const peds=await r.json();
-    const ativos=peds.filter(p=>p.status!=='cancelado');
-    const totalRec=ativos.reduce((s,p)=>s+(Number(p.total)||0),0);
-    const totalItens=ativos.reduce((s,p)=>s+(Array.isArray(p.itens)?p.itens.reduce((si,it)=>si+(Number(it.quantidade)||1),0):0),0);
-    const taxaTotal=ativos.reduce((s,p)=>s+(Number(p.taxa)||0),0);
-    const ticket=ativos.length?totalRec/ativos.length:0;
-    const oldest=peds.reduce((m,p)=>p.recebidoEm&&(!m||p.recebidoEm<m)?p.recebidoEm:m,null);
-    document.getElementById('relPeriodo').textContent=oldest?`De ${new Date(oldest).toLocaleDateString('pt-BR')} até hoje`:`${peds.length} pedidos`;
+    const PAID=['confirmado','enviado','entregue'];
+    const vendas=peds.filter(p=>PAID.includes(p.status));
+    const totalRec=vendas.reduce((s,p)=>s+(Number(p.total)||0),0);
+    const totalItens=vendas.reduce((s,p)=>s+(Array.isArray(p.itens)?p.itens.reduce((si,it)=>si+(Number(it.quantidade)||1),0):0),0);
+    const taxaTotal=vendas.reduce((s,p)=>s+(Number(p.taxa)||0),0);
+    const ticket=vendas.length?totalRec/vendas.length:0;
+    const oldest=vendas.reduce((m,p)=>p.recebidoEm&&(!m||p.recebidoEm<m)?p.recebidoEm:m,null);
+    document.getElementById('relPeriodo').textContent=oldest?`Vendas confirmadas — de ${new Date(oldest).toLocaleDateString('pt-BR')} até hoje`:`${vendas.length} vendas confirmadas`;
     document.getElementById('kpis').innerHTML=[
-      ['Receita Total',fmtR(totalRec)],['Pedidos',peds.length],['Itens Vendidos',totalItens+' un.'],
+      ['Receita Total (pagas)',fmtR(totalRec)],['Vendas confirmadas',vendas.length],['Itens Vendidos',totalItens+' un.'],
       ['Ticket Médio',fmtR(ticket)],['Taxas / Frete',fmtR(taxaTotal)],
     ].map(([l,v])=>`<div class="kpi"><div class="kpi-label">${l}</div><div class="kpi-val">${v}</div></div>`).join('');
     // By status
     const byStatus={};peds.forEach(p=>{const s=p.status||'reservado';byStatus[s]=(byStatus[s]||0)+1});
     document.getElementById('byStatus').innerHTML=Object.entries(byStatus).map(([s,n])=>`
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f8fafc">${sPill(s)}<span style="margin-left:auto;font-weight:700">${n}</span></div>`).join('');
-    // By product
+    // By product (paid only)
     const prodMap={};
-    ativos.forEach(p=>(Array.isArray(p.itens)?p.itens:[]).forEach(it=>{
+    vendas.forEach(p=>(Array.isArray(p.itens)?p.itens:[]).forEach(it=>{
       const k=it.nome||'?';if(!prodMap[k])prodMap[k]={qty:0,rev:0};
       prodMap[k].qty+=Number(it.quantidade)||1;prodMap[k].rev+=(Number(it.precoUnitario||it.preco)||0)*(Number(it.quantidade)||1);
     }));
     const prodRev={};Object.entries(prodMap).forEach(([k,d])=>prodRev[k]=d.rev);
     document.getElementById('byProd').innerHTML=toRows(prodRev,fmtR);
-    // By UF / city
+    // By UF / city (paid only)
     const byUf={},byCity={};
-    peds.forEach(p=>{const uf=(p.cliente?.uf||p.uf||'—').toUpperCase();const city=p.cliente?.cidade||p.cidade||'—';
+    vendas.forEach(p=>{const uf=(p.cliente?.uf||p.uf||'—').toUpperCase();const city=p.cliente?.cidade||p.cidade||'—';
       byUf[uf]=(byUf[uf]||0)+1;const ck=`${city} / ${uf}`;byCity[ck]=(byCity[ck]||0)+1});
     document.getElementById('byUf').innerHTML=toRows(byUf);
     document.getElementById('byCity').innerHTML=toRows(byCity);
-    // Table
+    // Table — all orders, with full client data
     const sorted=[...peds].sort((a,b)=>new Date(b.recebidoEm||0)-new Date(a.recebidoEm||0));
     document.getElementById('tblPedidos').innerHTML=sorted.map(p=>{
-      const itens=Array.isArray(p.itens)?p.itens.length:'—';
+      const nome  =esc(p.cliente?.nome     ||p.cliente_nome    ||p.nome  ||'—');
+      const tel   =esc(p.cliente?.telefone ||p.cliente_telefone||'—');
+      const email =esc(p.cliente?.email    ||p.cliente_email   ||'—');
+      const cidade=[p.cliente?.cidade||p.cidade||'',p.cliente?.uf||p.uf||''].filter(Boolean).join('/');
+      const itens =Array.isArray(p.itens)?p.itens.length:'—';
       return`<tr>
         <td><strong>#${esc(String(p.pedido))}</strong></td>
-        <td>${esc(p.cliente?.nome||p.nome||'—')}</td>
+        <td>${nome}</td>
+        <td>${tel}</td>
+        <td>${email}</td>
+        <td style="color:#64748b">${esc(cidade||'—')}</td>
         <td>${sPill(p.status)}</td><td>${itens}</td>
-        <td>${esc(p.pagamento||'—')}</td>
         <td>${fmtR(p.subtotal||p.total||0)}</td>
-        <td>${p.taxa!=null?fmtR(p.taxa):'—'}</td>
         <td style="font-weight:700">${fmtR(p.total||0)}</td>
         <td style="color:#64748b;white-space:nowrap">${fmtD(p.recebidoEm)}</td>
       </tr>`;
