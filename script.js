@@ -9,23 +9,7 @@ const ORDER_SEQ_STORAGE_KEY = "lemoovOrderSeq";
 
 const DELIVERY_MODE_LABEL = "Entrega via Moto Uber";
 const DELIVERY_FREE_RADIUS_KM = 2;
-const METRO_FORTALEZA = [
-  "Fortaleza",
-  "Caucaia",
-  "Maracanaú",
-  "Maranguape",
-  "Aquiraz",
-  "Eusébio",
-  "Itaitinga",
-  "Horizonte",
-  "Pacajus",
-  "Guaiúba",
-  "Chorozinho",
-  "São Gonçalo do Amarante",
-  "Pacatuba",
-  "Pindoretama",
-  "Cascavel"
-];
+const DELIVERY_FORTALEZA_PRICE = 12;
 let freteAtual = 0;
 let cepAtual = "";
 let entregaDisponivel = false;
@@ -185,11 +169,10 @@ function normalizeCityName(value) {
     .toLowerCase();
 }
 
-function isInMetroFortaleza(city, uf) {
+function isFortalezaCity(city, uf) {
   if (!city || !uf) return false;
   if (String(uf).trim().toUpperCase() !== "CE") return false;
-  const normalized = normalizeCityName(city);
-  return METRO_FORTALEZA.some((name) => normalizeCityName(name) === normalized);
+  return normalizeCityName(city) === normalizeCityName("Fortaleza");
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -696,168 +679,137 @@ function computeColorPrice(prod, colorObj){
 ------------------------------------------------------------ */
 (function injectCartStyles(){
   const css = `
+  /* ── Carrinho – paleta bandeira do Brasil ── */
   #cart {
     position: fixed !important;
-    top: 0 !important;
-    right: 0 !important;
-    left: auto !important;
-    transform: translateX(24px);
-    width: min(520px, calc(100vw - 18px));
+    top: 0 !important; right: 0 !important; left: auto !important;
+    transform: translateX(20px);
+    width: min(480px, calc(100vw - 12px));
     height: 100vh;
-    max-width: none;
-    max-height: none;
-    border-radius: 22px 0 0 22px;
-    background:
-      radial-gradient(circle at 85% 4%, rgba(246,215,77,0.18), transparent 28%),
-      linear-gradient(180deg,#ffffff 0%, #f6fbf8 62%, #eef6ff 100%);
-    box-shadow: -24px 0 70px rgba(4, 31, 43, 0.22);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .22s ease, transform .22s ease;
+    max-width: none; max-height: none;
+    border-radius: 28px 0 0 28px;
+    background: #ffffff;
+    box-shadow: -12px 0 60px rgba(0,39,118,.14), -2px 0 0 rgba(0,156,59,.18);
+    opacity: 0; pointer-events: none;
+    transition: opacity .2s ease, transform .2s cubic-bezier(.22,1,.36,1);
     z-index: 10001;
-    display:flex;
-    flex-direction:column;
-    border-left: 1px solid rgba(5, 92, 57, 0.16);
+    display: flex; flex-direction: column;
+    border-left: 3px solid #009C3B;
   }
-  #cart.show {
-    opacity: 1;
-    transform: translateX(0);
-    pointer-events: auto;
-  }
+  #cart.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
   @media (max-width: 640px){
-    #cart{
-      width: 100vw;
-      height: 100vh;
-      border-radius: 0;
-    }
+    #cart{ width:100vw; border-radius:0; border-left:none; border-top:3px solid #009C3B; }
   }
   #cartBackdrop {
-    position: fixed !important; inset: 0; background: rgba(3,15,24,.58);
-    opacity: 0; transition: opacity .18s ease; z-index: 10000; pointer-events: none;
-    backdrop-filter: blur(5px);
+    position: fixed !important; inset: 0;
+    background: rgba(0,20,50,.52);
+    opacity: 0; transition: opacity .2s ease; z-index: 10000;
+    pointer-events: none; backdrop-filter: blur(6px);
   }
   #cartBackdrop.show { opacity: 1; pointer-events: auto; }
 
   .cart, .cart * { font-size: 14px; }
   #cart .cart__header{
-    padding: 22px 24px 18px;
-    background:
-      linear-gradient(120deg, rgba(11,122,79,0.08), rgba(246,215,77,0.12), rgba(11,79,149,0.07));
-    border-bottom: 1px solid rgba(246, 215, 77, 0.28);
-    letter-spacing: 0;
-    text-transform: none;
+    padding: 20px 24px 16px;
+    background: linear-gradient(135deg, #009C3B 0%, #002776 100%);
+    border-bottom: none;
+    display: flex; align-items: center; justify-content: space-between;
   }
   #cart .cart__header h3{
-    font-size: 1.1rem;
-    color: #08251f;
+    font-size: 1.05rem; font-weight: 800;
+    color: #FFDF00;
+    letter-spacing: .02em;
   }
   #cart .cart__header h3::after{
-    content: "Revise seus itens e conclua com pagamento seguro.";
-    display: block;
-    margin-top: 4px;
-    color: #64746d;
-    font-size: 0.78rem;
-    font-weight: 500;
+    content: "Revise e finalize com segurança";
+    display: block; margin-top: 3px;
+    color: rgba(255,255,255,.65);
+    font-size: 0.72rem; font-weight: 500;
   }
   #cart .cart__close{
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    background: #0b7a4f;
-    color: #f6d74d;
-    font-size: 1rem;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,223,0,.18);
+    color: #FFDF00; font-size: 1rem;
+    border: 1px solid rgba(255,223,0,.35);
+    transition: background .15s;
   }
-  #cart .cart__list{
-    padding: 10px 20px 0;
-  }
+  #cart .cart__close:hover{ background: rgba(255,223,0,.32); }
+  #cart .cart__list{ padding: 12px 16px 0; flex: 1; overflow-y: auto; }
   #cart .cart__item{
-    background: #ffffff;
-    border: 1px solid rgba(5, 92, 57, 0.1);
-    border-left: 4px solid #0b7a4f;
-    border-radius: 18px;
-    padding: 12px;
-    margin-bottom: 12px;
-    box-shadow: 0 14px 34px rgba(17, 58, 52, 0.08);
+    background: #fafcff;
+    border: 1px solid rgba(0,39,118,.08);
+    border-radius: 16px;
+    padding: 12px; margin-bottom: 10px;
+    box-shadow: 0 2px 12px rgba(0,39,118,.06);
+    transition: box-shadow .15s;
   }
-  #cart .cart__item:hover{ background: #ffffff; }
+  #cart .cart__item:hover{ box-shadow: 0 4px 20px rgba(0,156,59,.12); }
   #cart .cart__item-media{
-    width: 68px;
-    height: 82px;
-    min-width: 68px;
-    border-radius: 14px;
-    box-shadow: none;
-    background: #f4f7f5;
+    width: 64px; height: 78px; min-width: 64px;
+    border-radius: 12px; background: #f0f4f8;
+    overflow: hidden;
   }
-  #cart .cart__item-name{
-    font-size: 0.92rem;
-    color: #08251f;
-  }
-  #cart .cart__item-desc{
-    display: none;
-  }
+  #cart .cart__item-name{ font-size: 0.9rem; font-weight: 700; color: #0a1628; }
+  #cart .cart__item-desc{ display: none; }
   #cart .cart__item-details,
-  #cart .cart__item-qty{
-    color: #62736b;
-    font-size: 0.76rem;
-  }
-  #cart .cart__item-price{
-    color: #0b4f95;
-    font-size: 0.94rem;
-  }
+  #cart .cart__item-qty{ color: #5a6a80; font-size: 0.74rem; }
+  #cart .cart__item-price{ color: #002776; font-size: 0.94rem; font-weight: 700; }
   #cart .cart__remove-btn{
-    border: 0;
-    background: #fff0ec;
-    color: #9a3412;
-    padding: 6px 10px;
-    font-size: 0.7rem;
+    border: 1px solid rgba(220,38,38,.2);
+    background: rgba(254,226,226,.6);
+    color: #b91c1c;
+    padding: 5px 10px; font-size: 0.68rem; border-radius: 8px;
+    transition: background .15s;
   }
+  #cart .cart__remove-btn:hover{ background: rgba(254,202,202,.9); }
   #cart .cart__footer{
-    padding: 18px 20px 22px;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.88), rgba(248,251,242,0.96));
-    border-top: 1px solid rgba(246, 215, 77, 0.28);
-    box-shadow: 0 -18px 40px rgba(17, 58, 52, 0.08);
+    padding: 14px 16px 20px;
+    background: #f8faff;
+    border-top: 1px solid rgba(0,39,118,.08);
   }
   #cart .cart__total{
-    letter-spacing: 0;
-    text-transform: none;
-    font-size: 0.9rem;
-    color: #20352e;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.88rem; color: #374151;
+    padding: 4px 0;
   }
-  #cart .cart__total strong{
-    color: #08251f;
-  }
+  #cart .cart__total:last-of-type{ font-size: 1rem; font-weight: 800; color: #0a1628; }
+  #cart .cart__total strong{ color: #002776; }
 
+  .frete__ui{ margin-bottom: 10px; }
+  .frete__row{ display:flex; gap:8px; align-items:center; flex-wrap:nowrap; }
+  .frete__msg{ font-size:0.78rem; color:#5d6b76; margin-top:6px; text-align:left; }
   .frete__ui input{
-    padding:10px 12px!important;
-    font-size:0.85rem!important;
-    max-width:none!important;
-    border-radius:12px!important;
-    background:#fffef4!important;
-    color:#0d1f2a!important;
-    border:1px solid rgba(11,122,79,0.18)!important;
+    flex: 1 1 0; min-width: 0;
+    padding: 11px 14px !important;
+    font-size: 0.84rem !important;
+    border-radius: 14px !important;
+    background: #fff !important;
+    color: #0a1628 !important;
+    border: 1.5px solid rgba(0,156,59,.3) !important;
+    outline: none;
   }
+  .frete__ui input:focus{ border-color: #009C3B !important; box-shadow: 0 0 0 3px rgba(0,156,59,.1) !important; }
   .frete__ui .btn{
-    padding:10px 16px!important;
-    font-size:0.78rem!important;
-    letter-spacing:0;
-    background:linear-gradient(120deg,#0b7a4f,#0b4f95)!important;
-    color:#ffffff!important;
-    border:none!important;
-    border-radius:14px!important;
+    padding: 11px 14px !important;
+    font-size: 0.75rem !important; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase;
+    background: linear-gradient(120deg,#002776,#009C3B) !important;
+    color: #FFDF00 !important;
+    border: none !important; border-radius: 14px !important;
+    white-space: nowrap; flex-shrink: 0;
   }
-
   #btnCheckout{
-    width:100%;
-    margin-top:4px;
-    padding:14px 14px;
-    font-size:0.86rem;
-    border-radius:16px;
-    letter-spacing:0;
-    background: linear-gradient(120deg,#075f42,#0b4f95);
-    color:#fff;
-    box-shadow: 0 14px 30px rgba(11,79,149,0.2);
+    width: 100%; margin-top: 10px;
+    padding: 15px 14px;
+    font-size: 0.9rem; font-weight: 800;
+    letter-spacing: .04em; text-transform: uppercase;
+    border-radius: 16px;
+    background: linear-gradient(120deg, #009C3B 0%, #002776 100%);
+    color: #FFDF00;
+    box-shadow: 0 8px 28px rgba(0,39,118,.22);
+    transition: filter .15s, box-shadow .15s;
   }
+  #btnCheckout:hover{ filter: brightness(1.08); box-shadow: 0 12px 36px rgba(0,39,118,.3); }
 
   dialog.checkout-modal{
     border:none;
@@ -2034,20 +1986,18 @@ function ensureFreteUI() {
     wrap.className = "frete__ui";
     wrap.style.marginTop = "10px";
     wrap.innerHTML = `
-      <div style="display:flex; gap:8px; align-items:center; flex-wrap:nowrap;">
+      <div class="frete__row">
         <input id="cepInput" type="text" inputmode="numeric"
           placeholder="CEP de entrega"
           autocomplete="postal-code"
-          aria-label="Digite o CEP de entrega"
-          style="flex:1 1 0; min-width:0; max-width:160px; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px;" />
-        <button id="btnUseLocation" class="btn"
-          style="background:#000; color:#fff; padding:8px 10px; border-radius:8px; flex:0 0 auto; white-space:nowrap;">Usar localização</button>
+          aria-label="Digite o CEP de entrega" />
+        <button id="btnUseLocation" class="btn">📍 Localização</button>
       </div>
-      <div id="freteMsg" class="muted" style="text-align:left; margin-top:6px;">
+      <div id="freteMsg" class="frete__msg">
         ${DELIVERY_MODE_LABEL}. Informe o CEP para continuar.
       </div>
-      <div class="checkout__link" style="margin-top:6px;">
-        Não sabe CEP? <a href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noopener">Consultar nos Correios</a>
+      <div class="checkout__link">
+        Não sabe o CEP? <a href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noopener">Consultar nos Correios</a>
       </div>
     `;
     footer.insertBefore(wrap, footer.firstChild);
@@ -2154,17 +2104,18 @@ function atualizarCart(){
   if (freteEl) {
     if (!entregaDisponivel) {
       freteEl.textContent = "Informe o CEP";
-    } else if (freteModo === "sedex") {
-      freteEl.textContent = "SEDEX (a calcular)";
     } else if (freteModo === "uber_free") {
       freteEl.textContent = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
+    } else if (freteModo === "fortaleza") {
+      freteEl.textContent = `R$ ${DELIVERY_FORTALEZA_PRICE},00`;
     } else {
-      freteEl.textContent = "Moto Uber (a calcular)";
+      freteEl.textContent = "Via WhatsApp";
     }
   }
 
+  const fixedFrete = freteModo === "uber_free" || freteModo === "fortaleza";
   const totalLabel = entregaDisponivel
-    ? (freteModo === "uber_free" ? formatBRL(totalComFrete) : `${formatBRL(totalComFrete)} + frete`)
+    ? (fixedFrete ? formatBRL(totalComFrete) : `${formatBRL(totalComFrete)} + frete`)
     : formatBRL(totalComFrete);
   el("#cartTotal").textContent = totalLabel;
 
@@ -2572,25 +2523,29 @@ async function calcularEntregaPorCEP(cepRaw) {
     return;
   }
 
-  if (city && uf && !isInMetroFortaleza(city, uf)) {
-    freteModo = "sedex";
-    if (freteMsg) freteMsg.textContent = "Entrega via SEDEX. Valor calculado no WhatsApp.";
+  const inFortaleza = city && uf && isFortalezaCity(city, uf);
+
+  if (!inFortaleza && city && uf) {
+    freteModo = "whatsapp";
+    if (freteMsg) freteMsg.textContent = "Fora de Fortaleza — frete calculado e enviado via WhatsApp.";
     atualizarCart();
     return;
   }
 
-  if (hasCoords) {
+  if (hasCoords && origin) {
     const km = haversineKm(origin.lat, origin.lng, coords.lat, coords.lng);
     if (km <= DELIVERY_FREE_RADIUS_KM) {
       freteModo = "uber_free";
-      if (freteMsg) freteMsg.textContent = `Entrega grátis (até ${DELIVERY_FREE_RADIUS_KM} km).`;
+      freteAtual = 0;
+      if (freteMsg) freteMsg.textContent = `Entrega grátis (até ${DELIVERY_FREE_RADIUS_KM} km da loja).`;
       atualizarCart();
       return;
     }
   }
 
-  freteModo = "uber_pending";
-  if (freteMsg) freteMsg.textContent = "Entrega via Moto Uber. Valor calculado no WhatsApp.";
+  freteModo = "fortaleza";
+  freteAtual = DELIVERY_FORTALEZA_PRICE;
+  if (freteMsg) freteMsg.textContent = `Entrega em Fortaleza — R$ ${DELIVERY_FORTALEZA_PRICE},00.`;
   atualizarCart();
 }
 
@@ -2733,12 +2688,9 @@ function openCheckoutModal(){
                   Você será redirecionado para o ambiente seguro da InfinitePay. Endereço, CPF e dados do cartão são preenchidos lá.
                 </p>
               </div>
-              <div class="full checkout__radio">
-                <label><input type="radio" name="pagamento" value="pix" checked> PIX instantâneo</label>
-                <label><input type="radio" name="pagamento" value="cartao"> Cartão de crédito</label>
-              </div>
+              <input type="hidden" name="pagamento" value="online" />
               <div class="full checkout__note">
-                Seus dados do passo 1 já chegam pré-preenchidos na InfinitePay para agilizar o pagamento.
+                Seus dados já chegam pré-preenchidos na InfinitePay. PIX, cartão e parcelamento são escolhidos lá.
               </div>
             </div>
           </div>
@@ -2819,25 +2771,23 @@ function openCheckoutModal(){
   el("#ckSubtotal").textContent = formatBRL(subtotal);
   let freteResumo = "Informe o CEP";
   if (entregaDisponivel) {
-    if (freteModo === "sedex") freteResumo = "SEDEX (a calcular)";
-    else if (freteModo === "uber_free") freteResumo = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
-    else freteResumo = "Moto Uber (a calcular)";
+    if (freteModo === "uber_free") freteResumo = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
+    else if (freteModo === "fortaleza") freteResumo = `R$ ${DELIVERY_FORTALEZA_PRICE},00`;
+    else freteResumo = "Via WhatsApp";
   }
   el("#ckFrete").textContent = freteResumo;
   const freteVia = el("#ckFreteVia");
   if (freteVia) freteVia.textContent = "";
+  const fixedFrete2 = freteModo === "uber_free" || freteModo === "fortaleza";
   let totalLabel = formatBRL(total);
   if (entregaDisponivel) {
-    totalLabel = freteModo === "uber_free" ? formatBRL(total) : `${formatBRL(total)} + frete`;
+    totalLabel = fixedFrete2 ? formatBRL(total) : `${formatBRL(total)} + frete`;
   }
   el("#ckTotal").textContent = totalLabel;
   const freteNote = el("#checkoutFreteNote");
   if (freteNote) {
-    if (freteModo === "sedex") {
-      freteNote.textContent = "Entrega via SEDEX. Valor calculado no WhatsApp.";
-      freteNote.style.display = "";
-    } else if (freteModo === "uber_pending") {
-      freteNote.textContent = "Entrega via Moto Uber. Valor calculado no WhatsApp.";
+    if (freteModo === "whatsapp") {
+      freteNote.textContent = "Fora de Fortaleza — frete calculado e enviado via WhatsApp.";
       freteNote.style.display = "";
     } else {
       freteNote.textContent = "";
@@ -3134,7 +3084,8 @@ async function handleSubmitCheckout(ev){
       frete_modo: freteModo || ""
     });
     if (pagamentoOnline.checkoutUrl) {
-      window.location.href = pagamentoOnline.checkoutUrl;
+      openWhatsAppWithMessage(mensagem);
+      setTimeout(() => { window.location.href = pagamentoOnline.checkoutUrl; }, 400);
     } else {
       alert("Pedido criado. O pagamento online ainda precisa das credenciais da InfinityPay para gerar o link.");
       openWhatsAppWithMessage(mensagem);
