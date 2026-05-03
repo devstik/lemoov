@@ -1159,9 +1159,7 @@ function computeColorPrice(prod, colorObj){
     transform: translate(-50%, -100%);
     padding: 6px 10px;
     border-radius: 999px;
-    background:
-      radial-gradient(circle at 18% 30%, rgba(255, 223, 0, 0.95), rgba(255, 223, 0, 0) 34%),
-      linear-gradient(135deg, #008f46 0%, #007a52 46%, #063f92 100%);
+    background: linear-gradient(135deg, #008f46 0%, #007a52 46%, #063f92 100%);
     color: #fff;
     font-size: 0.68rem;
     font-weight: 800;
