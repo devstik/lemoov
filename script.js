@@ -1159,13 +1159,15 @@ function computeColorPrice(prod, colorObj){
     transform: translate(-50%, -100%);
     padding: 6px 10px;
     border-radius: 999px;
-    background: linear-gradient(120deg, #009C3B 0%, #009C3B 42%, #FFDF00 43%, #FFDF00 56%, #002776 57%, #002776 100%);
+    background:
+      radial-gradient(circle at 18% 30%, rgba(255, 223, 0, 0.95), rgba(255, 223, 0, 0) 34%),
+      linear-gradient(135deg, #008f46 0%, #007a52 46%, #063f92 100%);
     color: #fff;
     font-size: 0.68rem;
     font-weight: 800;
     line-height: 1;
     white-space: nowrap;
-    box-shadow: 0 8px 22px rgba(0,39,118,0.2);
+    box-shadow: 0 8px 22px rgba(0,75,70,0.22);
     text-shadow: 0 1px 2px rgba(0,0,0,0.32);
   }
 
