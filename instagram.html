@@ -12,11 +12,19 @@
       --green:  #009C3B;
       --yellow: #FFDF00;
       --navy:   #002776;
+      --frame-pad-x: clamp(16px, 5vw, 20px);
+      --frame-pad-top: clamp(12px, 2.4vh, 20px);
+      --frame-pad-bottom: max(clamp(10px, 2vh, 18px), env(safe-area-inset-bottom));
+      --logo-width: clamp(150px, 42vw, 206px);
+      --cta-y: 8px;
+      --cta-font: 14px;
+      --link-gap: 8px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body {
       height: 100%;
+      min-height: -webkit-fill-available;
       overflow: hidden;
       font-family: "Manrope", system-ui, sans-serif;
     }
@@ -47,18 +55,23 @@
       position: relative;
       z-index: 1;
       width: min(480px, 100%);
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      min-height: 100svh;
+      height: 100vh;
+      height: 100svh;
       height: 100dvh;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: clamp(12px, 2.4vh, 20px) 20px clamp(10px, 2vh, 18px);
+      padding: var(--frame-pad-top) var(--frame-pad-x) var(--frame-pad-bottom);
     }
 
     /* ── Logo original ── */
     .logo-mark {
       position: relative;
-      width: clamp(158px, 42vw, 206px);
+      width: var(--logo-width);
       aspect-ratio: 2.12 / 1;
       overflow: hidden;
       filter:
@@ -100,7 +113,7 @@
     .links {
       width: 100%;
       display: grid;
-      gap: 8px;
+      gap: var(--link-gap);
       margin-top: auto;
     }
 
@@ -109,11 +122,11 @@
       grid-template-columns: 32px 1fr 20px;
       align-items: center;
       gap: 4px;
-      padding: 8px 13px;
+      padding: var(--cta-y) 13px;
       border-radius: 12px;
       text-decoration: none;
       font-weight: 700;
-      font-size: 14px;
+      font-size: var(--cta-font);
       letter-spacing: 0.01em;
       transition: transform 0.18s ease, box-shadow 0.18s ease;
       border: none;
@@ -181,6 +194,54 @@
       color: rgba(255,255,255,0.6);
       text-shadow: 0 1px 6px rgba(0,0,0,0.5);
     }
+
+    @media (min-width: 700px) {
+      :root {
+        --frame-pad-top: clamp(14px, 2vh, 22px);
+        --frame-pad-bottom: clamp(12px, 2.2vh, 22px);
+        --logo-width: clamp(170px, 13vw, 220px);
+      }
+
+      .frame {
+        width: min(430px, calc(100vw - 40px));
+      }
+    }
+
+    @media (max-height: 760px) {
+      :root {
+        --frame-pad-top: 10px;
+        --frame-pad-bottom: max(8px, env(safe-area-inset-bottom));
+        --logo-width: clamp(140px, 34vw, 184px);
+        --cta-y: 7px;
+        --cta-font: 13.5px;
+        --link-gap: 7px;
+      }
+
+      .badge {
+        margin-top: 4px;
+        padding-block: 4px;
+        font-size: 10.5px;
+      }
+
+      .footer-note {
+        margin-top: 6px;
+        font-size: 11px;
+      }
+    }
+
+    @media (max-height: 620px) {
+      :root {
+        --logo-width: clamp(126px, 30vw, 162px);
+        --cta-y: 6px;
+        --link-gap: 6px;
+      }
+
+      .badge,
+      .divider__text,
+      .footer-note {
+        font-size: 10px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -246,8 +307,6 @@
       </a>
 
     </div>
-
-    <p class="footer-note">Atendimento seg–sex · 8h às 18h</p>
 
   </main>
 </body>
