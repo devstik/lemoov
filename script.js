@@ -206,21 +206,6 @@ function initHeroCarousel(){
   const slides = track ? Array.from(track.children) : [];
   if (!track || !slides.length) return;
 
-  const heroImages = [
-    "image/Blusa/IMG_0350.JPG",
-    "image/short_ciclista_5.jpeg",
-    "image/Conjunto_Calca/iris_branco_0384.jpg",
-    "image/Conjunto_Calca/iris_branco_0385.jpg",
-    "image/Conjunto_Calca/terracota1.jpg",
-    "image/Conjunto_Short/cacau1.jpeg",
-    "image/Conjunto_Short/Manteiga2.jpeg",
-    "image/legging_elara_bolsos_laterais_5.jpeg"
-  ];
-  slides.forEach((slide, idx) => {
-    const img = slide.querySelector("img");
-    if (img && heroImages[idx]) img.src = heroImages[idx];
-  });
-
   let current = 0;
   let autoId = null;
   const AUTO_MS = 2000;
