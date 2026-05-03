@@ -503,6 +503,64 @@ function getColorImage(cor){
   const imgs = getColorImages(cor);
   return imgs[0] || "";
 }
+function normalizeColorKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+const COLOR_SWATCH_MAP = {
+  "preto": "#111111",
+  "branco": "#f7f7f2",
+  "azul": "#245f9f",
+  "azul frozen": "#9bb8d4",
+  "cinza": "#9aa0a6",
+  "grafite": "#3f444a",
+  "verde": "#2f8f5b",
+  "verde agua": "#8fd7c7",
+  "verde suzy": "#4f9b64",
+  "verde pavao": "#006f68",
+  "fucsia": "#d72c88",
+  "rosa": "#e7a3b5",
+  "lilas": "#b69bd8",
+  "terracota": "#b66545",
+  "chocolate": "#5b3526",
+  "cacau": "#6b3f2a",
+  "manteiga": "#efe1a7"
+};
+function getSwatchColor(colorObj) {
+  if (colorObj?.swatch) return colorObj.swatch;
+  return COLOR_SWATCH_MAP[normalizeColorKey(colorObj?.nome)] || "#e6e6e6";
+}
+function getColorGroupImages(prod, colorIndex) {
+  const colors = Array.isArray(prod?.cores) ? prod.cores : [];
+  const selected = colors[colorIndex] || null;
+  if (!selected) return [];
+  const key = normalizeColorKey(selected.nome);
+  const sameColor = key
+    ? colors.filter(c => normalizeColorKey(c?.nome) === key)
+    : [selected];
+  const seen = new Set();
+  return sameColor.flatMap(getColorImages).filter(src => {
+    if (!src || seen.has(src)) return false;
+    seen.add(src);
+    return true;
+  });
+}
+function getColorImageForProduct(prod, colorIndex) {
+  return getColorGroupImages(prod, colorIndex)[0] || "";
+}
+function setMainImageForProduct(imgEl, prod, colorIndex, index = 0) {
+  if (!imgEl) return false;
+  const imgs = getColorGroupImages(prod, colorIndex);
+  if (!imgs.length) return false;
+  const safeIndex = ((index % imgs.length) + imgs.length) % imgs.length;
+  imgEl.src = imgs[safeIndex];
+  imgEl.dataset.imgIndex = String(safeIndex);
+  imgEl.dataset.imgCount = String(imgs.length);
+  return true;
+}
 function getColorStock(cor){
   return cor && cor.estoque && typeof cor.estoque === "object" && !Array.isArray(cor.estoque)
     ? cor.estoque
@@ -533,19 +591,10 @@ function setMainImage(imgEl, colorObj, index = 0){
   return true;
 }
 function appendSwatchContent(button, colorObj){
-  const swatchColor = colorObj && colorObj.swatch;
-  const imgUrl = getColorImage(colorObj);
-  if (swatchColor || !imgUrl) {
-    const dot = document.createElement("span");
-    dot.className = "swatch__dot";
-    dot.style.setProperty("--swatch-color", swatchColor || "#e6e6e6");
-    button.appendChild(dot);
-    return;
-  }
-  const img = document.createElement("img");
-  img.src = imgUrl;
-  img.alt = colorObj?.nome || "";
-  button.appendChild(img);
+  const dot = document.createElement("span");
+  dot.className = "swatch__dot";
+  dot.style.setProperty("--swatch-color", getSwatchColor(colorObj));
+  button.appendChild(dot);
 }
 function isVariantSoldOut(prod, colorIndex = 0){
   if (prod && prod.soldOut) return true;
@@ -1143,7 +1192,11 @@ function renderFiltros(){
 function buildSwatches(prod, onChange, selectedIndex = 0, mainImage = null, onColorAffectsDesc = null){
   const container = document.createElement("div");
   container.className = "swatches";
+  const rendered = new Set();
   (prod.cores || []).forEach((c, idx)=>{
+    const key = normalizeColorKey(c?.nome) || String(idx);
+    if (rendered.has(key)) return;
+    rendered.add(key);
     const b = document.createElement("button");
     b.className = "swatch";
     b.title = c.nome;
@@ -1162,8 +1215,7 @@ function buildSwatches(prod, onChange, selectedIndex = 0, mainImage = null, onCo
       });
       b.dataset.selected = "true";
       b.setAttribute("aria-pressed", "true");
-      const nextImg = getColorImage(c);
-      if (mainImage) setMainImage(mainImage, c, 0);
+      if (mainImage) setMainImageForProduct(mainImage, prod, idx, 0);
       if (typeof onColorAffectsDesc === "function") onColorAffectsDesc(idx);
     });
     container.appendChild(b);
@@ -1205,7 +1257,7 @@ function renderGrid(){
     artigo.className = "product-card";
     artigo.dataset.index = i;
 
-    const primeiraImagem = (p.cores && p.cores.length) ? getColorImage(p.cores[0]) : "";
+    const primeiraImagem = (p.cores && p.cores.length) ? getColorImageForProduct(p, 0) : "";
 
     // estado local do card
     let selectedColorIndex = 0;
@@ -1301,7 +1353,7 @@ function renderGrid(){
     }
 
     const mainImage = artigo.querySelector(".product-card__media img");
-    if (mainImage) setMainImage(mainImage, (p.cores || [])[0], 0);
+    if (mainImage) setMainImageForProduct(mainImage, p, 0, 0);
 
     // Cores
     if (p.cores && p.cores.length) {
@@ -1374,7 +1426,7 @@ function renderGrid(){
         preco: priceNow,
         corSelecionada: (p.cores && p.cores[selectedColorIndex]) ? p.cores[selectedColorIndex].nome : undefined,
         tamanhoSelecionado: requiresSize() ? selectedSize : undefined,
-        imagemSelecionada: (p.cores && p.cores[selectedColorIndex]) ? getColorImage(p.cores[selectedColorIndex]) : undefined,
+        imagemSelecionada: (p.cores && p.cores[selectedColorIndex]) ? getColorImageForProduct(p, selectedColorIndex) : undefined,
         descricaoCurta: descAtual
       }, artigo.querySelector(".product-card__media img") || artigo);
     });
@@ -1384,12 +1436,11 @@ function renderGrid(){
       mediaFigure.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        const currentColor = (p.cores || [])[selectedColorIndex];
-        const imgs = getColorImages(currentColor);
+        const imgs = getColorGroupImages(p, selectedColorIndex);
         if (mainImage && imgs.length > 1) {
           const currentIndex = Number(mainImage.dataset.imgIndex) || 0;
           const nextIndex = (currentIndex + 1) % imgs.length;
-          setMainImage(mainImage, currentColor, nextIndex);
+          setMainImageForProduct(mainImage, p, selectedColorIndex, nextIndex);
           return;
         }
         if (p.cores.length > 1) {
@@ -1486,7 +1537,7 @@ function abrirModal(prodOrIndex){
   let allSizes = getAllSizesForColor(produtoAtual, 0);
   tamanhoAtual = null;
 
-  const imgInicial = (produtoAtual.cores && produtoAtual.cores.length) ? getColorImage(produtoAtual.cores[0]) : "";
+  const imgInicial = (produtoAtual.cores && produtoAtual.cores.length) ? getColorImageForProduct(produtoAtual, 0) : "";
 
   el("#modalImg").src = imgInicial;
   el("#modalNome").textContent = getDisplayName(produtoAtual, corIndexAtual);
@@ -1520,7 +1571,11 @@ function abrirModal(prodOrIndex){
   const colorsWrap = el("#modalColors");
   colorsWrap.innerHTML = "";
   if (produtoAtual.cores && produtoAtual.cores.length){
+    const renderedColors = new Set();
     produtoAtual.cores.forEach((c, idx)=>{
+      const key = normalizeColorKey(c?.nome) || String(idx);
+      if (renderedColors.has(key)) return;
+      renderedColors.add(key);
       const b = document.createElement("button");
       b.className = "swatch";
       b.title = c.nome;
@@ -1538,7 +1593,7 @@ function abrirModal(prodOrIndex){
         });
         b.dataset.selected = "true";
         b.setAttribute("aria-pressed", "true");
-        setMainImage(el("#modalImg"), c, 0);
+        setMainImageForProduct(el("#modalImg"), produtoAtual, idx, 0);
         el("#modalNome").textContent = getDisplayName(produtoAtual, corIndexAtual);
 
         allSizes = getAllSizesForColor(produtoAtual, corIndexAtual);
@@ -1591,8 +1646,7 @@ function abrirModal(prodOrIndex){
   const modalImg = el("#modalImg");
   if (modalImg) {
     modalImg.onclick = () => {
-      const cor = (produtoAtual.cores || [])[corIndexAtual] || null;
-      const imgs = getColorImages(cor);
+      const imgs = getColorGroupImages(produtoAtual, corIndexAtual);
       if (imgs.length <= 1) return;
       const curr = modalImg.getAttribute("data-img-index") || "0";
       const nextIndex = (parseInt(curr, 10) + 1) % imgs.length;
@@ -1626,7 +1680,7 @@ function abrirModal(prodOrIndex){
       preco: priceNow,
       corSelecionada: cor ? cor.nome : undefined,
       tamanhoSelecionado: requiresSize ? tamanhoAtual : undefined,
-      imagemSelecionada: cor ? getColorImage(cor) : undefined,
+      imagemSelecionada: cor ? getColorImageForProduct(produtoAtual, corIndexAtual) : undefined,
       descricaoCurta
     }, el(".modal__media img") || el("#modalImg") || el("#modal"));
   };
