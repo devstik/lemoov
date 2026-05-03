@@ -768,6 +768,15 @@ app.post('/api/admin/pedido', authRequired, async (req, res) => {
   }
 });
 
+// Prevent proxy/CDN caching of HTML pages so updates reach users immediately
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path.endsWith('.html')) {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  next();
+});
 app.use(express.static(__dirname)); // serve index.html, script.js, etc.
 if (path.resolve(UPLOAD_DIR) !== path.resolve(path.join(__dirname, UPLOAD_PUBLIC_PREFIX))) {
   app.use(`/${UPLOAD_PUBLIC_PREFIX}`, express.static(UPLOAD_DIR));
