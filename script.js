@@ -93,7 +93,7 @@ const FILTER_CARDS = [
   { label: "Tops", categories: ["Top"], tagline: "Base do conjunto", image: "image/Top/top_iris_1.jpeg" },
   { label: "Shorts", categories: ["Short"], tagline: "Movimento livre", image: "image/Conjunto_Short/sunmoov_branco_0355.jpg" },
   { label: "Leggings", categories: ["Legging"], tagline: "Mix & Match", image: "image/Conjunto_Calca/iris_branco_0384.jpg" },
-  { label: "Blusas & Coletes", categories: ["Blusa"], tagline: "Camadas leves", image: "image/Blusa/IMG_0350.JPG" }
+  { label: "Blusas & Casacos", categories: ["Blusa"], tagline: "Camadas leves", image: "image/Blusa/IMG_0350.JPG" }
 ];
 const API_BASE = window.LEMOOV_API_BASE || "";
 const IMAGE_BASE = window.LEMOOV_IMAGE_BASE || "";
@@ -527,7 +527,11 @@ const COLOR_SWATCH_MAP = {
   "terracota": "#b66545",
   "chocolate": "#5b3526",
   "cacau": "#6b3f2a",
-  "manteiga": "#efe1a7"
+  "manteiga": "#efe1a7",
+  "amarelo": "#FFDF00",
+  "aurora": "#c05070",
+  "iris": "#111111",
+  "elara": "#111111"
 };
 function getSwatchColor(colorObj) {
   if (colorObj?.swatch) return colorObj.swatch;
