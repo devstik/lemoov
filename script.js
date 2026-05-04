@@ -513,23 +513,29 @@ function normalizeColorKey(value) {
 const COLOR_SWATCH_MAP = {
   "preto": "#111111",
   "branco": "#f7f7f2",
-  "azul": "#245f9f",
-  "azul frozen": "#9bb8d4",
-  "cinza": "#9aa0a6",
-  "grafite": "#3f444a",
-  "verde": "#2f8f5b",
-  "verde agua": "#8fd7c7",
-  "verde suzy": "#4f9b64",
+  "azul": "#1a3d6b",
+  "azul marinho": "#1a3d6b",
+  "azul bic": "#0045c8",
+  "azul frozen": "#b0d0e8",
+  "cinza": "#7c8590",
+  "grafite": "#4e4e6e",
+  "verde": "#107878",
+  "verde agua": "#a5e8d2",
+  "verde suzy": "#1dafb0",
   "verde pavao": "#006f68",
-  "fucsia": "#d72c88",
+  "verde militar": "#4a5520",
+  "fucsia": "#c030cc",
   "rosa": "#e7a3b5",
   "lilas": "#b69bd8",
-  "terracota": "#b66545",
-  "chocolate": "#5b3526",
+  "terracota": "#bf5030",
+  "chocolate": "#7a4a2a",
   "cacau": "#6b3f2a",
-  "manteiga": "#efe1a7",
+  "manteiga": "#f0edd0",
   "amarelo": "#FFDF00",
+  "vermelho": "#c0392b",
   "aurora": "#c05070",
+  "sun moov rosa": "#c05070",
+  "selene": "#111111",
   "iris": "#111111",
   "elara": "#111111"
 };
@@ -894,12 +900,139 @@ function computeColorPrice(prod, colorObj){
   }
   #btnCheckout:hover{ filter: brightness(1.08); box-shadow: 0 12px 36px rgba(0,39,118,.3); }
 
+  /* ===== Tela de transição para pagamento ===== */
+  #payment-transition{
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#009C3B;
+    opacity:0;
+    animation:ptFadeIn .4s ease forwards;
+    overflow:hidden;
+  }
+  @keyframes ptFadeIn{ to{ opacity:1; } }
+
+  /* estrelas fixas de fundo */
+  #payment-transition .pt-stars{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+  }
+  #payment-transition .pt-stars span{
+    position:absolute;
+    color:rgba(255,255,255,.55);
+    font-size:.45rem;
+    animation:ptTwinkle 2.4s ease-in-out infinite;
+  }
+  @keyframes ptTwinkle{
+    0%,100%{ opacity:.3; transform:scale(1); }
+    50%    { opacity:.9; transform:scale(1.6); }
+  }
+
+  /* losango amarelo */
+  #payment-transition .pt-diamond{
+    position:absolute;
+    width:min(82vw,460px);
+    aspect-ratio:1/.7;
+    background:#FFDF00;
+    clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+    animation:ptDiamondIn .5s .1s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes ptDiamondIn{
+    from{ clip-path:polygon(50% 50%,50% 50%,50% 50%,50% 50%); opacity:0; }
+    to  { clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%); opacity:1; }
+  }
+
+  /* círculo azul */
+  #payment-transition .pt-circle{
+    position:relative;
+    width:min(44vw,200px);
+    aspect-ratio:1;
+    border-radius:50%;
+    background:#002776;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    animation:ptCircleIn .5s .25s cubic-bezier(.22,1,.36,1) both;
+    box-shadow:0 0 0 2px rgba(255,255,255,.18);
+  }
+  @keyframes ptCircleIn{
+    from{ transform:scale(0); opacity:0; }
+    to  { transform:scale(1); opacity:1; }
+  }
+
+  /* faixa branca dentro do círculo */
+  #payment-transition .pt-circle::before{
+    content:'';
+    position:absolute;
+    left:0; right:0;
+    top:50%; transform:translateY(-50%);
+    height:14%;
+    background:rgba(255,255,255,.12);
+  }
+
+  #payment-transition .pt-logo{
+    font-size:clamp(.8rem,3.5vw,1rem);
+    font-weight:900;
+    letter-spacing:.22em;
+    color:#FFDF00;
+    text-transform:uppercase;
+    text-shadow:0 1px 8px rgba(0,0,0,.4);
+    position:relative;
+    z-index:1;
+  }
+  #payment-transition .pt-lock{
+    font-size:clamp(1rem,4vw,1.3rem);
+    animation:ptPulse 1.8s ease-in-out infinite;
+    line-height:1;
+  }
+  @keyframes ptPulse{
+    0%,100%{ transform:scale(1);   opacity:.75; }
+    50%    { transform:scale(1.2); opacity:1;   }
+  }
+  #payment-transition .pt-bar-wrap{
+    width:min(26vw,90px);
+    height:3px;
+    border-radius:99px;
+    background:rgba(255,255,255,.2);
+    overflow:hidden;
+  }
+  #payment-transition .pt-bar{
+    height:100%;
+    border-radius:99px;
+    background:#FFDF00;
+    animation:ptSlide 1.3s ease-in-out infinite;
+    width:45%;
+  }
+  @keyframes ptSlide{
+    0%  { transform:translateX(-150%); }
+    100%{ transform:translateX(400%);  }
+  }
+
+  /* mensagem abaixo do losango */
+  #payment-transition .pt-msg{
+    position:absolute;
+    bottom:min(10vh,60px);
+    left:0; right:0;
+    text-align:center;
+    color:rgba(255,255,255,.82);
+    font-size:clamp(.75rem,3vw,.9rem);
+    letter-spacing:.04em;
+    animation:ptFadeIn .4s .6s both;
+  }
+
   dialog.checkout-modal:not([open]){ display:none !important; }
   dialog.checkout-modal{
     border:none;
     border-radius:0;
     width:100vw;
     height:100vh;
+    height:100dvh;
     max-width:none;
     max-height:none;
     padding:0;
@@ -909,11 +1042,16 @@ function computeColorPrice(prod, colorObj){
       linear-gradient(135deg,#f8fbf2,#edf7f2 55%, #eaf3ff 100%);
     color:#0d1f2a;
     box-shadow:none;
-    overflow-y:auto;
-    overscroll-behavior:contain;
-    -webkit-overflow-scrolling:touch;
+    overflow:hidden;
     display:flex;
     flex-direction:column;
+  }
+  #checkoutForm{
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
   }
   dialog.checkout-modal::backdrop{
     background: rgba(2,8,16,0.85);
@@ -947,6 +1085,8 @@ function computeColorPrice(prod, colorObj){
     grid-template-columns:1fr;
     background:transparent;
     overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-y;
     flex:1 1 auto;
     min-height:0;
     overscroll-behavior:contain;
@@ -2883,6 +3023,30 @@ async function savePedido(payload){
   }
 }
 
+function showPaymentTransition(){
+  const existing = document.getElementById("payment-transition");
+  if (existing) { existing.style.display = "flex"; return; }
+  const stars = [
+    [12,18],[22,72],[38,8],[55,85],[68,14],[80,60],[90,30],[6,50],
+    [45,42],[75,78],[30,92],[60,5],[15,65],[85,45],[50,22]
+  ].map(([l,t],i) =>
+    `<span style="left:${l}%;top:${t}%;animation-delay:${(i*0.17).toFixed(2)}s">★</span>`
+  ).join("");
+  const div = document.createElement("div");
+  div.id = "payment-transition";
+  div.innerHTML = `
+    <div class="pt-stars">${stars}</div>
+    <div class="pt-diamond"></div>
+    <div class="pt-circle">
+      <div class="pt-lock">🔒</div>
+      <div class="pt-logo">Lemoov</div>
+      <div class="pt-bar-wrap"><div class="pt-bar"></div></div>
+    </div>
+    <div class="pt-msg">Redirecionando para pagamento seguro…</div>
+  `;
+  document.body.appendChild(div);
+}
+
 async function createInfinityPayment(payload){
   const res = await fetch(`${API_BASE}/api/pagamentos/infinitypay`, {
     method: "POST",
@@ -3002,12 +3166,18 @@ async function handleSubmitCheckout(ev){
       item_count: purchaseItems.length
     });
     if (pagamentoOnline.checkoutUrl) {
-      window.location.href = pagamentoOnline.checkoutUrl;
+      carrinho = [];
+      atualizarCart();
+      closeCheckoutModal();
+      closeCart();
+      showPaymentTransition();
+      setTimeout(() => { window.location.href = pagamentoOnline.checkoutUrl; }, 600);
+      return;
     } else {
       alert("Pedido criado, mas não foi possível gerar o link de pagamento. Entre em contato com a Lemoov.");
     }
 
-    // Limpa carrinho e interfaces abertas
+    // Limpa carrinho e interfaces abertas (apenas quando não há redirect)
     carrinho = [];
     atualizarCart();
 
