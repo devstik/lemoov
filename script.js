@@ -540,9 +540,37 @@ const COLOR_SWATCH_MAP = {
   "iris": "#111111",
   "elara": "#111111"
 };
+const COLOR_SEARCH_TONES = {
+  "#111111": "preto black escuro",
+  "#f7f7f2": "branco off white gelo claro",
+  "#f0edd0": "manteiga creme bege bege claro amarelo claro",
+  "#1a3d6b": "azul azul marinho azul escuro marinho",
+  "#0045c8": "azul bic azul royal azul vivo",
+  "#b0d0e8": "azul frozen azul claro azul bebe azul bebê",
+  "#7c8590": "cinza prata",
+  "#4e4e6e": "grafite cinza escuro chumbo",
+  "#107878": "verde verde medio verde médio",
+  "#a5e8d2": "verde agua verde água verde claro menta",
+  "#1dafb0": "verde suzy turquesa verde azulado",
+  "#006f68": "verde pavao verde pavão verde petroleo verde petróleo",
+  "#4a5520": "verde militar oliva",
+  "#c030cc": "fucsia fúcsia pink magenta",
+  "#e7a3b5": "rosa rosa claro",
+  "#b69bd8": "lilas lilás roxo claro",
+  "#bf5030": "terracota telha laranja queimado",
+  "#7a4a2a": "chocolate marrom marrom escuro",
+  "#6b3f2a": "cacau cafe café marrom medio marrom médio",
+  "#ffdf00": "amarelo dourado",
+  "#c0392b": "vermelho red",
+  "#c05070": "aurora rose rosê rosa queimado"
+};
 function getSwatchColor(colorObj) {
   if (/^#[0-9a-f]{6}$/i.test(String(colorObj?.swatch || ""))) return colorObj.swatch;
   return COLOR_SWATCH_MAP[normalizeColorKey(colorObj?.nome)] || "#e6e6e6";
+}
+function getColorSearchTerms(colorObj) {
+  const swatch = getSwatchColor(colorObj).toLowerCase();
+  return COLOR_SEARCH_TONES[swatch] || "";
 }
 function getColorGroupImages(prod, colorIndex) {
   const colors = Array.isArray(prod?.cores) ? prod.cores : [];
@@ -1365,6 +1393,7 @@ function getProductSearchText(prod) {
     flattenSearchValue(prod?.desc),
     colors.map(c => [
       c?.nome,
+      getColorSearchTerms(c),
       flattenSearchValue(c?.desc),
       Array.isArray(c?.tamanhos) ? c.tamanhos.join(" ") : "",
       c?.estoque ? Object.keys(c.estoque).join(" ") : ""

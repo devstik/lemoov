@@ -49,9 +49,13 @@
     .fc:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
     textarea.fc{min-height:72px;resize:vertical}
     .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .color-picker{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center}
+    .color-picker{display:grid;grid-template-columns:44px minmax(0,1fr) 78px;gap:8px;align-items:center}
     .color-picker input[type="color"]{width:44px;height:38px;padding:3px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer}
-    .color-picker__hex{font-size:12px;color:#64748b;font-weight:600}
+    .color-picker__tone{min-width:0;height:38px}
+    .color-picker__hex{font-size:11px;color:#64748b;font-weight:700;text-align:right}
+    .color-palette{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .color-palette__btn{width:22px;height:22px;border-radius:999px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(15,23,42,.18);cursor:pointer;background:var(--tone);padding:0}
+    .color-palette__btn[data-selected="true"]{box-shadow:0 0 0 2px #2563eb,0 0 0 4px #dbeafe}
     /* Products layout */
     .prod-layout{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
     .prod-list{max-height:calc(100vh - 130px);overflow-y:auto;padding:10px}
@@ -279,6 +283,7 @@
 </div>
 
 <div id="toastRoot"></div>
+<datalist id="colorToneOptions"></datalist>
 
 <script>
 // ── Helpers ─────────────────────────────────────────────────
@@ -295,9 +300,47 @@ const COLOR_SWATCH_MAP={
   "verde militar":"#4a5520","fucsia":"#c030cc","rosa":"#e7a3b5","lilas":"#b69bd8","terracota":"#bf5030","chocolate":"#7a4a2a",
   "cacau":"#6b3f2a","manteiga":"#f0edd0","amarelo":"#ffdf00","vermelho":"#c0392b","aurora":"#c05070"
 };
+const COLOR_TONE_PRESETS=[
+  {nome:'Preto',hex:'#111111',aliases:['preto','black']},
+  {nome:'Branco',hex:'#f7f7f2',aliases:['branco','off white','gelo']},
+  {nome:'Manteiga',hex:'#f0edd0',aliases:['manteiga','creme','bege claro','amarelo claro']},
+  {nome:'Azul marinho',hex:'#1a3d6b',aliases:['azul','azul escuro','marinho']},
+  {nome:'Azul bic',hex:'#0045c8',aliases:['azul bic','azul royal','azul vivo']},
+  {nome:'Azul frozen',hex:'#b0d0e8',aliases:['azul frozen','azul claro','azul bebe','azul bebê']},
+  {nome:'Cinza',hex:'#7c8590',aliases:['cinza','prata']},
+  {nome:'Grafite',hex:'#4e4e6e',aliases:['grafite','cinza escuro','chumbo']},
+  {nome:'Verde',hex:'#107878',aliases:['verde','verde medio','verde médio']},
+  {nome:'Verde agua',hex:'#a5e8d2',aliases:['verde agua','verde água','verde claro','menta']},
+  {nome:'Verde suzy',hex:'#1dafb0',aliases:['verde suzy','turquesa','verde azulado']},
+  {nome:'Verde pavao',hex:'#006f68',aliases:['verde pavao','verde pavão','verde petróleo','petroleo','petróleo']},
+  {nome:'Verde militar',hex:'#4a5520',aliases:['verde militar','oliva']},
+  {nome:'Fucsia',hex:'#c030cc',aliases:['fucsia','fúcsia','pink','magenta']},
+  {nome:'Rosa',hex:'#e7a3b5',aliases:['rosa','rosa claro']},
+  {nome:'Lilas',hex:'#b69bd8',aliases:['lilas','lilás','roxo claro']},
+  {nome:'Terracota',hex:'#bf5030',aliases:['terracota','telha','laranja queimado']},
+  {nome:'Chocolate',hex:'#7a4a2a',aliases:['chocolate','marrom','marrom escuro']},
+  {nome:'Cacau',hex:'#6b3f2a',aliases:['cacau','café','cafe','marrom medio','marrom médio']},
+  {nome:'Amarelo',hex:'#ffdf00',aliases:['amarelo','dourado']},
+  {nome:'Vermelho',hex:'#c0392b',aliases:['vermelho','red']},
+  {nome:'Aurora',hex:'#c05070',aliases:['aurora','rosê','rose','rosa queimado']}
+];
 function normalizeColorKey(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
 function isHexColor(value){return /^#[0-9a-f]{6}$/i.test(String(value||''))}
-function defaultSwatchForName(nome){return COLOR_SWATCH_MAP[normalizeColorKey(nome)]||'#e6e6e6'}
+function findTonePreset(value){
+  const key=normalizeColorKey(value);
+  if(!key) return null;
+  return COLOR_TONE_PRESETS.find(p=>normalizeColorKey(p.nome)===key||p.aliases.some(a=>normalizeColorKey(a)===key))||null;
+}
+function findToneByHex(value){
+  const hex=String(value||'').toLowerCase();
+  return COLOR_TONE_PRESETS.find(p=>p.hex===hex)||null;
+}
+function defaultSwatchForName(nome){const preset=findTonePreset(nome);return preset?.hex||COLOR_SWATCH_MAP[normalizeColorKey(nome)]||'#e6e6e6'}
+function renderToneOptions(){
+  const list=$('colorToneOptions');
+  if(!list) return;
+  list.innerHTML=COLOR_TONE_PRESETS.map(p=>`<option value="${esc(p.nome)}">${esc(p.aliases.slice(0,3).join(', '))}</option>`).join('');
+}
 function parseStock(raw){
   const text=String(raw||'').trim(); if(!text) return null;
   const st={};
@@ -523,11 +566,13 @@ function addColorRow(cor={}){
     <div class="frow">
       <div class="fg"><label class="fl">Nome da cor</label><input class="fc" data-cn /></div>
       <div class="fg">
-        <label class="fl">Cor da bolinha</label>
+        <label class="fl">Tom da bolinha</label>
         <div class="color-picker">
           <input type="color" data-cw aria-label="Selecionar cor da bolinha" />
+          <input class="fc color-picker__tone" data-cw-tone list="colorToneOptions" placeholder="Buscar tom: azul claro" />
           <span class="color-picker__hex" data-cw-label></span>
         </div>
+        <div class="color-palette" data-cw-palette aria-label="Paleta de tons"></div>
       </div>
     </div>
     <div class="frow">
@@ -564,13 +609,19 @@ function addColorRow(cor={}){
   // Set values
   const nameInput=div.querySelector('[data-cn]');
   const swatchInput=div.querySelector('[data-cw]');
+  const toneInput=div.querySelector('[data-cw-tone]');
   const swatchLabel=div.querySelector('[data-cw-label]');
+  const paletteEl=div.querySelector('[data-cw-palette]');
   const initialSwatch=isHexColor(cor.swatch)?cor.swatch:defaultSwatchForName(cor.nome);
   div.dataset.swatchManual=isHexColor(cor.swatch)?'1':'0';
+  paletteEl.innerHTML=COLOR_TONE_PRESETS.map(p=>`<button type="button" class="color-palette__btn" data-tone-hex="${p.hex}" title="${esc(p.nome)}" aria-label="${esc(p.nome)}" style="--tone:${p.hex}"></button>`).join('');
   function setSwatchValue(value){
     const hex=isHexColor(value)?value.toLowerCase():'#e6e6e6';
     swatchInput.value=hex;
     swatchLabel.textContent=hex.toUpperCase();
+    const preset=findToneByHex(hex);
+    toneInput.value=preset?.nome||'Personalizada';
+    paletteEl.querySelectorAll('[data-tone-hex]').forEach(btn=>{btn.dataset.selected=btn.dataset.toneHex===hex?'true':'false'});
   }
   nameInput.value=cor.nome||'';
   setSwatchValue(initialSwatch);
@@ -590,6 +641,21 @@ function addColorRow(cor={}){
   setTogState(cor.ativo!==false);
   togEl.onclick=()=>setTogState(togEl.dataset.state!=='on');
   swatchInput.addEventListener('input',()=>{div.dataset.swatchManual='1';setSwatchValue(swatchInput.value)});
+  paletteEl.addEventListener('click',(e)=>{
+    const btn=e.target.closest('[data-tone-hex]');
+    if(!btn) return;
+    const preset=findToneByHex(btn.dataset.toneHex);
+    div.dataset.swatchManual='1';
+    setSwatchValue(btn.dataset.toneHex);
+    if(preset&&!nameInput.value.trim()) nameInput.value=preset.nome;
+  });
+  toneInput.addEventListener('input',()=>{
+    const preset=findTonePreset(toneInput.value);
+    if(!preset) return;
+    div.dataset.swatchManual='1';
+    setSwatchValue(preset.hex);
+    if(!nameInput.value.trim()) nameInput.value=preset.nome;
+  });
   nameInput.addEventListener('input',()=>{
     if(div.dataset.swatchManual!=='1') setSwatchValue(defaultSwatchForName(nameInput.value));
   });
@@ -1159,6 +1225,7 @@ async function loadRelatorio(){
 }
 
 // ── Init ─────────────────────────────────────────────────────
+renderToneOptions();
 loadProdutos();
 </script>
 </body>
