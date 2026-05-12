@@ -103,6 +103,7 @@ const IMAGE_BASE = window.LEMOOV_IMAGE_BASE || "";
 ------------------------------------------------------------ */
 let filtroAtual = "Todos";
 let ordenacaoAtual = "destaque";
+let buscaAtual = "";
 let carrinho = [];
 let produtoAtual = null;
 let corIndexAtual = 0;
@@ -540,7 +541,7 @@ const COLOR_SWATCH_MAP = {
   "elara": "#111111"
 };
 function getSwatchColor(colorObj) {
-  if (colorObj?.swatch) return colorObj.swatch;
+  if (/^#[0-9a-f]{6}$/i.test(String(colorObj?.swatch || ""))) return colorObj.swatch;
   return COLOR_SWATCH_MAP[normalizeColorKey(colorObj?.nome)] || "#e6e6e6";
 }
 function getColorGroupImages(prod, colorIndex) {
@@ -1341,6 +1342,59 @@ function isLancamentoFilter(value){
   return normalized === "lancamentos" || normalized === "lancamento";
 }
 
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function flattenSearchValue(value) {
+  if (!value) return "";
+  if (Array.isArray(value)) return value.map(flattenSearchValue).join(" ");
+  if (typeof value === "object") return Object.values(value).map(flattenSearchValue).join(" ");
+  return String(value);
+}
+
+function getProductSearchText(prod) {
+  const colors = Array.isArray(prod?.cores) ? prod.cores : [];
+  return normalizeSearchText([
+    prod?.nome,
+    prod?.categoria,
+    flattenSearchValue(prod?.desc),
+    colors.map(c => [
+      c?.nome,
+      flattenSearchValue(c?.desc),
+      Array.isArray(c?.tamanhos) ? c.tamanhos.join(" ") : "",
+      c?.estoque ? Object.keys(c.estoque).join(" ") : ""
+    ].join(" ")).join(" ")
+  ].join(" "));
+}
+
+function matchesSearch(prod, query) {
+  const terms = normalizeSearchText(query).split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const haystack = getProductSearchText(prod);
+  return terms.every(term => haystack.includes(term));
+}
+
+function updateCatalogSearchState(count) {
+  const input = el("#catalogSearch");
+  const clearBtn = el("#catalogSearchClear");
+  const meta = el("#catalogSearchMeta");
+  if (!input && !meta && !clearBtn) return;
+  const query = buscaAtual.trim();
+  if (input && input.value !== buscaAtual) input.value = buscaAtual;
+  if (clearBtn) clearBtn.dataset.visible = query ? "true" : "false";
+  if (!meta) return;
+  if (query) {
+    meta.textContent = `${count} resultado${count === 1 ? "" : "s"} para "${query}"`;
+  } else {
+    meta.textContent = "";
+  }
+}
+
 function renderFiltros(){
   const wrap = el("#filters");
   if(!wrap) return;
@@ -1426,18 +1480,25 @@ function renderGrid(){
       lista = produtos.filter(p => categorias.includes(p.categoria));
     }
   }
+  if (buscaAtual.trim()) {
+    lista = lista.filter(p => matchesSearch(p, buscaAtual));
+  }
   lista = ordenar(lista);
   const disponiveis = lista.filter(p => !isProductSoldOut(p));
   const esgotados = lista.filter(p => isProductSoldOut(p));
   lista = [...disponiveis, ...esgotados];
+  updateCatalogSearchState(lista.length);
 
   const countEl = document.querySelector("#productCount");
-  if (countEl) countEl.textContent = "";
+  if (countEl) countEl.textContent = String(lista.length);
 
   grid.innerHTML = "";
 
   if (!lista.length) {
-    grid.innerHTML = `<div class="muted" style="padding:24px; text-align:center;">Nenhum produto disponível no momento.</div>`;
+    const emptyText = buscaAtual.trim()
+      ? "Nenhum produto encontrado para essa busca."
+      : "Nenhum produto disponível no momento.";
+    grid.innerHTML = `<div class="muted" style="padding:24px; text-align:center;">${emptyText}</div>`;
     attachCarouselAfterRender();
     return;
   }
@@ -2237,6 +2298,24 @@ if (openFiltersBtn && filterModal) openFiltersBtn.addEventListener('click', () =
 if (closeFiltersBtn && filterModal) closeFiltersBtn.addEventListener('click', () => filterModal.close());
 const sortSelect = el('#sortSelect');
 if (sortSelect) sortSelect.addEventListener('change', (e)=>{ ordenacaoAtual = e.target.value; renderGrid(); });
+const catalogSearch = el("#catalogSearch");
+const catalogSearchClear = el("#catalogSearchClear");
+if (catalogSearch) {
+  catalogSearch.addEventListener("input", (e) => {
+    buscaAtual = e.target.value;
+    renderGrid();
+  });
+}
+if (catalogSearchClear) {
+  catalogSearchClear.addEventListener("click", () => {
+    buscaAtual = "";
+    if (catalogSearch) {
+      catalogSearch.value = "";
+      catalogSearch.focus();
+    }
+    renderGrid();
+  });
+}
 
 async function initCatalog(){
   const urlFilter = new URLSearchParams(window.location.search).get("filter");

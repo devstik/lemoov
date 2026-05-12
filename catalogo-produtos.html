@@ -111,6 +111,75 @@
     .catalog-landing .layout {
       padding-top: 26px;
     }
+    .catalog-search {
+      position: sticky;
+      top: 70px;
+      z-index: 12;
+      margin: 0 0 16px;
+      padding: 8px;
+      border: 1px solid rgba(5, 92, 57, 0.12);
+      border-radius: 18px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.84), rgba(248,251,242,0.72)) padding-box,
+        linear-gradient(135deg, rgba(11,122,79,0.22), rgba(246,215,77,0.2), rgba(11,79,149,0.16)) border-box;
+      box-shadow: 0 14px 34px rgba(17, 58, 52, 0.1);
+      backdrop-filter: blur(14px);
+    }
+    .catalog-search__field {
+      min-height: 44px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      border-radius: 13px;
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(11, 122, 79, 0.12);
+      padding: 0 8px 0 10px;
+    }
+    .catalog-search__icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: #0b7a4f;
+      background: rgba(11, 122, 79, 0.08);
+      font-size: 0.78rem;
+    }
+    .catalog-search input {
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #0b382e;
+      font: 700 0.9rem/1.2 Inter, system-ui, sans-serif;
+    }
+    .catalog-search input::placeholder {
+      color: rgba(11, 56, 46, 0.48);
+      font-weight: 600;
+    }
+    .catalog-search__clear {
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 999px;
+      display: none;
+      place-items: center;
+      color: #0b382e;
+      background: rgba(11, 79, 149, 0.08);
+      cursor: pointer;
+    }
+    .catalog-search__clear[data-visible="true"] {
+      display: grid;
+    }
+    .catalog-search__meta {
+      display: block;
+      min-height: 16px;
+      margin: 7px 5px 0;
+      color: rgba(11, 56, 46, 0.62);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
     .catalog-landing .filters-cards {
       display: none;
     }
@@ -361,6 +430,17 @@
       .catalog-landing .layout {
         padding-top: 10px;
       }
+      .catalog-search {
+        top: 62px;
+        margin-bottom: 11px;
+        border-radius: 16px;
+      }
+      .catalog-search__field {
+        min-height: 42px;
+      }
+      .catalog-search input {
+        font-size: 0.82rem;
+      }
       .catalog-landing .grid.carousel-active,
       .catalog-landing .grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -531,6 +611,16 @@
 
   <div class="container layout layout--single">
     <main class="content" style="position:relative;">
+      <section class="catalog-search" aria-label="Pesquisar produtos">
+        <div class="catalog-search__field">
+          <span class="catalog-search__icon" aria-hidden="true"><i class="fas fa-magnifying-glass"></i></span>
+          <input id="catalogSearch" type="search" autocomplete="off" placeholder="Buscar peça, cor ou tamanho" aria-label="Buscar peça, cor ou tamanho" />
+          <button class="catalog-search__clear" id="catalogSearchClear" type="button" aria-label="Limpar busca">
+            <i class="fas fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+        <span class="catalog-search__meta" id="catalogSearchMeta"></span>
+      </section>
       <section id="grid" class="grid"></section>
     </main>
   </div>
@@ -584,6 +674,6 @@
   </aside>
   <div id="cartBackdrop" class="backdrop"></div>
 
-  <script src="script.js?v=15"></script>
+  <script src="script.js?v=17"></script>
 </body>
 </html>

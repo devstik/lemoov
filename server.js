@@ -26,6 +26,7 @@ app.use((req, res, next) => {
 });
 
 const DB_PATH = path.join(__dirname, 'data', 'pedidos.json');
+const PENDING_PAYMENTS_PATH = path.join(__dirname, 'data', 'pagamentos-pendentes.json');
 const PROD_PATH = path.join(__dirname, 'data', 'produtos.json');
 const ADMIN_USER = process.env.REPORT_USER || 'lemoov';
 const ADMIN_PASS = process.env.REPORT_PASS || 'L3moov@';
@@ -52,6 +53,7 @@ const SESSION_TTL_MS = 60 * 60 * 1000;
 
 // garante arquivo
 if (!fs.existsSync(DB_PATH)) fs.writeFileSync(DB_PATH, '[]', 'utf-8');
+if (!fs.existsSync(PENDING_PAYMENTS_PATH)) fs.writeFileSync(PENDING_PAYMENTS_PATH, '[]', 'utf-8');
 if (!fs.existsSync(PROD_PATH)) fs.writeFileSync(PROD_PATH, '[]', 'utf-8');
 const IMAGE_DIR = path.join(__dirname, 'image');
 if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
@@ -74,6 +76,13 @@ function readPedidos() {
     return [];
   }
 }
+function readPendingPayments() {
+  try {
+    return JSON.parse(fs.readFileSync(PENDING_PAYMENTS_PATH, 'utf-8'));
+  } catch (_e) {
+    return [];
+  }
+}
 function readProdutos() {
   try {
     return JSON.parse(fs.readFileSync(PROD_PATH, 'utf-8'));
@@ -86,6 +95,9 @@ function writeProdutos(list) {
 }
 function writePedidos(list) {
   fs.writeFileSync(DB_PATH, JSON.stringify(list, null, 2), 'utf-8');
+}
+function writePendingPayments(list) {
+  fs.writeFileSync(PENDING_PAYMENTS_PATH, JSON.stringify(list, null, 2), 'utf-8');
 }
 async function initDatabase() {
   if (!MYSQL_ENABLED) return;
@@ -100,6 +112,14 @@ async function initDatabase() {
     `);
     await mysqlPool.execute(`
       CREATE TABLE IF NOT EXISTS lemoov_orders (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        order_number VARCHAR(40) NOT NULL UNIQUE,
+        data LONGTEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_payment_intents (
         id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
         order_number VARCHAR(40) NOT NULL UNIQUE,
         data LONGTEXT NOT NULL,
@@ -173,6 +193,18 @@ async function readPedidosStore(conn = null) {
     return { ...item, pedido: item.pedido || row.order_number };
   });
 }
+async function readPedidoStore(numero, conn = null) {
+  const pedidoNumero = String(numero);
+  if (!MYSQL_ENABLED) {
+    return readPedidos().find((p) => String(p.pedido) === pedidoNumero) || null;
+  }
+  await initDatabase();
+  const db = conn || mysqlPool;
+  const [rows] = await db.execute('SELECT order_number, data FROM lemoov_orders WHERE order_number = ?', [pedidoNumero]);
+  if (!rows.length) return null;
+  const item = JSON.parse(rows[0].data);
+  return { ...item, pedido: item.pedido || rows[0].order_number };
+}
 async function appendPedidoStore(item, conn = null) {
   if (!MYSQL_ENABLED) {
     const pedidos = readPedidos();
@@ -186,6 +218,55 @@ async function appendPedidoStore(item, conn = null) {
     'INSERT INTO lemoov_orders (order_number, data) VALUES (?, ?)',
     [String(item.pedido), JSON.stringify(item)]
   );
+}
+async function readPendingPaymentStore(numero, conn = null) {
+  const orderNumber = String(numero);
+  if (!MYSQL_ENABLED) {
+    return readPendingPayments().find((p) => String(p.pedido || p.order_nsu) === orderNumber) || null;
+  }
+  await initDatabase();
+  const db = conn || mysqlPool;
+  const [rows] = await db.execute('SELECT order_number, data FROM lemoov_payment_intents WHERE order_number = ?', [orderNumber]);
+  if (!rows.length) return null;
+  const item = JSON.parse(rows[0].data);
+  return { ...item, pedido: item.pedido || rows[0].order_number, order_nsu: item.order_nsu || rows[0].order_number };
+}
+async function readPendingPaymentsStore(conn = null) {
+  if (!MYSQL_ENABLED) return readPendingPayments();
+  await initDatabase();
+  const db = conn || mysqlPool;
+  const [rows] = await db.execute('SELECT order_number, data FROM lemoov_payment_intents ORDER BY id');
+  return rows.map((row) => {
+    const item = JSON.parse(row.data);
+    return { ...item, pedido: item.pedido || row.order_number, order_nsu: item.order_nsu || row.order_number };
+  });
+}
+async function savePendingPaymentStore(item, conn = null) {
+  const orderNumber = String(item.pedido || item.order_nsu);
+  const payload = { ...item, pedido: orderNumber, order_nsu: orderNumber };
+  if (!MYSQL_ENABLED) {
+    const pending = readPendingPayments().filter((p) => String(p.pedido || p.order_nsu) !== orderNumber);
+    pending.push(payload);
+    writePendingPayments(pending);
+    return;
+  }
+  await initDatabase();
+  const db = conn || mysqlPool;
+  await db.execute(
+    `INSERT INTO lemoov_payment_intents (order_number, data) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE data = VALUES(data)`,
+    [orderNumber, JSON.stringify(payload)]
+  );
+}
+async function deletePendingPaymentStore(numero, conn = null) {
+  const orderNumber = String(numero);
+  if (!MYSQL_ENABLED) {
+    writePendingPayments(readPendingPayments().filter((p) => String(p.pedido || p.order_nsu) !== orderNumber));
+    return;
+  }
+  await initDatabase();
+  const db = conn || mysqlPool;
+  await db.execute('DELETE FROM lemoov_payment_intents WHERE order_number = ?', [orderNumber]);
 }
 async function updatePedidoStore(numero, updates) {
   if (!MYSQL_ENABLED) {
@@ -356,6 +437,15 @@ function authRequired(req, res, next) {
 app.post('/api/pedidos', async (req, res) => {
   let conn = null;
   try {
+    const status = String(req.body?.status || '').toLowerCase();
+    const paymentStatus = String(req.body?.pagamento_status || '').toLowerCase();
+    const isPaidOrder = ['confirmado', 'enviado', 'entregue'].includes(status) || paymentStatus === 'pago';
+    if (!isPaidOrder) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Pedido só é registrado após confirmação de pagamento.'
+      });
+    }
     if (MYSQL_ENABLED) {
       await initDatabase();
       conn = await mysqlPool.getConnection();
@@ -374,7 +464,7 @@ app.post('/api/pedidos', async (req, res) => {
     const pedido = {
       ...req.body,
       pedido: numeroPedido,
-      status: req.body?.status || 'reservado',
+      status: req.body?.status || 'confirmado',
       recebidoEm: new Date().toISOString()
     };
     await appendPedidoStore(pedido, conn);
@@ -451,11 +541,32 @@ app.post('/api/admin/reset-admin-user', authRequired, async (_req, res) => {
 
 app.post('/api/pagamentos/infinitypay', async (req, res) => {
   try {
-    const { pedido, metodo, total, itens, cliente, endereco } = req.body || {};
-    const orderNsu = String(pedido || Date.now());
+    const { metodo, total, itens, itensEstoque, cliente, endereco, pedidoPayload } = req.body || {};
+    const pedidos = await readPedidosStore();
+    const pendingPayments = await readPendingPaymentsStore();
+    const orderNsu = generateOrderNumber([...pedidos, ...pendingPayments]);
     const paymentItems = normalizePaymentItems(itens);
+    const intent = {
+      pedido: orderNsu,
+      order_nsu: orderNsu,
+      status: 'aguardando_pagamento',
+      total: Number(total || 0),
+      currency: req.body?.currency || 'BRL',
+      metodo: metodo || 'online',
+      cliente: cliente || {},
+      endereco: endereco || {},
+      itens: Array.isArray(pedidoPayload?.itens) ? pedidoPayload.itens : [],
+      itensEstoque: Array.isArray(itensEstoque) ? itensEstoque : [],
+      pedidoPayload: pedidoPayload && typeof pedidoPayload === 'object' ? pedidoPayload : {},
+      createdAt: new Date().toISOString()
+    };
 
     if (!INFINITEPAY_HANDLE) {
+      await savePendingPaymentStore({
+        ...intent,
+        payment_reference: `dev-${orderNsu}`,
+        configured: false
+      });
       return res.json({
         ok: true,
         configured: false,
@@ -509,6 +620,13 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
       });
     }
 
+    await savePendingPaymentStore({
+      ...intent,
+      payment_reference: orderNsu,
+      checkout: data,
+      configured: true
+    });
+
     return res.json({
       ok: true,
       configured: true,
@@ -526,6 +644,7 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
 });
 
 app.post('/api/webhooks/infinitepay', async (req, res) => {
+  let conn = null;
   try {
     const body = req.body || {};
     const orderNsu = String(body.order_nsu || '').trim();
@@ -533,7 +652,7 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'order_nsu ausente.' });
     }
 
-    await updatePedidoStore(orderNsu, {
+    const paymentUpdates = {
       status: 'confirmado',
       pagamento_status: 'pago',
       payment_provider: 'infinitepay',
@@ -546,12 +665,58 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
       payment_installments: Number(body.installments || 1),
       payment_webhook: body,
       confirmedAt: new Date().toISOString()
-    });
+    };
+
+    if (MYSQL_ENABLED) {
+      await initDatabase();
+      conn = await mysqlPool.getConnection();
+      await conn.beginTransaction();
+      await conn.execute('SELECT id FROM lemoov_products FOR UPDATE');
+    }
+
+    const pending = await readPendingPaymentStore(orderNsu, conn);
+    if (pending) {
+      const existing = await readPedidoStore(orderNsu, conn);
+      if (existing) {
+        await updatePedidoStore(orderNsu, paymentUpdates);
+        await deletePendingPaymentStore(orderNsu, conn);
+      } else {
+        const produtos = ensureProductIds(await readProdutosStore(conn));
+        const itensReserva = Array.isArray(pending.itensEstoque) ? pending.itensEstoque : [];
+        reserveStock(produtos, itensReserva);
+        await writeProdutosStore(produtos, conn);
+        const basePedido = pending.pedidoPayload || {};
+        const pedido = {
+          ...basePedido,
+          pedido: orderNsu,
+          status: 'confirmado',
+          total: Number(basePedido.total || pending.total || paymentUpdates.payment_amount || 0),
+          currency: basePedido.currency || pending.currency || 'BRL',
+          itens: Array.isArray(basePedido.itens) ? basePedido.itens : (pending.itens || []),
+          itensEstoque: itensReserva,
+          cliente: pending.cliente || basePedido.cliente || {},
+          recebidoEm: new Date().toISOString(),
+          ...paymentUpdates
+        };
+        await appendPedidoStore(pedido, conn);
+        await deletePendingPaymentStore(orderNsu, conn);
+      }
+      if (conn) await conn.commit();
+      return res.json({ ok: true });
+    }
+
+    await updatePedidoStore(orderNsu, paymentUpdates);
+    if (conn) await conn.commit();
 
     res.json({ ok: true });
   } catch (e) {
+    if (conn) {
+      try { await conn.rollback(); } catch (_rollbackError) {}
+    }
     console.error('[infinitepay:webhook] erro:', e.message);
     res.status(400).json({ ok: false, error: e.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
