@@ -1110,6 +1110,40 @@ function computeColorPrice(prod, colorObj){
     animation:ptFadeIn .4s .6s both;
   }
 
+  dialog.app-message-dialog:not([open]){ display:none !important; }
+  dialog.app-message-dialog{
+    width:min(420px, calc(100vw - 34px));
+    border:0;
+    border-radius:20px;
+    padding:0;
+    background:#fff;
+    color:#0a1628;
+    box-shadow:0 28px 80px rgba(7,24,32,.28);
+    overflow:hidden;
+  }
+  dialog.app-message-dialog::backdrop{
+    background:rgba(6,18,28,.46);
+    backdrop-filter:blur(7px);
+  }
+  .app-message__body{padding:22px 22px 18px}
+  .app-message__mark{
+    width:42px;height:42px;border-radius:14px;
+    display:grid;place-items:center;
+    background:linear-gradient(135deg,#009C3B,#002776);
+    color:#FFDF00;font-weight:900;margin-bottom:14px;
+  }
+  .app-message__title{font-size:1rem;font-weight:900;margin:0 0 7px;color:#0a1628}
+  .app-message__text{font-size:.9rem;line-height:1.5;color:#4b5b68;margin:0}
+  .app-message__actions{
+    display:flex;justify-content:flex-end;gap:8px;
+    padding:12px 16px 16px;background:#f8fbf2;
+  }
+  .app-message__ok{
+    border:0;border-radius:12px;padding:11px 18px;
+    background:linear-gradient(120deg,#009C3B,#002776);
+    color:#FFDF00;font-weight:900;cursor:pointer;
+  }
+
   dialog.checkout-modal:not([open]){ display:none !important; }
   dialog.checkout-modal{
     border:none;
@@ -1756,7 +1790,7 @@ function renderGrid(){
       e.preventDefault();
 
       if (isVariantSoldOut(p, selectedColorIndex)) {
-        alert("Esse item está esgotado.");
+        showAppMessage("Esse item está esgotado.");
         refreshAddButton();
         return;
       }
@@ -1764,7 +1798,7 @@ function renderGrid(){
       const thereIsAvailable = availableForColor && availableForColor.length;
 
       if (requiresSize() && (!thereIsAvailable || !selectedSize)) {
-        alert("Selecione um tamanho disponível para essa cor.");
+        showAppMessage("Selecione um tamanho disponível para essa cor.");
         return;
       }
 
@@ -2014,7 +2048,7 @@ function abrirModal(prodOrIndex){
     const cor = (produtoAtual.cores && produtoAtual.cores.length) ? produtoAtual.cores[corIndexAtual] : null;
 
     if (isVariantSoldOut(produtoAtual, corIndexAtual)) {
-      alert("Esse item está esgotado.");
+      showAppMessage("Esse item está esgotado.");
       updateAddButtonState();
       return;
     }
@@ -2025,7 +2059,7 @@ function abrirModal(prodOrIndex){
     const canAdd = !requiresSize || (avail.length && tamanhoAtual && avail.includes(tamanhoAtual));
 
     if (!canAdd){
-      alert("Selecione um tamanho disponível para essa cor.");
+      showAppMessage("Selecione um tamanho disponível para essa cor.");
       return;
     }
 
@@ -2091,7 +2125,7 @@ function addCarrinho(prod, animateSource = null){
   const sourceProduct = produtos.find((p) => String(p.id) === String(prod.productId));
   const sourceColorIndex = Number(prod.colorIndex) || 0;
   if (sourceProduct && isVariantSoldOut(sourceProduct, sourceColorIndex)) {
-    alert("Esse item está esgotado.");
+    showAppMessage("Esse item está esgotado.");
     renderGrid();
     return;
   }
@@ -2900,11 +2934,11 @@ function bindFreteUIEvents() {
    CHECKOUT (WhatsApp) + limpa carrinho após enviar
 ------------------------------------------------------------ */
 function openCheckoutModal(){
-  if (carrinho.length === 0) { alert("Seu carrinho está vazio."); return; }
+  if (carrinho.length === 0) { showAppMessage("Seu carrinho está vazio."); return; }
   const cepInput = el("#cepInput");
   const cepValue = normalizeCEP(cepInput?.value || cepAtual || "");
   if (!retiradaNaLoja && (!cepValue || cepValue.length !== 8)) {
-    alert("Informe o CEP para calcular a entrega.");
+    showAppMessage("Informe o CEP para calcular a entrega.");
     return;
   }
 
@@ -2923,7 +2957,7 @@ function openCheckoutModal(){
         </div>
         <button type="button" class="btn btn--ghost" id="btnCloseCheckout">Fechar</button>
       </div>
-      <form id="checkoutForm">
+      <form id="checkoutForm" novalidate>
         <div class="checkout__body">
           <div class="checkout__summary">
             <strong>Resumo do pedido</strong>
@@ -3023,7 +3057,7 @@ function openCheckoutModal(){
           const cepToUse = (enderecoAutofill?.cep && enderecoAutofill.cep.length === 8)
             ? enderecoAutofill.cep
             : (cepAtual && cepAtual.length === 8 ? cepAtual : "");
-          if (!cepToUse) { alert("Calcule o frete ou informe o CEP manualmente."); return; }
+          if (!cepToUse) { showAppMessage("Calcule o frete ou informe o CEP manualmente."); return; }
           ckCep.value = formatCEPForInput(cepToUse);
           handleCepInput();
         });
@@ -3246,23 +3280,6 @@ function openWhatsAppWithMessage(message) {
   }
 }
 
-async function savePedido(payload){
-  try {
-    const res = await fetch(`${API_BASE}/api/pedidos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data?.ok === false) {
-      throw new Error(data?.error || "Falha ao salvar pedido.");
-    }
-    return data;
-  } catch (err) {
-    throw err;
-  }
-}
-
 function showPaymentTransition(){
   const existing = document.getElementById("payment-transition");
   if (existing) { existing.style.display = "flex"; return; }
@@ -3285,6 +3302,35 @@ function showPaymentTransition(){
     <div class="pt-msg">Redirecionando para pagamento seguro…</div>
   `;
   document.body.appendChild(div);
+}
+
+function showAppMessage(message, options = {}) {
+  const title = options.title || "Atenção";
+  let dlg = document.getElementById("appMessageDialog");
+  if (!dlg) {
+    dlg = document.createElement("dialog");
+    dlg.id = "appMessageDialog";
+    dlg.className = "app-message-dialog";
+    dlg.innerHTML = `
+      <div class="app-message__body">
+        <div class="app-message__mark">!</div>
+        <h3 class="app-message__title"></h3>
+        <p class="app-message__text"></p>
+      </div>
+      <div class="app-message__actions">
+        <button type="button" class="app-message__ok">OK</button>
+      </div>
+    `;
+    document.body.appendChild(dlg);
+    dlg.querySelector(".app-message__ok").addEventListener("click", () => dlg.close());
+  }
+  dlg.querySelector(".app-message__title").textContent = title;
+  dlg.querySelector(".app-message__text").textContent = message || "Não foi possível concluir a ação.";
+  if (typeof dlg.showModal === "function") {
+    if (!dlg.open) dlg.showModal();
+  } else {
+    dlg.setAttribute("open", "");
+  }
 }
 
 async function createInfinityPayment(payload){
@@ -3388,25 +3434,14 @@ async function handleSubmitCheckout(ev){
       cliente,
       endereco,
       itens: paymentItems,
+      itensEstoque,
+      pedidoPayload,
       returnPath: getCurrentStorePath()
     });
-    const pedidoSalvo = await savePedido({
-      ...pedidoPayload,
-      pagamento_status: "aguardando_pagamento",
-      payment_provider: "infinitepay",
-      payment_reference: pagamentoOnline.paymentId || pagamentoOnline.id || ""
-    });
-    const numeroPedido = pedidoSalvo?.pedido || numeroPedidoSugerido;
+    const numeroPedido = pagamentoOnline.paymentId || pagamentoOnline.id || pagamentoOnline.pedido || numeroPedidoSugerido;
     ultimoNumeroPedido = numeroPedido;
     const pedidoEl = el("#ckPedido");
     if (pedidoEl) pedidoEl.textContent = numeroPedido;
-    trackEvent("purchase", {
-      currency: "BRL",
-      value: totalCompra,
-      transaction_id: numeroPedido,
-      items: purchaseItems,
-      item_count: purchaseItems.length
-    });
     if (pagamentoOnline.checkoutUrl) {
       rememberPaymentOrigin();
       carrinho = [];
@@ -3417,7 +3452,8 @@ async function handleSubmitCheckout(ev){
       setTimeout(() => { window.location.href = pagamentoOnline.checkoutUrl; }, 600);
       return;
     } else {
-      alert("Pedido criado, mas não foi possível gerar o link de pagamento. Entre em contato com a Lemoov.");
+      showAppMessage(pagamentoOnline.message || "Pedido preparado, mas não foi possível gerar o link de pagamento. Entre em contato com a Lemoov.");
+      return;
     }
 
     // Limpa carrinho e interfaces abertas (apenas quando não há redirect)
@@ -3439,7 +3475,7 @@ async function handleSubmitCheckout(ev){
     setTimeout(()=> window.location.reload(), 400);
   } catch (err) {
     console.error(err);
-    alert(err?.message || "Não foi possível preparar seu pedido. Tente novamente.");
+    showAppMessage(err?.message || "Não foi possível preparar seu pedido. Tente novamente.");
   } finally {
     if (btn) {
       btn.disabled = false; btn.textContent = "Gerar pagamento";
