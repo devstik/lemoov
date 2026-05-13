@@ -680,6 +680,12 @@ function getStockQtyForSize(cor, size){
   const qty = Number(stock[key]);
   return Number.isFinite(qty) ? qty : 0;
 }
+function pluralizeUnit(qty){
+  return qty === 1 ? "unidade" : "unidades";
+}
+function getStockWarningMessage(stockQty){
+  return `A quantidade selecionada é superior ao estoque atual. Estoque atual: ${stockQty} ${pluralizeUnit(stockQty)}.`;
+}
 function hasStockForSize(cor, size){
   const qty = getStockQtyForSize(cor, size);
   return qty === null ? true : qty > 0;
@@ -2134,6 +2140,61 @@ function getEffectivePrice(prod){
   const promo = Number(prod?.precoPromo) || 0;
   return promo > 0 && promo < base ? promo : base;
 }
+function getCartStockKey(item){
+  return [
+    String(item?.productId ?? ""),
+    String(Number(item?.colorIndex) || 0),
+    normalizeStockSize(item?.tamanhoSelecionado || "UNICO")
+  ].join("|");
+}
+function getCartMergeKey(item){
+  return [
+    getCartStockKey(item),
+    String(item?.tipoSelecionado || ""),
+    String(item?.corSelecionada || "")
+  ].join("|");
+}
+function getCartQtyForStockKey(stockKey){
+  return carrinho.reduce((total, item) => {
+    return getCartStockKey(item) === stockKey ? total + getItemQty(item) : total;
+  }, 0);
+}
+function getSourceColorForCartItem(item){
+  const sourceProduct = produtos.find((p) => String(p.id) === String(item?.productId));
+  if (!sourceProduct) return { sourceProduct: null, sourceColor: null };
+  const sourceColorIndex = Number(item?.colorIndex) || 0;
+  const sourceColor = Array.isArray(sourceProduct.cores) ? sourceProduct.cores[sourceColorIndex] : null;
+  return { sourceProduct, sourceColor };
+}
+function getCartItemStockQty(item){
+  const { sourceColor } = getSourceColorForCartItem(item);
+  return getStockQtyForSize(sourceColor, item?.tamanhoSelecionado || "UNICO");
+}
+function validateCartItemStock(item, incomingQty = 0){
+  const stockQty = getCartItemStockQty(item);
+  if (stockQty === null) return true;
+  const requestedQty = getCartQtyForStockKey(getCartStockKey(item)) + Math.max(0, Number(incomingQty) || 0);
+  if (requestedQty <= stockQty) return true;
+  showAppMessage(getStockWarningMessage(stockQty), { title: "Estoque insuficiente" });
+  return false;
+}
+function validateWholeCartStock(){
+  const requestedByStockKey = new Map();
+  for (const item of carrinho) {
+    const stockKey = getCartStockKey(item);
+    requestedByStockKey.set(stockKey, (requestedByStockKey.get(stockKey) || 0) + getItemQty(item));
+  }
+  for (const item of carrinho) {
+    const stockQty = getCartItemStockQty(item);
+    if (stockQty === null) continue;
+    const requestedQty = requestedByStockKey.get(getCartStockKey(item)) || 0;
+    if (requestedQty > stockQty) {
+      showAppMessage(getStockWarningMessage(stockQty), { title: "Estoque insuficiente" });
+      return false;
+    }
+  }
+  return true;
+}
 function addCarrinho(prod, animateSource = null){
   const sourceProduct = produtos.find((p) => String(p.id) === String(prod.productId));
   const sourceColorIndex = Number(prod.colorIndex) || 0;
@@ -2155,7 +2216,17 @@ function addCarrinho(prod, animateSource = null){
     imagemSelecionada: prod.imagemSelecionada,
     descricaoCurta: prod.descricaoCurta || ""
   };
-  carrinho.push(item);
+  if (!validateCartItemStock(item, getItemQty(item))) return;
+  const mergeKey = getCartMergeKey(item);
+  const existing = carrinho.find((cartItem) => getCartMergeKey(cartItem) === mergeKey);
+  if (existing) {
+    existing.quantidade = getItemQty(existing) + getItemQty(item);
+    existing.preco = item.preco;
+    existing.imagemSelecionada = item.imagemSelecionada || existing.imagemSelecionada;
+    existing.descricaoCurta = item.descricaoCurta || existing.descricaoCurta;
+  } else {
+    carrinho.push(item);
+  }
   atualizarCart();
   animateCartIcon();
   if (animateSource) animateProductFly(animateSource);
@@ -2948,6 +3019,7 @@ function bindFreteUIEvents() {
 ------------------------------------------------------------ */
 function openCheckoutModal(){
   if (carrinho.length === 0) { showAppMessage("Seu carrinho está vazio."); return; }
+  if (!validateWholeCartStock()) return;
   const cepInput = el("#cepInput");
   const cepValue = normalizeCEP(cepInput?.value || cepAtual || "");
   if (!retiradaNaLoja && (!cepValue || cepValue.length !== 8)) {
@@ -2975,7 +3047,7 @@ function openCheckoutModal(){
           <div class="checkout__summary">
             <strong>Resumo do pedido</strong>
             <p class="checkout__muted" style="margin:4px 0 0;">
-              Revise antes de gerar o pagamento. O estoque é reservado na confirmação.
+              Revise antes de gerar o pagamento. O estoque só é baixado quando o pagamento for confirmado.
             </p>
             <div id="checkoutItems" class="checkout__muted" style="margin-top:6px;"></div>
             <div class="checkout__totals">
@@ -3363,6 +3435,7 @@ async function createInfinityPayment(payload){
 
 async function handleSubmitCheckout(ev){
   ev.preventDefault();
+  if (!validateWholeCartStock()) return;
   const form = ev.currentTarget;
   const btn = el("#btnEnviarPedido");
   const subtotalCompra = getCartSubtotal();

@@ -268,7 +268,7 @@ async function deletePendingPaymentStore(numero, conn = null) {
   const db = conn || mysqlPool;
   await db.execute('DELETE FROM lemoov_payment_intents WHERE order_number = ?', [orderNumber]);
 }
-async function updatePedidoStore(numero, updates) {
+async function updatePedidoStore(numero, updates, conn = null) {
   if (!MYSQL_ENABLED) {
     const pedidos = readPedidos();
     const idx = pedidos.findIndex((p) => String(p.pedido) === String(numero));
@@ -278,10 +278,11 @@ async function updatePedidoStore(numero, updates) {
     return pedidos[idx];
   }
   await initDatabase();
-  const [rows] = await mysqlPool.execute('SELECT data FROM lemoov_orders WHERE order_number = ?', [String(numero)]);
+  const db = conn || mysqlPool;
+  const [rows] = await db.execute('SELECT data FROM lemoov_orders WHERE order_number = ?', [String(numero)]);
   if (!rows.length) throw new Error('Pedido não encontrado');
   const updated = { ...JSON.parse(rows[0].data), ...updates, pedido: numero };
-  await mysqlPool.execute('UPDATE lemoov_orders SET data = ? WHERE order_number = ?', [JSON.stringify(updated), String(numero)]);
+  await db.execute('UPDATE lemoov_orders SET data = ? WHERE order_number = ?', [JSON.stringify(updated), String(numero)]);
   return updated;
 }
 async function deletePedidoStore(numero) {
@@ -308,6 +309,53 @@ function getColorStock(cor) {
   return cor && cor.estoque && typeof cor.estoque === 'object' && !Array.isArray(cor.estoque)
     ? cor.estoque
     : null;
+}
+function normalizeStockItems(itens = []) {
+  const grouped = new Map();
+  itens.forEach((item) => {
+    const productId = Number(item.productId);
+    if (!Number.isFinite(productId)) return;
+    const colorIndex = Number(item.colorIndex) || 0;
+    const tamanho = normalizeKey(item.tamanhoSelecionado || item.tamanho || 'UNICO');
+    const quantidade = Math.max(1, Number(item.quantidade) || 1);
+    const key = [productId, colorIndex, tamanho].join('|');
+    const current = grouped.get(key) || {
+      productId,
+      colorIndex,
+      tamanho,
+      quantidade: 0,
+      nome: item.nome || ''
+    };
+    current.quantidade += quantidade;
+    if (!current.nome && item.nome) current.nome = item.nome;
+    grouped.set(key, current);
+  });
+  return Array.from(grouped.values());
+}
+function validateStockAvailability(produtos, itens = []) {
+  const stockItems = normalizeStockItems(itens);
+  for (const item of stockItems) {
+    const prod = produtos.find((p) => Number(p.id) === item.productId);
+    if (!prod) throw new Error(`Produto não encontrado: ${item.nome || item.productId}`);
+    const cor = Array.isArray(prod.cores) ? prod.cores[item.colorIndex] : null;
+    if (prod.soldOut || cor?.soldOut) {
+      const label = [prod.nome, cor?.nome].filter(Boolean).join(' - ');
+      throw new Error(`Item esgotado: ${label || item.nome || item.productId}.`);
+    }
+    const stock = getColorStock(cor);
+    if (!stock) continue;
+    const current = Number(stock[item.tamanho]);
+    if (!Number.isFinite(current) || current < item.quantidade) {
+      const label = [prod.nome, cor?.nome, item.tamanho].filter(Boolean).join(' - ');
+      throw new Error(`Estoque insuficiente para ${label}. Estoque atual: ${Number.isFinite(current) ? Math.max(0, current) : 0}.`);
+    }
+  }
+  return stockItems;
+}
+function isPaidOrderStatus(order = {}) {
+  const status = String(order.status || '').toLowerCase();
+  const paymentStatus = String(order.pagamento_status || '').toLowerCase();
+  return ['confirmado', 'enviado', 'entregue'].includes(status) || paymentStatus === 'pago';
 }
 function generateOrderNumber(pedidos) {
   const now = new Date();
@@ -345,32 +393,7 @@ function normalizePaymentItems(itens = []) {
     .filter((item) => item.price > 0);
 }
 function reserveStock(produtos, itens = []) {
-  const stockItems = itens
-    .map((item) => ({
-      productId: Number(item.productId),
-      colorIndex: Number(item.colorIndex) || 0,
-      tamanho: normalizeKey(item.tamanhoSelecionado || item.tamanho || 'UNICO'),
-      quantidade: Math.max(1, Number(item.quantidade) || 1),
-      nome: item.nome || ''
-    }))
-    .filter((item) => Number.isFinite(item.productId));
-
-  for (const item of stockItems) {
-    const prod = produtos.find((p) => Number(p.id) === item.productId);
-    if (!prod) throw new Error(`Produto não encontrado: ${item.nome || item.productId}`);
-    const cor = Array.isArray(prod.cores) ? prod.cores[item.colorIndex] : null;
-    if (prod.soldOut || cor?.soldOut) {
-      const label = [prod.nome, cor?.nome].filter(Boolean).join(' - ');
-      throw new Error(`Item esgotado: ${label || item.nome || item.productId}.`);
-    }
-    const stock = getColorStock(cor);
-    if (!stock) continue;
-    const current = Number(stock[item.tamanho]);
-    if (!Number.isFinite(current) || current < item.quantidade) {
-      const label = [prod.nome, cor?.nome, item.tamanho].filter(Boolean).join(' - ');
-      throw new Error(`Estoque insuficiente para ${label}.`);
-    }
-  }
+  const stockItems = validateStockAvailability(produtos, itens);
 
   for (const item of stockItems) {
     const prod = produtos.find((p) => Number(p.id) === item.productId);
@@ -441,10 +464,7 @@ function authRequired(req, res, next) {
 app.post('/api/pedidos', async (req, res) => {
   let conn = null;
   try {
-    const status = String(req.body?.status || '').toLowerCase();
-    const paymentStatus = String(req.body?.pagamento_status || '').toLowerCase();
-    const isPaidOrder = ['confirmado', 'enviado', 'entregue'].includes(status) || paymentStatus === 'pago';
-    if (!isPaidOrder) {
+    if (!isPaidOrderStatus(req.body || {})) {
       return res.status(400).json({
         ok: false,
         error: 'Pedido só é registrado após confirmação de pagamento.'
@@ -469,6 +489,7 @@ app.post('/api/pedidos', async (req, res) => {
       ...req.body,
       pedido: numeroPedido,
       status: req.body?.status || 'confirmado',
+      estoqueBaixado: true,
       recebidoEm: new Date().toISOString()
     };
     await appendPedidoStore(pedido, conn);
@@ -479,7 +500,7 @@ app.post('/api/pedidos', async (req, res) => {
       try { await conn.rollback(); } catch (_rollbackError) {}
     }
     console.error(e);
-    const isStockError = /Estoque insuficiente|Produto não encontrado/.test(e?.message || '');
+    const isStockError = /Estoque insuficiente|Produto não encontrado|Item esgotado/.test(e?.message || '');
     res.status(isStockError ? 409 : 500).json({ ok: false, error: e?.message || 'Falha ao salvar' });
   } finally {
     if (conn) conn.release();
@@ -566,6 +587,8 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
       pedidoPayload: pedidoPayload && typeof pedidoPayload === 'object' ? pedidoPayload : {},
       createdAt: new Date().toISOString()
     };
+    const produtos = ensureProductIds(await readProdutosStore());
+    validateStockAvailability(produtos, intent.itensEstoque);
 
     if (!INFINITEPAY_HANDLE) {
       await savePendingPaymentStore({
@@ -648,7 +671,8 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
     });
   } catch (e) {
     console.error('[infinitepay] erro:', e.message);
-    res.status(500).json({ ok: false, error: 'Falha ao preparar pagamento.' });
+    const isStockError = /Estoque insuficiente|Produto não encontrado|Item esgotado/.test(e?.message || '');
+    res.status(isStockError ? 409 : 500).json({ ok: false, error: isStockError ? e.message : 'Falha ao preparar pagamento.' });
   }
 });
 
@@ -713,6 +737,7 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
           rua: basePedido.rua || pending.endereco?.rua || '',
           itensEstoque: itensReserva,
           cliente: pending.cliente || basePedido.cliente || {},
+          estoqueBaixado: true,
           recebidoEm: new Date().toISOString(),
           ...paymentUpdates
         };
@@ -925,11 +950,39 @@ app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
 });
 
 app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
+  let conn = null;
   try {
-    const item = await updatePedidoStore(req.params.numero, req.body);
+    if (MYSQL_ENABLED) {
+      await initDatabase();
+      conn = await mysqlPool.getConnection();
+      await conn.beginTransaction();
+      await conn.execute('SELECT id FROM lemoov_products FOR UPDATE');
+    }
+    const existing = await readPedidoStore(req.params.numero, conn);
+    if (!existing) throw new Error('Pedido não encontrado');
+    const nextOrder = { ...existing, ...req.body, pedido: req.params.numero };
+    const shouldDebitStock = !existing.estoqueBaixado && !isPaidOrderStatus(existing) && isPaidOrderStatus(nextOrder);
+    const updates = { ...req.body };
+    if (shouldDebitStock) {
+      const produtos = ensureProductIds(await readProdutosStore(conn));
+      const itensReserva = Array.isArray(nextOrder.itensEstoque)
+        ? nextOrder.itensEstoque
+        : (Array.isArray(nextOrder.itens) ? nextOrder.itens : []);
+      reserveStock(produtos, itensReserva);
+      await writeProdutosStore(produtos, conn);
+      updates.estoqueBaixado = true;
+    }
+    const item = await updatePedidoStore(req.params.numero, updates, conn);
+    if (conn) await conn.commit();
     res.json({ ok: true, item });
   } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
+    if (conn) {
+      try { await conn.rollback(); } catch (_rollbackError) {}
+    }
+    const isStockError = /Estoque insuficiente|Produto não encontrado|Item esgotado/.test(e?.message || '');
+    res.status(isStockError ? 409 : 500).json({ ok: false, error: e.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -943,14 +996,37 @@ app.delete('/api/admin/pedido/:numero', authRequired, async (req, res) => {
 });
 
 app.post('/api/admin/pedido', authRequired, async (req, res) => {
+  let conn = null;
   try {
-    const pedidos = await readPedidosStore();
+    if (MYSQL_ENABLED) {
+      await initDatabase();
+      conn = await mysqlPool.getConnection();
+      await conn.beginTransaction();
+      await conn.execute('SELECT id FROM lemoov_products FOR UPDATE');
+    }
+    const pedidos = await readPedidosStore(conn);
     const numeroPedido = String(req.body?.pedido || '').trim() || generateOrderNumber(pedidos);
     const pedido = { ...req.body, pedido: numeroPedido, status: req.body?.status || 'confirmado', recebidoEm: new Date().toISOString(), origem: 'admin' };
-    await appendPedidoStore(pedido);
+    if (isPaidOrderStatus(pedido)) {
+      const produtos = ensureProductIds(await readProdutosStore(conn));
+      const itensReserva = Array.isArray(pedido.itensEstoque)
+        ? pedido.itensEstoque
+        : (Array.isArray(pedido.itens) ? pedido.itens : []);
+      reserveStock(produtos, itensReserva);
+      await writeProdutosStore(produtos, conn);
+      pedido.estoqueBaixado = true;
+    }
+    await appendPedidoStore(pedido, conn);
+    if (conn) await conn.commit();
     res.json({ ok: true, pedido: numeroPedido, item: pedido });
   } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
+    if (conn) {
+      try { await conn.rollback(); } catch (_rollbackError) {}
+    }
+    const isStockError = /Estoque insuficiente|Produto não encontrado|Item esgotado/.test(e?.message || '');
+    res.status(isStockError ? 409 : 500).json({ ok: false, error: e.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
