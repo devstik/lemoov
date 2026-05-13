@@ -919,6 +919,23 @@ function computeColorPrice(prod, colorObj){
   #cart .cart__item-desc{ display: none; }
   #cart .cart__item-details,
   #cart .cart__item-qty{ color: #5a6a80; font-size: 0.74rem; }
+  #cart .cart__qty-control{
+    display:inline-flex;align-items:center;gap:0;
+    width:max-content;margin-top:7px;
+    border:1px solid rgba(0,39,118,.14);
+    border-radius:999px;overflow:hidden;background:#fff;
+  }
+  #cart .cart__qty-btn{
+    width:30px;height:30px;border:0;background:#f8fbf2;
+    color:#002776;font-weight:900;cursor:pointer;
+    display:grid;place-items:center;line-height:1;
+  }
+  #cart .cart__qty-btn:hover:not(:disabled){ background:rgba(0,156,59,.13); }
+  #cart .cart__qty-btn:disabled{ opacity:.42;cursor:not-allowed; }
+  #cart .cart__qty-value{
+    min-width:32px;text-align:center;font-size:.82rem;
+    font-weight:800;color:#0a1628;padding:0 8px;
+  }
   #cart .cart__item-price{ color: #002776; font-size: 0.94rem; font-weight: 700; }
   #cart .cart__remove-btn{
     border: 1px solid rgba(220,38,38,.2);
@@ -2239,6 +2256,16 @@ function addCarrinho(prod, animateSource = null){
   });
 }
 function removerCarrinho(index){ carrinho.splice(index,1); atualizarCart(); }
+function alterarQuantidadeCarrinho(index, delta){
+  const item = carrinho[index];
+  if (!item) return;
+  const currentQty = getItemQty(item);
+  const nextQty = currentQty + Number(delta || 0);
+  if (nextQty <= 0) return;
+  if (nextQty > currentQty && !validateCartItemStock(item, nextQty - currentQty)) return;
+  item.quantidade = nextQty;
+  atualizarCart();
+}
 
 function ensureAddMoreButton() {
   const footer = document.querySelector(".cart__footer");
@@ -2412,7 +2439,13 @@ function atualizarCart(){
       const descricaoLinha = p.descricaoCurta ? `<span class="cart__item-desc">${p.descricaoCurta}</span>` : "";
       const variacaoLinha = nomeBits ? `<span class="cart__item-details">${nomeBits}</span>` : "";
       const qty = getItemQty(p);
-      const qtyLinha = qty > 1 ? `<span class="cart__item-qty">Qtd: ${qty}</span>` : "";
+      const qtyLinha = `
+        <div class="cart__qty-control" aria-label="Quantidade de ${p.nome}">
+          <button class="cart__qty-btn" type="button" data-qty-dec="${i}" aria-label="Diminuir quantidade" ${qty <= 1 ? "disabled" : ""}>−</button>
+          <span class="cart__qty-value" aria-live="polite">${qty}</span>
+          <button class="cart__qty-btn" type="button" data-qty-inc="${i}" aria-label="Aumentar quantidade">+</button>
+        </div>
+      `;
       const lineTotal = getItemLineTotal(p);
       const li = document.createElement("li");
       li.className = "cart__item";
@@ -2469,6 +2502,12 @@ function atualizarCart(){
 
   list.querySelectorAll("[data-del]").forEach(btn=>{
     btn.addEventListener("click", ()=> removerCarrinho(+btn.getAttribute("data-del")));
+  });
+  list.querySelectorAll("[data-qty-inc]").forEach(btn=>{
+    btn.addEventListener("click", ()=> alterarQuantidadeCarrinho(+btn.getAttribute("data-qty-inc"), 1));
+  });
+  list.querySelectorAll("[data-qty-dec]").forEach(btn=>{
+    btn.addEventListener("click", ()=> alterarQuantidadeCarrinho(+btn.getAttribute("data-qty-dec"), -1));
   });
 
   bindFreteUIEvents();
