@@ -857,6 +857,18 @@ async function loadPedidos(){
 }
 
 function filteredPedidos(){ return orderFilter?pedidos.filter(p=>(p.status||'reservado')===orderFilter):pedidos }
+function orderItems(ped){
+  const raw=Array.isArray(ped?.itens)&&ped.itens.length?ped.itens:(Array.isArray(ped?.itensEstoque)?ped.itensEstoque:[]);
+  return raw.map(it=>({
+    nome: it.nome||it.produto||it.item_name||it.description||'—',
+    categoria: it.categoria||it.item_category||'',
+    cor: it.cor||it.corSelecionada||'',
+    tamanho: it.tamanhoSelecionado||it.tamanho||it.size||'',
+    quantidade: Number(it.quantidade||it.quantity)||1,
+    precoUnitario: Number(it.precoUnitario||it.preco||it.price)||0,
+    descricao: it.descricaoCurta||it.description||''
+  }));
+}
 
 function renderOrdersTable(){
   const rows=filteredPedidos();
@@ -865,7 +877,7 @@ function renderOrdersTable(){
     ?`<tr><td colspan="5" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
     :rows.map(p=>{
       const nome=p.cliente?.nome||p.nome||'—';
-      const itens=Array.isArray(p.itens)?p.itens.length:(Array.isArray(p.itensEstoque)?p.itensEstoque.length:'—');
+      const itens=orderItems(p).length||'—';
       return `<tr data-num="${esc(String(p.pedido))}" class="${String(p.pedido)===String(activePedNum)?'selected':''}">
         <td><strong>#${esc(String(p.pedido))}</strong></td>
         <td>${esc(nome)}</td>
@@ -887,8 +899,14 @@ $$('.filter-btn[data-status]').forEach(btn=>btn.addEventListener('click',()=>{
 
 function renderOrderDetail(ped){
   if(!ped) return;
-  const itens=Array.isArray(ped.itens)?ped.itens:(Array.isArray(ped.itensEstoque)?ped.itensEstoque:[]);
-  const total=itens.reduce((s,it)=>s+(Number(it.precoUnitario||it.preco||0)*(Number(it.quantidade)||1)),0);
+  const itens=orderItems(ped);
+  const total=itens.reduce((s,it)=>s+(it.precoUnitario*it.quantidade),0);
+  const endereco=[
+    ped.cliente?.endereco||ped.endereco||ped.rua||'',
+    ped.bairro||ped.cliente?.bairro||'',
+    [ped.cidade||ped.cliente?.cidade||'',ped.uf||ped.cliente?.uf||''].filter(Boolean).join('/'),
+    ped.cep||ped.cliente?.cep||''
+  ].filter(Boolean).join(' · ');
   $('orderSide').innerHTML=`
     <div class="card-head" style="align-items:flex-start;gap:8px">
       <div>
@@ -909,18 +927,23 @@ function renderOrderDetail(ped){
         <div style="font-weight:600">${esc(ped.cliente?.nome||ped.nome||'—')}</div>
         ${ped.cliente?.telefone||ped.telefone?`<div style="color:#64748b">${esc(ped.cliente?.telefone||ped.telefone)}</div>`:''}
         ${ped.cliente?.email||ped.email?`<div style="color:#64748b">${esc(ped.cliente?.email||ped.email)}</div>`:''}
-        ${ped.cliente?.endereco||ped.endereco?`<div style="color:#64748b;margin-top:4px">${esc(ped.cliente?.endereco||ped.endereco)}</div>`:''}
+        ${endereco?`<div style="color:#64748b;margin-top:4px">${esc(endereco)}</div>`:''}
       </div>
       ${itens.length?`
         <div class="order-section-title">Itens</div>
         <div style="margin-bottom:14px">
           ${itens.map(it=>`<div class="order-item-row">
-            <div style="font-weight:500">${esc(it.nome||it.produto||'—')}${it.cor?` · ${esc(it.cor)}`:''}${it.tamanhoSelecionado||it.tamanho?` · ${esc(it.tamanhoSelecionado||it.tamanho)}`:''}</div>
-            <div style="color:#64748b">Qtd: ${Number(it.quantidade)||1} · ${fmtR(it.precoUnitario||it.preco||0)}</div>
+            <div style="font-weight:500">${esc(it.nome)}${it.cor?` · ${esc(it.cor)}`:''}${it.tamanho?` · ${esc(it.tamanho)}`:''}</div>
+            ${it.descricao?`<div style="color:#94a3b8;font-size:11px">${esc(it.descricao)}</div>`:''}
+            <div style="color:#64748b">Qtd: ${it.quantidade} · Unit.: ${fmtR(it.precoUnitario)} · Linha: ${fmtR(it.precoUnitario*it.quantidade)}</div>
           </div>`).join('')}
-          ${total>0?`<div style="text-align:right;font-weight:700;margin-top:8px">Total: ${fmtR(total)}</div>`:''}
+          <div style="text-align:right;font-weight:700;margin-top:8px">Itens: ${fmtR(total)}</div>
+          ${Number(ped.taxa)>0?`<div style="text-align:right;color:#64748b;font-size:12px">Taxa/Frete: ${fmtR(ped.taxa)}</div>`:''}
+          ${Number(ped.total)>0?`<div style="text-align:right;font-weight:800;margin-top:4px">Total pedido: ${fmtR(ped.total)}</div>`:''}
         </div>`:''}
       ${ped.pagamento?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Pagamento: ${esc(ped.pagamento)}</div>`:''}
+      ${ped.pagamento_status?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Status pagamento: ${esc(ped.pagamento_status)}</div>`:''}
+      ${ped.frete_modo?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Entrega: ${esc(ped.frete_modo)}</div>`:''}
       ${ped.obs?`<div style="font-size:12px;color:#64748b;margin-bottom:12px">Obs: ${esc(ped.obs)}</div>`:''}
       <div style="margin-top:12px">
         <button class="btn btn--danger btn--sm" id="btnDelPed">Excluir pedido</button>
@@ -1137,7 +1160,7 @@ async function loadRelatorio(){
     const PAID=['confirmado','enviado','entregue'];
     const vendas=peds.filter(p=>PAID.includes(p.status));
     const totalRec=vendas.reduce((s,p)=>s+(Number(p.total)||0),0);
-    const totalItens=vendas.reduce((s,p)=>s+(Array.isArray(p.itens)?p.itens.reduce((si,it)=>si+(Number(it.quantidade)||1),0):0),0);
+    const totalItens=vendas.reduce((s,p)=>s+orderItems(p).reduce((si,it)=>si+it.quantidade,0),0);
     const ticketMed=vendas.length?totalRec/vendas.length:0;
     const taxaTotal=vendas.reduce((s,p)=>s+(Number(p.taxa)||0),0);
 
@@ -1160,11 +1183,11 @@ async function loadRelatorio(){
     // Top products (only paid)
     const prodMap={};
     vendas.forEach(p=>{
-      (Array.isArray(p.itens)?p.itens:[]).forEach(it=>{
+      orderItems(p).forEach(it=>{
         const k=it.nome||'Desconhecido';
         if(!prodMap[k])prodMap[k]={qty:0,rev:0};
-        prodMap[k].qty+=Number(it.quantidade)||1;
-        prodMap[k].rev+=(Number(it.precoUnitario||it.preco)||0)*(Number(it.quantidade)||1);
+        prodMap[k].qty+=it.quantidade;
+        prodMap[k].rev+=it.precoUnitario*it.quantidade;
       });
     });
     const topProds=Object.entries(prodMap).sort((a,b)=>b[1].rev-a[1].rev).slice(0,8);
@@ -1207,7 +1230,7 @@ async function loadRelatorio(){
         const tel     = esc(p.cliente?.telefone || p.cliente_telefone || '—');
         const email   = esc(p.cliente?.email    || p.cliente_email    || '—');
         const cidade  = [p.cliente?.cidade||p.cidade||'', p.cliente?.uf||p.uf||''].filter(Boolean).join('/') || '—';
-        const itens   = Array.isArray(p.itens)?p.itens.length:'—';
+        const itens   = orderItems(p).length||'—';
         return `<tr>
           <td><strong>#${esc(String(p.pedido))}</strong></td>
           <td>${nome}</td>

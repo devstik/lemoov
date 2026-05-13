@@ -238,6 +238,19 @@ function buildPaymentItems() {
 }
 function buildCartItems() {
   const items = carrinho.map(p => ({
+    productId: p.productId,
+    colorIndex: p.colorIndex,
+    nome: p.nome,
+    categoria: p.categoria,
+    cor: p.corSelecionada,
+    corSelecionada: p.corSelecionada,
+    tamanho: p.tamanhoSelecionado,
+    tamanhoSelecionado: p.tamanhoSelecionado,
+    quantidade: getItemQty(p),
+    preco: p.preco,
+    precoUnitario: p.preco,
+    imagemSelecionada: p.imagemSelecionada,
+    descricaoCurta: p.descricaoCurta || "",
     item_name: p.nome,
     item_category: p.categoria,
     price: p.preco,
@@ -1608,7 +1621,7 @@ function renderGrid(){
   updateCatalogSearchState(lista.length);
 
   const countEl = document.querySelector("#productCount");
-  if (countEl) countEl.textContent = String(lista.length);
+  if (countEl) countEl.textContent = "";
 
   grid.innerHTML = "";
 
