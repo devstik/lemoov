@@ -98,6 +98,7 @@ const FILTER_CARDS = [
 ];
 const API_BASE = window.LEMOOV_API_BASE || "";
 const IMAGE_BASE = window.LEMOOV_IMAGE_BASE || "";
+const PAYMENT_ORIGIN_KEY = "lemoovPaymentOriginPath";
 
 /* ------------------------------------------------------------
    Estado & Helpers
@@ -118,6 +119,33 @@ const formatBRL = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency
 const cssEscape = (typeof CSS !== "undefined" && typeof CSS.escape === "function")
   ? CSS.escape
   : (value) => String(value).replace(/[^a-zA-Z0-9_\-]/g, (ch) => `\\${ch.charCodeAt(0).toString(16)} `);
+
+function getCurrentStorePath() {
+  return document.body?.classList?.contains("catalog-landing")
+    ? "/catalogo-produtos.html"
+    : (location.pathname || "/index.html");
+}
+
+function rememberPaymentOrigin() {
+  try {
+    sessionStorage.setItem(PAYMENT_ORIGIN_KEY, getCurrentStorePath());
+  } catch (_e) {}
+}
+
+function restorePaymentOriginIfNeeded() {
+  try {
+    const originPath = sessionStorage.getItem(PAYMENT_ORIGIN_KEY);
+    if (!originPath || originPath === location.pathname) return false;
+    const isHome = location.pathname === "/" || /\/index\.html$/i.test(location.pathname);
+    const isFinal = /\/obrigado\.html$/i.test(location.pathname);
+    if (isHome && !isFinal && originPath === "/catalogo-produtos.html") {
+      sessionStorage.removeItem(PAYMENT_ORIGIN_KEY);
+      location.replace(originPath);
+      return true;
+    }
+  } catch (_e) {}
+  return false;
+}
 
 async function loadProdutos(){
   const fetchList = async (url) => {
@@ -2420,7 +2448,9 @@ async function initCatalog(){
 /* ------------------------------------------------------------
    Boot
 ------------------------------------------------------------ */
-initCatalog();
+if (!restorePaymentOriginIfNeeded()) {
+  initCatalog();
+}
 const yearEl = document.getElementById("year");
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 atualizarCart();
@@ -3357,7 +3387,8 @@ async function handleSubmitCheckout(ev){
       currency: "BRL",
       cliente,
       endereco,
-      itens: paymentItems
+      itens: paymentItems,
+      returnPath: getCurrentStorePath()
     });
     const pedidoSalvo = await savePedido({
       ...pedidoPayload,
@@ -3377,6 +3408,7 @@ async function handleSubmitCheckout(ev){
       item_count: purchaseItems.length
     });
     if (pagamentoOnline.checkoutUrl) {
+      rememberPaymentOrigin();
       carrinho = [];
       atualizarCart();
       closeCheckoutModal();

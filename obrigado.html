@@ -96,6 +96,11 @@
       color: #fff;
       background: linear-gradient(135deg, var(--green), var(--blue));
     }
+    a.whatsapp {
+      color: #fff;
+      background: linear-gradient(135deg, #25d366, #128c7e);
+      box-shadow: 0 12px 28px rgba(18, 140, 126, .22);
+    }
   </style>
 </head>
 <body>
@@ -105,12 +110,20 @@
     <p>Recebemos o retorno do checkout. Assim que a InfinitePay confirmar o pagamento pelo webhook, o pedido fica marcado como pago na área administrativa.</p>
     <div class="pedido">Pedido <span id="pedido">—</span></div>
     <div class="actions">
-      <a href="catalogo-produtos.html">Voltar ao catálogo</a>
+      <a id="voltarCatalogo" href="catalogo-produtos.html">Voltar ao catálogo</a>
+      <a id="whatsEntrega" class="whatsapp" href="https://wa.me/558587408457" target="_blank" rel="noopener">Combinar entrega no WhatsApp</a>
     </div>
   </main>
   <script>
     const params = new URLSearchParams(window.location.search);
-    document.getElementById('pedido').textContent = params.get('pedido') || 'em análise';
+    const pedido = params.get('pedido') || '';
+    const voltar = params.get('voltar') || 'catalogo-produtos.html';
+    document.getElementById('pedido').textContent = pedido || 'em análise';
+    document.getElementById('voltarCatalogo').href = voltar.startsWith('/') ? voltar : 'catalogo-produtos.html';
+    const texto = pedido
+      ? `Olá, acabei de finalizar o pagamento do pedido ${pedido} e gostaria de combinar a entrega.`
+      : 'Olá, acabei de finalizar o pagamento e gostaria de combinar a entrega.';
+    document.getElementById('whatsEntrega').href = `https://wa.me/558587408457?text=${encodeURIComponent(texto)}`;
   </script>
 </body>
 </html>

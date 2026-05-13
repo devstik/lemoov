@@ -546,6 +546,8 @@ app.post('/api/admin/reset-admin-user', authRequired, async (_req, res) => {
 app.post('/api/pagamentos/infinitypay', async (req, res) => {
   try {
     const { metodo, total, itens, itensEstoque, cliente, endereco, pedidoPayload } = req.body || {};
+    const returnPathRaw = String(req.body?.returnPath || '/catalogo-produtos.html');
+    const returnPath = /^\/[a-z0-9._~/%-]*$/i.test(returnPathRaw) ? returnPathRaw : '/catalogo-produtos.html';
     const pedidos = await readPedidosStore();
     const pendingPayments = await readPendingPaymentsStore();
     const orderNsu = generateOrderNumber([...pedidos, ...pendingPayments]);
@@ -586,9 +588,12 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
     }
 
     const baseUrl = getPublicBaseUrl(req);
+    const redirectUrl = new URL(`${baseUrl}/obrigado.html`);
+    redirectUrl.searchParams.set('pedido', orderNsu);
+    redirectUrl.searchParams.set('voltar', returnPath);
     const payload = {
       handle: INFINITEPAY_HANDLE,
-      redirect_url: `${baseUrl}/obrigado.html?pedido=${encodeURIComponent(orderNsu)}`,
+      redirect_url: redirectUrl.toString(),
       webhook_url: `${baseUrl}/api/webhooks/infinitepay`,
       order_nsu: orderNsu,
       items: paymentItems
