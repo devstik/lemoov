@@ -359,6 +359,10 @@ function reserveStock(produtos, itens = []) {
     const prod = produtos.find((p) => Number(p.id) === item.productId);
     if (!prod) throw new Error(`Produto não encontrado: ${item.nome || item.productId}`);
     const cor = Array.isArray(prod.cores) ? prod.cores[item.colorIndex] : null;
+    if (prod.soldOut || cor?.soldOut) {
+      const label = [prod.nome, cor?.nome].filter(Boolean).join(' - ');
+      throw new Error(`Item esgotado: ${label || item.nome || item.productId}.`);
+    }
     const stock = getColorStock(cor);
     if (!stock) continue;
     const current = Number(stock[item.tamanho]);

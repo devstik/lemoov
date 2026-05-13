@@ -14,6 +14,7 @@ const DELIVERY_MARACANAU_PRICE = 14;
 let freteAtual = 0;
 let cepAtual = "";
 let entregaDisponivel = false;
+let retiradaNaLoja = false;
 let freteModo = null;           // 'uber'
 let enderecoAutofill = null;
 let originCoordsCache = null;
@@ -197,7 +198,7 @@ function isFixedFreteMode(mode = freteModo) {
 }
 function buildPaymentItems() {
   const items = buildCartItems();
-  if (entregaDisponivel && isFixedFreteMode() && freteAtual > 0) {
+  if (!retiradaNaLoja && entregaDisponivel && isFixedFreteMode() && freteAtual > 0) {
     items.push({
       item_name: "Frete",
       item_category: "Entrega",
@@ -894,6 +895,32 @@ function computeColorPrice(prod, colorObj){
   #cart .cart__total strong{ color: #002776; }
 
   .frete__ui{ margin-bottom: 10px; }
+  .pickup-toggle{
+    display:grid;
+    grid-template-columns:auto 1fr;
+    gap:10px;
+    align-items:center;
+    padding:10px;
+    margin-bottom:9px;
+    border:1px solid rgba(0,156,59,.14);
+    border-radius:16px;
+    background:linear-gradient(135deg, rgba(255,255,255,.92), rgba(238,248,242,.82));
+    cursor:pointer;
+  }
+  .pickup-toggle__control{
+    width:46px;height:26px;border-radius:999px;
+    background:#dbe7e1;position:relative;transition:background .2s;
+  }
+  .pickup-toggle__control::after{
+    content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;
+    border-radius:50%;background:#fff;box-shadow:0 4px 12px rgba(15,23,42,.18);transition:transform .2s;
+  }
+  .pickup-toggle input{position:absolute;opacity:0;pointer-events:none}
+  .pickup-toggle:has(input:checked){border-color:rgba(0,156,59,.34);box-shadow:0 10px 24px rgba(0,156,59,.08)}
+  .pickup-toggle input:checked + .pickup-toggle__control{background:linear-gradient(120deg,#009C3B,#002776)}
+  .pickup-toggle input:checked + .pickup-toggle__control::after{transform:translateX(20px)}
+  .pickup-toggle__text strong{display:block;color:#0a1628;font-size:.82rem}
+  .pickup-toggle__text span{display:block;color:#5d6b76;font-size:.72rem;line-height:1.25;margin-top:2px}
   .frete__row{ display:flex; gap:8px; align-items:center; flex-wrap:nowrap; }
   .frete__msg{ font-size:0.78rem; color:#5d6b76; margin-top:6px; text-align:left; }
   .frete__ui input{
@@ -1605,7 +1632,7 @@ function renderGrid(){
     function refreshAddButton(){
       const soldOut = isVariantSoldOut(p, selectedColorIndex);
       const thereIsAvailable = availableForColor && availableForColor.length;
-      const canAdd = !requiresSize() || (thereIsAvailable && selectedSize);
+      const canAdd = !soldOut && (!requiresSize() || (thereIsAvailable && selectedSize));
       addBtn.disabled = !canAdd;
       if (canAdd) {
         addBtn.textContent = "Adicionar ao carrinho";
@@ -1699,6 +1726,12 @@ function renderGrid(){
     // Botão "Adicionar"
     addBtn.addEventListener("click", (e) => {
       e.preventDefault();
+
+      if (isVariantSoldOut(p, selectedColorIndex)) {
+        alert("Esse item está esgotado.");
+        refreshAddButton();
+        return;
+      }
 
       const thereIsAvailable = availableForColor && availableForColor.length;
 
@@ -1916,10 +1949,11 @@ function abrirModal(prodOrIndex){
   function updateAddButtonState(){
     const avail = getAvailableSizesForColor(produtoAtual, corIndexAtual);
     const requiresSize = allSizes.length > 0;
-    const canAdd = !requiresSize || (avail.length && tamanhoAtual && avail.includes(tamanhoAtual));
+    const soldOut = isVariantSoldOut(produtoAtual, corIndexAtual);
+    const canAdd = !soldOut && (!requiresSize || (avail.length && tamanhoAtual && avail.includes(tamanhoAtual)));
     btnAdd.disabled = !canAdd;
     if (canAdd) btnAdd.textContent = "Adicionar ao carrinho";
-    else btnAdd.textContent = isVariantSoldOut(produtoAtual, corIndexAtual) ? "Esgotado" : "Indisponível";
+    else btnAdd.textContent = soldOut ? "Esgotado" : "Indisponível";
   }
   updateAddButtonState();
 
@@ -1950,6 +1984,12 @@ function abrirModal(prodOrIndex){
   el("#btnAdd").onclick = ()=>{
     if(!produtoAtual) return;
     const cor = (produtoAtual.cores && produtoAtual.cores.length) ? produtoAtual.cores[corIndexAtual] : null;
+
+    if (isVariantSoldOut(produtoAtual, corIndexAtual)) {
+      alert("Esse item está esgotado.");
+      updateAddButtonState();
+      return;
+    }
 
     const avail = getAvailableSizesForColor(produtoAtual, corIndexAtual);
     const allSizes = produtoAtual.tamanhos || [];
@@ -2020,6 +2060,13 @@ function getEffectivePrice(prod){
   return promo > 0 && promo < base ? promo : base;
 }
 function addCarrinho(prod, animateSource = null){
+  const sourceProduct = produtos.find((p) => String(p.id) === String(prod.productId));
+  const sourceColorIndex = Number(prod.colorIndex) || 0;
+  if (sourceProduct && isVariantSoldOut(sourceProduct, sourceColorIndex)) {
+    alert("Esse item está esgotado.");
+    renderGrid();
+    return;
+  }
   const item = {
     productId: prod.productId,
     colorIndex: prod.colorIndex,
@@ -2125,6 +2172,14 @@ function ensureFreteUI() {
     wrap.className = "frete__ui";
     wrap.style.marginTop = "10px";
     wrap.innerHTML = `
+      <label class="pickup-toggle" for="pickupToggle">
+        <input id="pickupToggle" type="checkbox" />
+        <span class="pickup-toggle__control" aria-hidden="true"></span>
+        <span class="pickup-toggle__text">
+          <strong>Vou retirar meu pedido</strong>
+          <span>Marcando esta opção, você se compromete a retirar o item e o frete não é calculado.</span>
+        </span>
+      </label>
       <div class="frete__row">
         <input id="cepInput" type="text" inputmode="numeric"
           placeholder="CEP de entrega"
@@ -2240,14 +2295,16 @@ function atualizarCart(){
   ensureCheckoutButton();
 
   const totalProdutos = getCartSubtotal();
-  const totalComFrete = totalProdutos + (entregaDisponivel ? (freteAtual || 0) : 0);
+  const totalComFrete = totalProdutos + (!retiradaNaLoja && entregaDisponivel ? (freteAtual || 0) : 0);
 
   const subtotalEl = el("#cartSubtotal");
   const freteEl = el("#cartFrete");
   if (subtotalEl) subtotalEl.textContent = formatBRL(totalProdutos);
 
   if (freteEl) {
-    if (!entregaDisponivel) {
+    if (retiradaNaLoja) {
+      freteEl.textContent = "Retirada";
+    } else if (!entregaDisponivel) {
       freteEl.textContent = "Informe o CEP";
     } else if (freteModo === "uber_free") {
       freteEl.textContent = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
@@ -2259,7 +2316,7 @@ function atualizarCart(){
   }
 
   const fixedFrete = isFixedFreteMode();
-  const totalLabel = entregaDisponivel
+  const totalLabel = !retiradaNaLoja && entregaDisponivel
     ? (fixedFrete ? formatBRL(totalComFrete) : `${formatBRL(totalComFrete)} + frete`)
     : formatBRL(totalComFrete);
   el("#cartTotal").textContent = totalLabel;
@@ -2658,6 +2715,19 @@ function resetFreteUI(message = "Informe o CEP para calcular a entrega.") {
   atualizarCart();
 }
 
+function applyPickupUIState() {
+  const pickupToggle = el("#pickupToggle");
+  const cepInput = el("#cepInput");
+  const btnUseLocation = el("#btnUseLocation");
+  const freteMsg = el("#freteMsg");
+  if (pickupToggle) pickupToggle.checked = retiradaNaLoja;
+  if (cepInput) cepInput.disabled = retiradaNaLoja;
+  if (btnUseLocation) btnUseLocation.disabled = retiradaNaLoja;
+  if (retiradaNaLoja && freteMsg) {
+    freteMsg.textContent = "Retirada selecionada. O frete não será calculado.";
+  }
+}
+
 async function calcularEntregaPorCEP(cepRaw) {
   const cep = normalizeCEP(cepRaw);
   const freteMsg = el("#freteMsg");
@@ -2724,10 +2794,34 @@ function bindFreteUIEvents() {
   const cepInput = el("#cepInput");
   const freteMsg = el("#freteMsg");
   const btnUseLocation = el("#btnUseLocation");
+  const pickupToggle = el("#pickupToggle");
+
+  if (pickupToggle && !pickupToggle._lemoovBound) {
+    pickupToggle._lemoovBound = true;
+    pickupToggle.checked = retiradaNaLoja;
+    pickupToggle.addEventListener("change", () => {
+      retiradaNaLoja = pickupToggle.checked;
+      if (retiradaNaLoja) {
+        freteAtual = 0;
+        cepAtual = "";
+        entregaDisponivel = false;
+        enderecoAutofill = null;
+        freteModo = "retirada";
+        if (cepInput) cepInput.value = "";
+      } else {
+        freteModo = null;
+        if (freteMsg) freteMsg.textContent = "Informe o CEP para calcular a entrega.";
+      }
+      applyPickupUIState();
+      atualizarCart();
+    });
+  }
+  applyPickupUIState();
 
   if (cepInput && !cepInput._lemoovBound) {
     cepInput._lemoovBound = true;
     cepInput.addEventListener("input", () => {
+      if (retiradaNaLoja) return;
       cepInput.value = normalizeCEP(cepInput.value);
       if (cepInput.value.length === 0) {
         resetFreteUI();
@@ -2747,6 +2841,7 @@ function bindFreteUIEvents() {
   if (btnUseLocation && !btnUseLocation._lemoovBound) {
     btnUseLocation._lemoovBound = true;
     btnUseLocation.addEventListener("click", () => {
+      if (retiradaNaLoja) return;
       if (!navigator.geolocation) {
         if (freteMsg) freteMsg.textContent = "Seu navegador não suporta localização. Digite o CEP.";
         return;
@@ -2778,7 +2873,7 @@ function openCheckoutModal(){
   if (carrinho.length === 0) { alert("Seu carrinho está vazio."); return; }
   const cepInput = el("#cepInput");
   const cepValue = normalizeCEP(cepInput?.value || cepAtual || "");
-  if (!cepValue || cepValue.length !== 8) {
+  if (!retiradaNaLoja && (!cepValue || cepValue.length !== 8)) {
     alert("Informe o CEP para calcular a entrega.");
     return;
   }
@@ -2923,7 +3018,7 @@ function openCheckoutModal(){
   // Preencher resumo
   const itemsDiv = el("#checkoutItems");
   const subtotal = getCartSubtotal();
-  const total = subtotal + (entregaDisponivel ? (freteAtual||0) : 0);
+  const total = subtotal + (!retiradaNaLoja && entregaDisponivel ? (freteAtual||0) : 0);
   itemsDiv.innerHTML = carrinho.map((p,i)=>{
     const qty = getItemQty(p);
     const lineTotal = getItemLineTotal(p);
@@ -2937,8 +3032,8 @@ function openCheckoutModal(){
   }).join("<br>");
 
   el("#ckSubtotal").textContent = formatBRL(subtotal);
-  let freteResumo = "Informe o CEP";
-  if (entregaDisponivel) {
+  let freteResumo = retiradaNaLoja ? "Retirada pelo cliente" : "Informe o CEP";
+  if (!retiradaNaLoja && entregaDisponivel) {
     if (freteModo === "uber_free") freteResumo = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
     else if (freteModo === "local_12" || freteModo === "local_14") freteResumo = getDeliveryModeLabel(freteModo);
     else freteResumo = "Consultar via WhatsApp";
@@ -2948,13 +3043,16 @@ function openCheckoutModal(){
   if (freteVia) freteVia.textContent = "";
   const fixedFrete2 = isFixedFreteMode();
   let totalLabel = formatBRL(total);
-  if (entregaDisponivel) {
+  if (!retiradaNaLoja && entregaDisponivel) {
     totalLabel = fixedFrete2 ? formatBRL(total) : `${formatBRL(total)} + frete`;
   }
   el("#ckTotal").textContent = totalLabel;
   const freteNote = el("#checkoutFreteNote");
   if (freteNote) {
-    if (freteModo === "whatsapp") {
+    if (retiradaNaLoja) {
+      freteNote.textContent = "Você marcou retirada e se compromete a buscar o pedido.";
+      freteNote.style.display = "";
+    } else if (freteModo === "whatsapp") {
       freteNote.textContent = "Cidade fora da área de valor fixo — favor consultar via WhatsApp.";
       freteNote.style.display = "";
     } else {
@@ -2976,9 +3074,9 @@ function openCheckoutModal(){
     if (cidade) cidade.value = addr.cidade || "";
     if (uf) uf.value = addr.uf || "";
   };
-  const cepParaUsar = (enderecoAutofill?.cep && enderecoAutofill.cep.length === 8)
+  const cepParaUsar = !retiradaNaLoja && (enderecoAutofill?.cep && enderecoAutofill.cep.length === 8)
     ? enderecoAutofill.cep
-    : (cepAtual && cepAtual.length === 8 ? cepAtual : "");
+    : (!retiradaNaLoja && cepAtual && cepAtual.length === 8 ? cepAtual : "");
   if (ckCep && cepParaUsar) {
     ckCep.value = formatCEPForInput(cepParaUsar);
     ckCep.dispatchEvent(new Event("input", { bubbles: true }));
@@ -2996,7 +3094,7 @@ function openCheckoutModal(){
   }
   const locateBtnGlobal = el("#btnLocateCep");
   if (locateBtnGlobal) {
-    const hasCep = Boolean(
+    const hasCep = !retiradaNaLoja && Boolean(
       (enderecoAutofill?.cep && enderecoAutofill.cep.length === 8) ||
       (cepAtual && cepAtual.length === 8)
     );
@@ -3046,8 +3144,8 @@ function buildWhatsMessage(data, options = {}) {
   });
 
   const subtotal = getCartSubtotal();
-  const total = subtotal + (entregaDisponivel ? (freteAtual||0) : 0);
-  const viaCEP = (typeof cepAtual === "string" && cepAtual.length === 8);
+  const total = subtotal + (!retiradaNaLoja && entregaDisponivel ? (freteAtual||0) : 0);
+  const viaCEP = !retiradaNaLoja && (typeof cepAtual === "string" && cepAtual.length === 8);
   let freteInfo = "";
   if (entregaDisponivel && viaCEP) {
     freteInfo = ` (CEP ${formatCEPForInput(cepAtual)})`;
@@ -3062,11 +3160,15 @@ function buildWhatsMessage(data, options = {}) {
   if (cliente.email) linhas.push(`E-mail: ${cliente.email}`);
 
   linhas.push("");
-  linhas.push("*Endereço*");
-  linhas.push(`Rua: ${endereco.rua || "-"}, ${endereco.numero || "-"}`);
-  if (endereco.complemento) linhas.push(`Compl.: ${endereco.complemento}`);
-  linhas.push(`Cidade/UF: ${endereco.cidade || "-"} / ${endereco.uf || "-"}`);
-  if (endereco.cep) linhas.push(`CEP: ${formatCEPForInput(endereco.cep)}`);
+  linhas.push(retiradaNaLoja ? "*Retirada*" : "*Endereço*");
+  if (retiradaNaLoja) {
+    linhas.push("Cliente marcou retirada e se compromete a buscar o pedido.");
+  } else {
+    linhas.push(`Rua: ${endereco.rua || "-"}, ${endereco.numero || "-"}`);
+    if (endereco.complemento) linhas.push(`Compl.: ${endereco.complemento}`);
+    linhas.push(`Cidade/UF: ${endereco.cidade || "-"} / ${endereco.uf || "-"}`);
+    if (endereco.cep) linhas.push(`CEP: ${formatCEPForInput(endereco.cep)}`);
+  }
 
   linhas.push("");
   linhas.push("*Pagamento*");
@@ -3081,14 +3183,14 @@ function buildWhatsMessage(data, options = {}) {
   linhas.push("");
   linhas.push("*Resumo*");
   linhas.push(`Produtos: ${formatBRL(subtotal)}`);
-  let freteLabel = "A calcular";
-  if (entregaDisponivel) {
+  let freteLabel = retiradaNaLoja ? "Retirada pelo cliente" : "A calcular";
+  if (!retiradaNaLoja && entregaDisponivel) {
     if (freteModo === "uber_free") freteLabel = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)${freteInfo}`;
     else if (freteModo === "local_12" || freteModo === "local_14") freteLabel = `${getDeliveryModeLabel(freteModo)}${freteInfo}`;
     else freteLabel = `Consultar via WhatsApp.${freteInfo}`;
   }
   linhas.push(`Frete: ${freteLabel}`);
-  const totalLabel = entregaDisponivel
+  const totalLabel = !retiradaNaLoja && entregaDisponivel
     ? (isFixedFreteMode() ? formatBRL(total) : `${formatBRL(total)} + frete`)
     : formatBRL(total);
   linhas.push(`Total: ${totalLabel}`);
@@ -3175,7 +3277,7 @@ async function handleSubmitCheckout(ev){
   const form = ev.currentTarget;
   const btn = el("#btnEnviarPedido");
   const subtotalCompra = getCartSubtotal();
-  const totalCompra = subtotalCompra + (entregaDisponivel ? (freteAtual||0) : 0);
+  const totalCompra = subtotalCompra + (!retiradaNaLoja && entregaDisponivel ? (freteAtual||0) : 0);
   const purchaseItems = buildCartItems();
   const paymentItems = buildPaymentItems();
   if (btn) {
@@ -3190,11 +3292,11 @@ async function handleSubmitCheckout(ev){
       email: (fdUI.get("email") || "").toString().trim(),
     };
     const endereco = {
-      cep: normalizeCEP((fdUI.get("cep") || "").toString()),
-      rua:    enderecoAutofill?.rua    || "",
-      bairro: enderecoAutofill?.bairro || "",
-      cidade: enderecoAutofill?.cidade || "",
-      uf:     enderecoAutofill?.uf     || "",
+      cep: retiradaNaLoja ? "" : normalizeCEP((fdUI.get("cep") || "").toString()),
+      rua:    retiradaNaLoja ? "" : (enderecoAutofill?.rua    || ""),
+      bairro: retiradaNaLoja ? "" : (enderecoAutofill?.bairro || ""),
+      cidade: retiradaNaLoja ? "" : (enderecoAutofill?.cidade || ""),
+      uf:     retiradaNaLoja ? "" : (enderecoAutofill?.uf     || ""),
     };
     const pagamento = (fdUI.get("pagamento") || "pix").toString();
 
@@ -3222,7 +3324,8 @@ async function handleSubmitCheckout(ev){
       item_count: purchaseItems.length,
       itens: purchaseItems,
       itensEstoque,
-      frete_modo: freteModo || "",
+      frete_modo: retiradaNaLoja ? "retirada" : (freteModo || ""),
+      retirada: retiradaNaLoja,
       cep: endereco.cep || "",
       cidade: endereco.cidade || "",
       uf: endereco.uf || "",
