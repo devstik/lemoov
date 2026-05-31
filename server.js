@@ -628,7 +628,7 @@ app.post('/api/client/register', async (req, res) => {
         [clientId, String(endereco.cep).replace(/\D/g, ''), String(endereco.logradouro || ''), String(endereco.numero), String(endereco.complemento || '') || null, String(endereco.bairro || '') || null, String(endereco.cidade || ''), String(endereco.uf || '')]
       );
     }
-    if (process.env.RESEND_API_KEY) {
+    if (process.env.SMTP_HOST || process.env.RESEND_API_KEY) {
       const code = String(Math.floor(100000 + Math.random() * 900000));
       const verifyToken = crypto.randomBytes(24).toString('hex');
       verificationCodes.set(verifyToken, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), code, expiresAt: Date.now() + VERIFY_CODE_TTL_MS });
@@ -683,7 +683,10 @@ async function sendEmail(to, subject, html) {
   }
 
   const key = process.env.RESEND_API_KEY;
-  if (!key) return;
+  if (!key) {
+    console.warn(`[email] nenhum serviço configurado (SMTP_HOST ou RESEND_API_KEY). Email não enviado para: ${to}`);
+    return;
+  }
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
@@ -757,12 +760,13 @@ async function notifyOrderConfirmed(pedido) {
 }
 
 async function sendResetEmail(toEmail, toNome, resetUrl) {
-  if (!process.env.RESEND_API_KEY) {
+  const hasService = process.env.SMTP_HOST || process.env.RESEND_API_KEY;
+  if (!hasService) {
     console.log(`[reset-password] link para ${toEmail}: ${resetUrl}`);
     return;
   }
   await sendEmail(toEmail, 'Redefinir senha – Lemoov',
-    `<p>Olá, ${toNome}!</p><p>Clique no link abaixo para criar uma nova senha. Válido por 1 hora.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Se não foi você, ignore este e-mail.</p>`
+    `<p>Olá, ${toNome}!</p><p>Clique no link abaixo para criar uma nova senha. Válido por 1 hora.</p><p><a href="${resetUrl}" style="color:#1ec28b">${resetUrl}</a></p><p>Se não foi você, ignore este e-mail.</p>`
   );
 }
 
