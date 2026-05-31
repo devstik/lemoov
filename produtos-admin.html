@@ -1361,7 +1361,7 @@ function renderCRM(sessions, funnel){
 <div style="overflow-x:auto">
 <table class="crm-table" id="crmTable">
   <thead><tr>
-    <th>Data/Hora</th><th>Cliente</th><th>Cidade</th><th>Status</th><th>Eventos</th><th>Tempo</th><th></th>
+    <th>Data/Hora</th><th>Cliente</th><th>Localização</th><th>Dispositivo</th><th>Origem</th><th>Status</th><th>Eventos</th><th>Tempo</th><th></th>
   </tr></thead>
   <tbody id="crmTbody">${renderCrmRows(sessions)}</tbody>
 </table>
@@ -1388,10 +1388,15 @@ function renderCrmRows(sessions){
   return sessions.map(s=>{
     const st = CRM_STATUS(s);
     const eventIcons = [s.viewed?'👁':'', s.carted?'🛒':'', s.checkout?'💳':'', s.purchased?'✅':''].filter(Boolean).join(' ');
+    const locLabel = [s.cidade, s.bairro].filter(Boolean).join(' · ') || '—';
+    const devIcon = s.dispositivo === 'mobile' ? '📱' : s.dispositivo === 'tablet' ? '📟' : '💻';
+    const origemLabel = s.utm_campaign ? `📣 ${s.utm_campaign}` : s.utm_source ? `🔗 ${s.utm_source}` : s.origem ? `↩ ${s.origem}` : '—';
     return `<tr data-sid="${s.sessionId}">
       <td style="white-space:nowrap">${fmtDt(s.firstSeen)}</td>
       <td>${s.clienteNome ? `<strong>${s.clienteNome}</strong><br><span style="font-size:11px;color:#64748b">#${s.clientId}</span>` : `<span style="color:#64748b">Anônimo</span>`}</td>
-      <td>${s.cidade||'—'}${s.regiao?` / ${s.regiao}`:''}</td>
+      <td style="font-size:12px">${locLabel}${s.regiao?`<br><span style="color:#64748b">${s.regiao}</span>`:''}</td>
+      <td style="font-size:12px;white-space:nowrap">${devIcon} ${s.browser||'—'}<br><span style="color:#64748b">${s.so||''}</span></td>
+      <td style="font-size:11px;color:#94a3b8;white-space:nowrap">${origemLabel}</td>
       <td><span class="crm-badge" style="color:${st.color}">${st.label}</span></td>
       <td style="text-align:center">${eventIcons||'—'} <span style="font-size:11px;color:#64748b">(${s.eventCount})</span></td>
       <td style="white-space:nowrap">${fmtTime(s.timeOnSite)}</td>
@@ -1426,8 +1431,14 @@ async function openCrmSession(sid){
       <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px">
-      <div><span style="color:#64748b">Cidade:</span> ${s.cidade||'—'}${s.regiao?' / '+s.regiao:''}</div>
+      <div><span style="color:#64748b">Cidade:</span> ${s.cidade||'—'}${s.bairro?' · '+s.bairro:''}</div>
+      <div><span style="color:#64748b">Estado:</span> ${s.regiao||'—'} · ${s.pais||'—'}</div>
+      <div><span style="color:#64748b">CEP:</span> ${s.cep||'—'}</div>
       <div><span style="color:#64748b">Status:</span> <span style="color:${st.color}">${st.label}</span></div>
+      <div><span style="color:#64748b">Dispositivo:</span> ${s.dispositivo||'—'} · ${s.browser||'—'}</div>
+      <div><span style="color:#64748b">Sistema:</span> ${s.so||'—'}</div>
+      <div><span style="color:#64748b">Origem:</span> ${s.utm_campaign||s.utm_source||s.origem||'direto'}</div>
+      <div><span style="color:#64748b">UTM:</span> ${[s.utm_source,s.utm_medium,s.utm_campaign].filter(Boolean).join(' / ')||'—'}</div>
       <div><span style="color:#64748b">Primeira visita:</span> ${fmtDt(s.firstSeen)}</div>
       <div><span style="color:#64748b">Última atividade:</span> ${fmtDt(s.lastSeen)}</div>
       <div><span style="color:#64748b">Tempo no site:</span> ${fmtTime(s.timeOnSite)}</div>

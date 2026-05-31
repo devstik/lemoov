@@ -35,14 +35,21 @@ function getCrmSessionId() {
 function crmTrack(type, extra = {}) {
   if (getCookieConsent() !== 'accepted') return;
   const region = getVisitorRegion();
+  const qs = new URLSearchParams(location.search);
   const payload = {
-    sessionId: getCrmSessionId(),
+    sessionId:    getCrmSessionId(),
     type,
-    cidade: region?.city || '',
-    regiao: region?.region || '',
-    pais:   region?.country || '',
-    clientId:    currentClientSession?.id   || null,
-    clienteNome: currentClientSession?.nome || '',
+    cidade:       region?.city    || '',
+    bairro:       region?.bairro  || '',
+    regiao:       region?.region  || '',
+    pais:         region?.country || '',
+    cep:          region?.postal  || '',
+    clientId:     currentClientSession?.id   || null,
+    clienteNome:  currentClientSession?.nome || '',
+    origem:       document.referrer ? new URL(document.referrer).hostname : '',
+    utm_source:   qs.get('utm_source')   || '',
+    utm_medium:   qs.get('utm_medium')   || '',
+    utm_campaign: qs.get('utm_campaign') || '',
     ...extra
   };
   fetch('/api/crm/event', {
@@ -641,11 +648,28 @@ async function fetchVisitorRegion(){
     if (!res.ok) return;
     const data = await res.json();
     const region = {
-      ip: data.ip,
-      city: data.city,
-      region: data.region,
-      country: data.country_name
+      ip:      data.ip,
+      city:    data.city,
+      region:  data.region,
+      country: data.country_name,
+      postal:  data.postal  || '',
+      lat:     data.latitude  || null,
+      lng:     data.longitude || null,
+      bairro:  '',
     };
+    // bairro via reverse geocoding (OpenStreetMap Nominatim)
+    if (region.lat && region.lng) {
+      try {
+        const nom = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${region.lat}&lon=${region.lng}&format=json`,
+          { headers: { 'Accept-Language': 'pt-BR,pt', 'User-Agent': 'Lemoov/1.0' } }
+        );
+        if (nom.ok) {
+          const nd = await nom.json();
+          region.bairro = nd.address?.suburb || nd.address?.neighbourhood || nd.address?.district || nd.address?.city_district || '';
+        }
+      } catch (_) {}
+    }
     sessionStorage.setItem("lemoovRegion", JSON.stringify(region));
     trackEvent("visit_location", region);
   } catch (_e) {}

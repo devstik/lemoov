@@ -1776,6 +1776,26 @@ app.use((req, res, next) => {
 const CRM_MAX_SESSIONS = 10000;
 const CRM_RETENTION_DAYS = 90;
 
+function parseUserAgent(ua) {
+  if (!ua) return { dispositivo: 'desconhecido', browser: 'desconhecido', so: 'desconhecido' };
+  const mob = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua);
+  const tab = /iPad|Android(?!.*Mobile)/i.test(ua);
+  const dispositivo = tab ? 'tablet' : mob ? 'mobile' : 'desktop';
+  const browser =
+    /Edg\//i.test(ua)    ? 'Edge' :
+    /OPR\//i.test(ua)    ? 'Opera' :
+    /Chrome\//i.test(ua) ? 'Chrome' :
+    /Safari\//i.test(ua) ? 'Safari' :
+    /Firefox\//i.test(ua)? 'Firefox' : 'Outro';
+  const so =
+    /iPhone|iPad|iPod/i.test(ua) ? 'iOS' :
+    /Android/i.test(ua)          ? 'Android' :
+    /Windows/i.test(ua)          ? 'Windows' :
+    /Mac OS X/i.test(ua)         ? 'macOS' :
+    /Linux/i.test(ua)            ? 'Linux' : 'Outro';
+  return { dispositivo, browser, so };
+}
+
 let _crmTablesReady = false;
 async function ensureCrmTables() {
   if (_crmTablesReady) return;
@@ -1785,10 +1805,19 @@ async function ensureCrmTables() {
       session_id VARCHAR(64) NOT NULL UNIQUE,
       ip VARCHAR(45),
       cidade VARCHAR(100),
+      bairro VARCHAR(100),
       regiao VARCHAR(100),
       pais VARCHAR(100),
+      cep VARCHAR(10),
       client_id INT NULL,
       cliente_nome VARCHAR(200),
+      dispositivo VARCHAR(30),
+      browser VARCHAR(50),
+      so VARCHAR(30),
+      origem VARCHAR(300),
+      utm_source VARCHAR(100),
+      utm_medium VARCHAR(100),
+      utm_campaign VARCHAR(100),
       first_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       time_on_site INT NOT NULL DEFAULT 0
@@ -1809,6 +1838,11 @@ async function ensureCrmTables() {
   `);
   try { await mysqlPool.execute('CREATE INDEX idx_crm_session ON lemoov_crm_events (session_id)'); } catch (_) {}
   try { await mysqlPool.execute('CREATE INDEX idx_crm_ts ON lemoov_crm_events (ts)'); } catch (_) {}
+  // migrações para tabelas já existentes
+  const newCols = ['bairro VARCHAR(100)','cep VARCHAR(10)','dispositivo VARCHAR(30)','browser VARCHAR(50)','so VARCHAR(30)','origem VARCHAR(300)','utm_source VARCHAR(100)','utm_medium VARCHAR(100)','utm_campaign VARCHAR(100)'];
+  for (const col of newCols) {
+    try { await mysqlPool.execute(`ALTER TABLE lemoov_crm_sessions ADD COLUMN ${col}`); } catch (_) {}
+  }
   _crmTablesReady = true;
   console.log('[crm] tabelas prontas');
 }
@@ -1828,15 +1862,17 @@ function anonIp(ip) {
 app.post('/api/crm/event', async (req, res) => {
   try {
     const body = req.body || {};
-    const { sessionId, type, cidade, regiao, pais, clientId, clienteNome,
-            productId, productName, orderId, total, timeOnSite, page } = body;
+    const { sessionId, type, cidade, bairro, regiao, pais, cep, clientId, clienteNome,
+            productId, productName, orderId, total, timeOnSite, page,
+            origem, utm_source, utm_medium, utm_campaign } = body;
 
     if (!sessionId || !type) {
-      console.warn('[crm/event] body inválido — sessionId ou type ausente. body:', JSON.stringify(body).slice(0, 200));
+      console.warn('[crm/event] body inválido. body:', JSON.stringify(body).slice(0, 200));
       return res.json({ ok: false, error: 'sessionId e type obrigatórios' });
     }
 
     const ip = anonIp(req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '');
+    const ua = parseUserAgent(req.headers['user-agent'] || '');
 
     if (MYSQL_ENABLED) {
       await ensureCrmTables();
@@ -1845,16 +1881,24 @@ app.post('/api/crm/event', async (req, res) => {
       );
       if (!existing.length) {
         await mysqlPool.execute(
-          'INSERT INTO lemoov_crm_sessions (session_id, ip, cidade, regiao, pais, client_id, cliente_nome) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [sessionId, ip, cidade||'', regiao||'', pais||'', clientId||null, clienteNome||'']
+          `INSERT INTO lemoov_crm_sessions
+            (session_id, ip, cidade, bairro, regiao, pais, cep, client_id, cliente_nome,
+             dispositivo, browser, so, origem, utm_source, utm_medium, utm_campaign)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [sessionId, ip, cidade||'', bairro||'', regiao||'', pais||'', cep||'',
+           clientId||null, clienteNome||'',
+           ua.dispositivo, ua.browser, ua.so,
+           origem||'', utm_source||'', utm_medium||'', utm_campaign||'']
         );
-        console.log(`[crm] nova sessão: ${sessionId} | ${cidade||'?'} | tipo: ${type}`);
+        console.log(`[crm] nova sessão: ${sessionId.slice(0,8)}… | ${cidade||'?'}/${bairro||'?'} | ${ua.dispositivo} ${ua.browser} | origem: ${origem||'direto'}`);
       } else {
         const updates = ['last_seen = NOW()'];
         const params = [];
         if (clientId && !existing[0].client_id) { updates.push('client_id = ?', 'cliente_nome = ?'); params.push(clientId, clienteNome||''); }
-        if (cidade) { updates.push('cidade = COALESCE(NULLIF(cidade,""), ?)'); params.push(cidade); }
-        if (timeOnSite) { updates.push('time_on_site = ?'); params.push(Number(timeOnSite)); }
+        if (cidade)      { updates.push('cidade = COALESCE(NULLIF(cidade,""), ?)');  params.push(cidade); }
+        if (bairro)      { updates.push('bairro = COALESCE(NULLIF(bairro,""), ?)');  params.push(bairro); }
+        if (cep)         { updates.push('cep = COALESCE(NULLIF(cep,""), ?)');         params.push(cep); }
+        if (timeOnSite)  { updates.push('time_on_site = ?');  params.push(Number(timeOnSite)); }
         params.push(sessionId);
         await mysqlPool.execute(`UPDATE lemoov_crm_sessions SET ${updates.join(', ')} WHERE session_id = ?`, params);
       }
