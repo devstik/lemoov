@@ -1457,5 +1457,37 @@ document.querySelectorAll('.tab-btn[data-tab="crm"]').forEach(btn=>{
 <!-- ── CRM ── -->
 <div id="tab-crm" class="tab-panel"></div>
 
+<style>
+  .cookie-banner{position:fixed;bottom:0;left:0;right:0;background:rgba(3,23,20,.97);color:#e9fff5;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;z-index:9999;box-shadow:0 -4px 24px rgba(0,0,0,.35)}
+  .cookie-banner p{margin:0;font-size:13px;line-height:1.55;flex:1}
+  .cookie-banner a{color:#5bf7c8;text-decoration:underline}
+  .cookie-banner__actions{display:flex;gap:8px;flex-shrink:0}
+  .cookie-banner__btn-reject{background:transparent;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.65);font-size:12px;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:inherit}
+  .cookie-banner__btn-accept{background:#1ec28b;color:#fff;border:none;font-size:13px;font-weight:600;padding:9px 20px;border-radius:8px;cursor:pointer;font-family:inherit}
+  .cookie-banner--hide{opacity:0;pointer-events:none;transition:opacity .35s ease}
+  @media(max-width:540px){.cookie-banner{flex-direction:column;align-items:stretch;padding:14px 16px;gap:12px}.cookie-banner__actions{display:grid;grid-template-columns:1fr 1fr}}
+</style>
+<div class="cookie-banner" id="cookieBanner" role="region" aria-label="Aviso de cookies" style="display:none;">
+  <p>Usamos cookies para análise e personalização. Veja nossa <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
+  <div class="cookie-banner__actions">
+    <button class="cookie-banner__btn-reject" id="btnRejectCookies">Recusar</button>
+    <button class="cookie-banner__btn-accept" id="btnAcceptCookies">Aceitar cookies</button>
+  </div>
+</div>
+<script>
+(function(){
+  const CONSENT_VERSION = "v2";
+  function getConsent(){ try{ const r=localStorage.getItem("lemoovCookieConsent"); if(!r)return null; const o=JSON.parse(r); return o.v===CONSENT_VERSION?o.value:null; }catch(_){return null;} }
+  function setConsent(v){ try{ localStorage.setItem("lemoovCookieConsent",JSON.stringify({v:CONSENT_VERSION,value:v})); }catch(_){} }
+  const banner = document.getElementById("cookieBanner");
+  if(!banner) return;
+  const c = getConsent();
+  if(c==="accepted"||c==="rejected"){ banner.remove(); return; }
+  banner.style.display="";
+  document.getElementById("btnAcceptCookies")?.addEventListener("click",()=>{ setConsent("accepted"); banner.classList.add("cookie-banner--hide"); setTimeout(()=>banner.remove(),350); });
+  document.getElementById("btnRejectCookies")?.addEventListener("click",()=>{ setConsent("rejected"); banner.classList.add("cookie-banner--hide"); setTimeout(()=>banner.remove(),350); });
+})();
+</script>
+
 </body>
 </html>

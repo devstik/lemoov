@@ -45,9 +45,13 @@ function crmTrack(type, extra = {}) {
     clienteNome: currentClientSession?.nome || '',
     ...extra
   };
-  navigator.sendBeacon
-    ? navigator.sendBeacon('/api/crm/event', JSON.stringify(payload))
-    : fetch('/api/crm/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true }).catch(() => {});
+  const json = JSON.stringify(payload);
+  // sendBeacon precisa de Blob com Content-Type para Express parsear como JSON
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon('/api/crm/event', new Blob([json], { type: 'application/json' }));
+  } else {
+    fetch('/api/crm/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json, keepalive: true }).catch(() => {});
+  }
 }
 
 // heartbeat de tempo no site
@@ -542,12 +546,13 @@ function initCookieBanner(){
   const btnReject = document.getElementById("btnRejectCookies");
 
   if (btnAccept) {
-    btnAccept.addEventListener("click", () => {
+    btnAccept.addEventListener("click", async () => {
       setCookieConsent("accepted");
       banner.classList.add("cookie-banner--hide");
       setTimeout(() => banner.remove(), 400);
       initTracking();
-      fetchVisitorRegion();
+      await fetchVisitorRegion();
+      crmTrack('page_view', { page: location.pathname });
     });
   }
 
@@ -560,9 +565,14 @@ function initCookieBanner(){
   }
 }
 
+const CONSENT_VERSION = "v2";
+
 function getCookieConsent(){
   try {
-    return localStorage.getItem("lemoovCookieConsent");
+    const raw = localStorage.getItem("lemoovCookieConsent");
+    if (!raw) return null;
+    // formato antigo (sem versão) → ignora, pede novamente
+    try { const obj = JSON.parse(raw); return obj.v === CONSENT_VERSION ? obj.value : null; } catch (_) { return null; }
   } catch (_e) {
     return null;
   }
@@ -570,14 +580,15 @@ function getCookieConsent(){
 
 function setCookieConsent(value){
   try {
-    localStorage.setItem("lemoovCookieConsent", value);
+    localStorage.setItem("lemoovCookieConsent", JSON.stringify({ v: CONSENT_VERSION, value }));
   } catch (_e) {}
 }
 
-function initTrackingIfConsented(){
+async function initTrackingIfConsented(){
   if (getCookieConsent() === "accepted") {
     initTracking();
-    fetchVisitorRegion();
+    await fetchVisitorRegion();
+    crmTrack('page_view', { page: location.pathname });
   }
 }
 
