@@ -33,6 +33,7 @@
       line-height: 0;
       display: grid;
       place-items: center;
+      min-height: clamp(210px, 36vw, 430px);
       background:
         radial-gradient(circle at 18% 45%, rgba(255, 214, 48, 0.18), transparent 32%),
         linear-gradient(120deg, #061d19 0%, #0c3f2f 46%, #082b5f 100%);
@@ -58,9 +59,10 @@
     }
     .catalog-landing .header__wrap {
       min-height: 58px;
-      justify-content: flex-end;
+      justify-content: space-between;
       padding: 0 24px;
       position: relative;
+      gap: 12px;
     }
     .catalog-landing .logo {
       position: absolute;
@@ -85,6 +87,31 @@
     }
     .catalog-landing .nav {
       margin-left: auto;
+      gap: 10px;
+    }
+    .catalog-landing .header__link {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 12px;
+      border-radius: 999px;
+      color: rgba(245, 251, 255, 0.82);
+      text-decoration: none;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+    .catalog-landing .header__link:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #f6d74d;
+      transform: translateY(-1px);
+    }
+    .catalog-landing .header__home {
+      color: rgba(246, 215, 77, 0.86);
     }
     .catalog-landing .btn-icon {
       width: 40px;
@@ -109,7 +136,7 @@
       background: linear-gradient(180deg, #f8fbf2 0%, #eef8f2 38%, #f7fbff 100%);
     }
     .catalog-landing .layout {
-      padding-top: 26px;
+      padding-top: 18px;
     }
     .catalog-search {
       position: sticky;
@@ -404,31 +431,52 @@
       color: #05241f;
     }
     @media (max-width: 520px) {
+      .site-banner {
+        min-height: clamp(190px, 58vw, 280px);
+      }
       .site-banner img {
         width: 100%;
-        max-height: 38vh;
+        max-height: 34vh;
+        min-height: 190px;
+        object-fit: cover;
         box-shadow: none;
       }
       .catalog-landing .header__wrap {
         min-height: 54px;
-        padding: 0 14px;
+        padding: 0 10px;
+        gap: 6px;
       }
       .catalog-landing .logo a {
-        font-size: 0.92rem;
-        letter-spacing: 0.14em;
+        font-size: 0.84rem;
+        letter-spacing: 0.1em;
         flex-direction: column;
         gap: 0;
       }
       .catalog-landing .logo a span {
         font-size: 0.68em;
-        letter-spacing: 0.26em;
+        letter-spacing: 0.2em;
+      }
+      .catalog-landing .header__link {
+        width: 36px;
+        min-width: 36px;
+        min-height: 38px;
+        padding: 0;
+        font-size: 0.9rem;
+      }
+      .catalog-landing .header__link span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
       }
       .catalog-landing .btn-icon {
         width: 38px;
         height: 38px;
       }
       .catalog-landing .layout {
-        padding-top: 10px;
+        padding-top: 8px;
       }
       .catalog-search {
         top: 62px;
@@ -488,7 +536,7 @@
 
   <div class="site-banner" style="position:relative;">
     <a href="#grid" aria-label="Ver coleção" style="display:contents;">
-      <img src="image/banner.jpeg" alt="Coleção Arena Lemoov Fitness" loading="eager" fetchpriority="high" />
+      <img src="image/banner.jpeg" alt="Coleção Arena Lemoov Fitness" width="1536" height="1024" loading="eager" fetchpriority="high" />
     </a>
     <canvas id="confettiCanvas" aria-hidden="true" style="
       position:absolute;inset:0;width:100%;height:100%;
@@ -501,7 +549,9 @@
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const COLORS = ['#009C3B','#009C3B','#FFDF00','#FFDF00','#002776','#002776','#ffffff'];
-    const TOTAL  = 720;
+    const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.matchMedia && window.matchMedia('(max-width: 620px)').matches;
+    const TOTAL  = reducedMotion ? 0 : (isMobile ? 90 : 220);
     let pieces   = [];
     let raf      = null;
     let running  = false;
@@ -573,8 +623,9 @@
     }
 
     function launch(){
+      if (!TOTAL || reducedMotion) return;
       if(running && pieces.length) {
-        const extra = pieces.slice(0, Math.floor(TOTAL * 0.22)).map(p => ({ ...p, y: randomBetween(-canvas.height * 0.35, -10), alpha: 1 }));
+        const extra = pieces.slice(0, Math.floor(TOTAL * 0.12)).map(p => ({ ...p, y: randomBetween(-canvas.height * 0.35, -10), alpha: 1 }));
         pieces.push(...extra);
         return;
       }
@@ -584,8 +635,8 @@
       raf=requestAnimationFrame(draw);
     }
 
-    // dispara ao carregar e ao hover/touch no banner
-    window.addEventListener('load', ()=>{ setTimeout(launch, 300); });
+    // dispara ao carregar e ao hover/touch no banner, com intensidade reduzida
+    window.addEventListener('load', ()=>{ setTimeout(launch, 450); });
     canvas.parentElement.addEventListener('mouseenter', launch);
     canvas.parentElement.addEventListener('touchstart', launch, {passive:true});
 
@@ -596,11 +647,19 @@
 
   <header class="header">
     <div class="container header__wrap">
+      <a href="index.html" class="header__link header__home" aria-label="Voltar para a página inicial">
+        <i class="fas fa-house" aria-hidden="true"></i>
+        <span>Home</span>
+      </a>
       <h1 class="logo">
         <a href="index.html">Lemoov <span>Fitness</span></a>
       </h1>
 
-      <nav class="nav">
+      <nav class="nav" aria-label="Ações principais">
+        <a href="cliente-login.html" class="header__link" aria-label="Minha conta">
+          <i class="fas fa-user" aria-hidden="true"></i>
+          <span>Conta</span>
+        </a>
         <button id="openCart" class="btn-icon" aria-label="Abrir carrinho">
           <i id="cartIcon" class="fas fa-shopping-cart"></i>
           <span id="cartCount" class="badge">0</span>
@@ -621,6 +680,12 @@
         </div>
         <span class="catalog-search__meta" id="catalogSearchMeta"></span>
       </section>
+      <div class="floating-toggle-group">
+        <button class="floating-toggle floating-toggle--whats" id="toggleWhats" type="button">
+          <i class="fab fa-whatsapp" aria-hidden="true"></i>
+          <span>WhatsApp</span>
+        </button>
+      </div>
       <section id="grid" class="grid"></section>
     </main>
   </div>

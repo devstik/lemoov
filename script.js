@@ -10,13 +10,16 @@ const ORDER_SEQ_STORAGE_KEY = "lemoovOrderSeq";
 const DELIVERY_MODE_LABEL = "Entrega via Moto Uber";
 const DELIVERY_FREE_RADIUS_KM = 2;
 const DELIVERY_FORTALEZA_CAUCAIA_PRICE = 12;
-const DELIVERY_MARACANAU_PRICE = 14;
+const DELIVERY_MARACANAU_PRICE = 15;
+const DELIVERY_EUSEBIO_PRICE = 25;
 let freteAtual = 0;
 let cepAtual = "";
 let entregaDisponivel = false;
 let retiradaNaLoja = false;
 let freteModo = null;           // 'uber'
 let enderecoAutofill = null;
+let selectedDeliveryAddress = null;
+let currentClientSession = null;
 let originCoordsCache = null;
 const FB_EVENT_MAP = {
   add_to_cart: "AddToCart",
@@ -106,7 +109,66 @@ const PAYMENT_ORIGIN_KEY = "lemoovPaymentOriginPath";
 let filtroAtual = "Todos";
 let ordenacaoAtual = "destaque";
 let buscaAtual = "";
-let carrinho = [];
+const CART_STORAGE_KEY = "lemoov_cart_v1";
+const CART_TTL_MS = 30 * 60 * 1000;
+let cartUpdatedAt = 0;
+let cartExpiryTimer = null;
+function _loadCart() {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.items) ? parsed.items : []);
+    const updatedAt = Number(Array.isArray(parsed) ? Date.now() : parsed?.updatedAt) || Date.now();
+    if (items.length && Date.now() - updatedAt >= CART_TTL_MS) {
+      localStorage.removeItem(CART_STORAGE_KEY);
+      return [];
+    }
+    cartUpdatedAt = items.length ? updatedAt : 0;
+    return items;
+  } catch (_) {
+    return [];
+  }
+}
+function _saveCart({ touch = false } = {}) {
+  try {
+    if (!carrinho.length) {
+      cartUpdatedAt = 0;
+      localStorage.removeItem(CART_STORAGE_KEY);
+      return;
+    }
+    if (touch || !cartUpdatedAt) cartUpdatedAt = Date.now();
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({ items: carrinho, updatedAt: cartUpdatedAt }));
+  } catch (_) {}
+}
+function _scheduleCartExpiry() {
+  if (cartExpiryTimer) window.clearTimeout(cartExpiryTimer);
+  if (!carrinho.length || !cartUpdatedAt) return;
+  const remaining = Math.max(0, cartUpdatedAt + CART_TTL_MS - Date.now());
+  cartExpiryTimer = window.setTimeout(clearExpiredCart, remaining);
+}
+function _touchCart() {
+  _saveCart({ touch: true });
+  _scheduleCartExpiry();
+}
+function clearExpiredCart() {
+  if (!carrinho.length || !cartUpdatedAt) return;
+  if (Date.now() - cartUpdatedAt < CART_TTL_MS) {
+    _scheduleCartExpiry();
+    return;
+  }
+  carrinho = [];
+  freteAtual = 0;
+  cepAtual = "";
+  entregaDisponivel = false;
+  retiradaNaLoja = false;
+  freteModo = null;
+  enderecoAutofill = null;
+  selectedDeliveryAddress = null;
+  _saveCart();
+  atualizarCart();
+}
+let carrinho = _loadCart();
 let produtoAtual = null;
 let corIndexAtual = 0;
 let tamanhoAtual = null;
@@ -116,6 +178,15 @@ let modalLastFocus = null;
 
 const el = (sel) => document.querySelector(sel);
 const formatBRL = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[ch]));
+}
 const cssEscape = (typeof CSS !== "undefined" && typeof CSS.escape === "function")
   ? CSS.escape
   : (value) => String(value).replace(/[^a-zA-Z0-9_\-]/g, (ch) => `\\${ch.charCodeAt(0).toString(16)} `);
@@ -213,16 +284,28 @@ function getLocalDeliveryPrice(city, uf) {
   if (isCearaCity(city, uf, "Maracanaú") || isCearaCity(city, uf, "Maracanau")) {
     return DELIVERY_MARACANAU_PRICE;
   }
+  if (["Eusébio","Eusebio","Itaitinga","Pacatuba"].some(c => isCearaCity(city, uf, c))) {
+    return DELIVERY_EUSEBIO_PRICE;
+  }
   return null;
 }
 function getDeliveryModeLabel(mode) {
-  if (mode === "uber_free") return `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
-  if (mode === "local_12") return `R$ ${DELIVERY_FORTALEZA_CAUCAIA_PRICE},00`;
-  if (mode === "local_14") return `R$ ${DELIVERY_MARACANAU_PRICE},00`;
+  if (mode === "uber_free")  return `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
+  if (mode === "local_12")   return `Entrega Local – R$ 12,00`;
+  if (mode === "local_15")   return `Entrega Local – R$ 15,00`;
+  if (mode === "local_25")   return `Entrega Local – R$ 25,00`;
+  if (mode === "sedex")      return `SEDEX – R$ ${freteAtual > 0 ? freteAtual.toFixed(2).replace(".", ",") : "--"}`;
   return "Consultar via WhatsApp";
 }
 function isFixedFreteMode(mode = freteModo) {
-  return mode === "uber_free" || mode === "local_12" || mode === "local_14";
+  return ["uber_free","local_12","local_15","local_25","sedex"].includes(mode);
+}
+function getFreteResumoLabel({ includeCep = false } = {}) {
+  const cepInfo = includeCep && cepAtual ? ` (CEP ${formatCEPForInput(cepAtual)})` : "";
+  if (retiradaNaLoja) return "Retirada pelo cliente";
+  if (!entregaDisponivel) return "Informe o CEP";
+  if (isFixedFreteMode()) return `${getDeliveryModeLabel(freteModo)}${cepInfo}`;
+  return `Consultar via WhatsApp${cepInfo}`;
 }
 function buildPaymentItems() {
   const items = buildCartItems();
@@ -292,7 +375,24 @@ function initHeroCarousel(){
 
   let current = 0;
   let autoId = null;
-  const AUTO_MS = 2000;
+  let pointerStartX = null;
+  const AUTO_MS = 5200;
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  const prevBtn = carousel.querySelector("[data-hero-prev]");
+  const nextBtn = carousel.querySelector("[data-hero-next]");
+  const dotsWrap = carousel.querySelector("[data-hero-dots]");
+  const dots = dotsWrap ? slides.map((_, i) => {
+    const dot = document.createElement("button");
+    dot.type = "button";
+    dot.className = "hero__dot";
+    dot.setAttribute("aria-label", `Ir para foto ${i + 1}`);
+    dot.addEventListener("click", () => {
+      goTo(i);
+      restartAuto();
+    });
+    dotsWrap.appendChild(dot);
+    return dot;
+  }) : [];
 
   const SHARD_MS = 450;
   const goTo = (idx) => {
@@ -304,7 +404,16 @@ function initHeroCarousel(){
       prevSlide.classList.add("is-leaving");
       setTimeout(() => prevSlide.classList.remove("is-leaving"), SHARD_MS);
     }
-    slides.forEach((slide, i) => slide.classList.toggle("is-active", i === current));
+    slides.forEach((slide, i) => {
+      const active = i === current;
+      slide.classList.toggle("is-active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+    });
+    dots.forEach((dot, i) => {
+      const active = i === current;
+      dot.classList.toggle("is-active", active);
+      dot.setAttribute("aria-current", active ? "true" : "false");
+    });
     if (nextSlide) {
       nextSlide.classList.add("is-entering");
       setTimeout(() => nextSlide.classList.remove("is-entering"), SHARD_MS);
@@ -312,6 +421,15 @@ function initHeroCarousel(){
   };
 
   const next = () => goTo(current + 1);
+  const prev = () => goTo(current - 1);
+  const manualNext = () => {
+    next();
+    restartAuto();
+  };
+  const manualPrev = () => {
+    prev();
+    restartAuto();
+  };
 
   const stopAuto = () => {
     if (autoId) {
@@ -321,13 +439,30 @@ function initHeroCarousel(){
   };
   const restartAuto = () => {
     stopAuto();
+    if (prefersReducedMotion || slides.length < 2) return;
     autoId = window.setInterval(next, AUTO_MS);
   };
 
+  prevBtn?.addEventListener("click", manualPrev);
+  nextBtn?.addEventListener("click", manualNext);
   carousel.addEventListener("mouseenter", stopAuto);
   carousel.addEventListener("mouseleave", restartAuto);
   carousel.addEventListener("focusin", stopAuto);
   carousel.addEventListener("focusout", restartAuto);
+  carousel.addEventListener("pointerdown", (event) => {
+    pointerStartX = event.clientX;
+  });
+  carousel.addEventListener("pointerup", (event) => {
+    if (pointerStartX === null) return;
+    const delta = event.clientX - pointerStartX;
+    pointerStartX = null;
+    if (Math.abs(delta) < 36) return;
+    if (delta > 0) manualPrev();
+    else manualNext();
+  });
+  carousel.addEventListener("pointercancel", () => {
+    pointerStartX = null;
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) stopAuto();
     else restartAuto();
@@ -470,6 +605,8 @@ document.addEventListener("DOMContentLoaded", ()=>{
   initSocialProofSlider();
   initTrackingIfConsented();
   initCookieBanner();
+  bindAccountLinks();
+  hydrateClientSession();
 });
 
 /* ===== Descrição helpers ===== */
@@ -855,6 +992,7 @@ function computeColorPrice(prod, colorObj){
     max-width: none; max-height: none;
     border-radius: 28px 0 0 28px;
     background: #ffffff;
+    outline: none !important;
     box-shadow: -12px 0 60px rgba(0,39,118,.14), -2px 0 0 rgba(0,156,59,.18);
     opacity: 0; pointer-events: none;
     transition: opacity .2s ease, transform .2s cubic-bezier(.22,1,.36,1);
@@ -865,6 +1003,25 @@ function computeColorPrice(prod, colorObj){
   #cart.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
   @media (max-width: 640px){
     #cart{ width:100vw; border-radius:0; border-left:none; border-top:3px solid #009C3B; }
+  }
+  @media (min-width: 860px){
+    #cart{
+      left:50% !important; right:auto !important;
+      top:50% !important;
+      width:min(660px,calc(100vw - 48px)) !important;
+      height:auto !important;
+      max-height:88vh !important;
+      border-radius:24px !important;
+      border-left:none !important;
+      outline:none !important;
+      box-shadow:0 28px 80px rgba(0,20,80,.2),0 4px 24px rgba(0,156,59,.1) !important;
+      transform:translateX(-50%) translateY(calc(-50% + 28px));
+      transition:opacity .22s ease, transform .22s cubic-bezier(.22,1,.36,1) !important;
+    }
+    #cart.show{
+      transform:translateX(-50%) translateY(-50%) !important;
+      opacity:1; pointer-events:auto;
+    }
   }
   #cartBackdrop {
     position: fixed !important; inset: 0;
@@ -900,7 +1057,22 @@ function computeColorPrice(prod, colorObj){
     transition: background .15s;
   }
   #cart .cart__close:hover{ background: rgba(255,223,0,.32); }
-  #cart .cart__list{ padding: 12px 16px 0; flex: 1; overflow-y: auto; }
+  #cart .cart__client{
+    margin:12px 16px 0;
+    padding:10px 12px;
+    border:1px solid rgba(0,156,59,.14);
+    border-radius:14px;
+    background:#f2fbf5;
+    color:#153427;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    font-size:.78rem;
+    font-weight:600;
+  }
+  #cart .cart__client i{ color:#009C3B; }
+  #cart .cart__client strong{ color:#002776; }
+  #cart .cart__list{ padding: 12px 16px 0; flex: 1; overflow-y: auto; min-height: 0; }
   #cart .cart__item{
     background: #fafcff;
     border: 1px solid rgba(0,39,118,.08);
@@ -1215,7 +1387,7 @@ function computeColorPrice(prod, colorObj){
     display:flex;
     align-items:flex-start;
     justify-content:space-between;
-    padding:28px 34px 20px;
+    padding:22px 28px 16px;
     border-bottom:1px solid rgba(0,0,0,0.05);
     background:
       linear-gradient(120deg, rgba(11,122,79,0.08), rgba(246,215,77,0.12), rgba(11,79,149,0.06)),
@@ -1229,13 +1401,13 @@ function computeColorPrice(prod, colorObj){
     color:#08251f;
   }
   .checkout__subtitle{
-    margin:10px 0 0;
+    margin:6px 0 0;
     color:#4b5b68;
   }
   .checkout__body{
-    padding:32px;
+    padding:24px 28px;
     display:grid;
-    gap:24px;
+    gap:20px;
     grid-template-columns:1fr;
     background:transparent;
     overflow-y:auto;
@@ -1245,48 +1417,60 @@ function computeColorPrice(prod, colorObj){
     min-height:0;
     overscroll-behavior:contain;
   }
-  @media (min-width: 960px){
-    .checkout__body{
-      grid-template-columns:minmax(280px,0.9fr) minmax(0,1.6fr);
-      align-items:start;
-    }
-    .checkout__summary{ height:100%; }
-  }
   .checkout__summary{
     background:#ffffff;
     border:1px solid rgba(11,122,79,0.12);
     border-top: 4px solid #f6d74d;
-    border-radius:22px;
-    padding:22px 24px;
+    border-radius:18px;
+    padding:18px 20px;
     box-shadow:0 20px 60px rgba(7,20,36,0.08);
   }
   .checkout__totals{
-    margin-top:12px;
+    margin-top:10px;
     display:grid;
-    gap:6px;
+    gap:5px;
     color:#0b1f2a;
     font-weight:600;
   }
   .checkout__note{
-    margin-top:10px;
-    padding:10px 12px;
-    border-radius:14px;
+    margin-top:8px;
+    padding:8px 10px;
+    border-radius:12px;
     background:#fffdf0;
     color:#273746;
     font-size:0.82rem;
   }
-  @media (min-width: 1100px){
-    .checkout__summary{
-      position:sticky;
-      top:32px;
+  @media (min-width: 960px){
+    dialog.checkout-modal{
+      width:min(1080px,94vw);
+      height:auto;
+      max-height:90dvh;
+      border-radius:24px;
+      box-shadow:0 32px 80px rgba(2,8,16,0.36), 0 0 0 1px rgba(255,255,255,0.06);
     }
+    .checkout__header{
+      padding:16px 28px 14px;
+      align-items:center;
+    }
+    .checkout__subtitle{ display:none; }
+    .checkout__body{
+      padding:20px 28px;
+      gap:20px;
+      grid-template-columns:minmax(240px,0.85fr) minmax(0,1.6fr);
+      align-items:start;
+    }
+    .checkout__summary > p.checkout__muted{ display:none; }
+    .checkout__step > .full > p.checkout__muted{ display:none; }
+    .checkout__footer{ padding:12px 24px 16px; }
+  }
+  .checkout__right{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
   }
   .checkout__grid{
     display:grid;
-    gap:20px;
-  }
-  @media (min-width: 640px){
-    .checkout__grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+    gap:14px;
   }
   .checkout__row{
     display:flex;
@@ -1301,13 +1485,13 @@ function computeColorPrice(prod, colorObj){
   .checkout__step{
     border:1px solid rgba(11,122,79,0.12);
     border-top: 4px solid rgba(11,79,149,0.7);
-    border-radius:22px;
-    padding:20px 22px;
+    border-radius:18px;
+    padding:16px 18px;
     display:grid;
-    gap:16px;
+    gap:12px;
     grid-template-columns:repeat(2,minmax(0,1fr));
     background:#ffffff;
-    box-shadow:0 25px 65px rgba(12,25,40,0.12);
+    box-shadow:0 8px 28px rgba(12,25,40,0.08);
   }
   @media (max-width: 640px){
     .checkout__step{
@@ -1320,7 +1504,7 @@ function computeColorPrice(prod, colorObj){
   .checkout__step .full{ grid-column:1 / -1; }
   .checkout__step--hidden{ display:none !important; }
   .checkout__footer{
-    padding:14px 20px 20px;
+    padding:12px 20px 16px;
     border-top:1px solid rgba(0,0,0,0.05);
     display:flex;
     gap:10px;
@@ -1332,21 +1516,21 @@ function computeColorPrice(prod, colorObj){
   }
   .checkout__footer .btn{ padding:10px 18px; font-size:0.82rem; }
   .checkout__label{
-    font-size:0.85rem;
+    font-size:0.83rem;
     letter-spacing:0;
     text-transform:none;
     color:#32404c;
     display:block;
-    margin-bottom:6px;
+    margin-bottom:4px;
     font-weight:600;
   }
   .checkout__input,
   .checkout__select{
     width:100%;
-    padding:12px 14px;
+    padding:9px 12px;
     border:1px solid rgba(15,45,46,0.15);
-    border-radius:16px;
-    font-size:0.95rem;
+    border-radius:14px;
+    font-size:0.92rem;
     background:#fdfefe;
     color:#0d1f2a;
     transition:border-color 0.2s ease, box-shadow 0.2s ease;
@@ -1362,7 +1546,7 @@ function computeColorPrice(prod, colorObj){
   }
   .checkout__muted{
     color:#4f6070;
-    font-size:0.85rem;
+    font-size:0.83rem;
   }
   .checkout__radio{
     display:grid;
@@ -1474,6 +1658,233 @@ function computeColorPrice(prod, colorObj){
   const style = document.createElement("style");
   style.innerHTML = css;
   document.head.appendChild(style);
+})();
+
+(function injectClientStyles(){
+  const css = `
+  dialog.addr-select-modal:not([open]){ display:none !important; }
+  dialog.addr-select-modal{
+    border:none; border-radius:20px; padding:0;
+    width:min(520px,calc(100vw - 24px));
+    background:#fff; color:#0d1f2a;
+    box-shadow:0 28px 80px rgba(7,24,32,.28);
+    overflow:hidden;
+  }
+  dialog.addr-select-modal::backdrop{
+    background:rgba(6,18,28,.52); backdrop-filter:blur(8px);
+  }
+  .addrmodal__header{
+    padding:18px 22px 14px; border-bottom:1px solid #eef0f2;
+    display:flex; justify-content:space-between; align-items:flex-start;
+  }
+  .addrmodal__title{ font-size:1rem; font-weight:800; color:#0d1f2a; }
+  .addrmodal__body{
+    padding:14px 22px 8px;
+    overflow-y:auto;
+    max-height:min(54vh,400px);
+    min-height:80px;
+  }
+  .addr-card{
+    display:flex; align-items:flex-start; gap:12px; padding:13px 14px;
+    border:1.5px solid #dde4ea; border-radius:12px; cursor:pointer;
+    margin-bottom:9px; transition:border-color .18s,background .18s;
+  }
+  .addr-card:hover{ border-color:#009C3B; background:#f6fbf3; }
+  .addr-card.selected{ border-color:#009C3B; background:#f0faf3; }
+  .addr-card input[type="radio"]{ margin-top:3px; accent-color:#009C3B; flex-shrink:0; }
+  .addr-card__line1{ font-size:.88rem; font-weight:700; color:#0d1f2a; }
+  .addr-card__line2{ font-size:.8rem; color:#556b7d; margin-top:2px; }
+  .addr-add-btn{
+    width:100%; padding:12px; border:1.5px dashed #c0cdd6; border-radius:10px;
+    background:none; font-size:.86rem; font-weight:700; color:#556b7d;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+    transition:border-color .18s, color .18s; margin-bottom:4px;
+  }
+  .addr-add-btn:hover{ border-color:#009C3B; color:#009C3B; }
+  .addrmodal__footer{
+    padding:12px 22px 14px; border-top:1px solid #eef0f2;
+    display:flex; justify-content:flex-end; gap:10px; flex-shrink:0;
+  }
+  .addrmodal__footer .btn--primary:disabled{ opacity:.45; cursor:not-allowed; }
+  .addr-new-form{
+    margin-top:14px; padding:14px 16px; background:#f8fafc; border-radius:12px;
+  }
+  .addr-new-form .anf-label{
+    display:block; font-size:.73rem; font-weight:700; letter-spacing:.07em;
+    text-transform:uppercase; color:#778b9b; margin-bottom:5px;
+  }
+  .addr-new-form input{
+    width:100%; padding:10px 12px; border:1.5px solid #dde4ea; border-radius:9px;
+    font-size:.86rem; background:#fff; outline:none; color:#0d1f2a;
+    transition:border-color .18s; font-family:inherit;
+  }
+  .addr-new-form input:focus{ border-color:#009C3B; }
+  .addr-new-form input[readonly]{ color:#94a3b1; background:#f2f5f7; }
+  .addr-new-form .anf-row{ display:grid; gap:8px; margin-bottom:10px; }
+  .addr-new-form .anf-2{ grid-template-columns:1fr 1fr; }
+  .addr-new-form .anf-3-1{ grid-template-columns:3fr 1fr; }
+  .addr-new-form .anf-field{ margin-bottom:10px; }
+  .addr-new-form .anf-save{
+    margin-top:6px; width:100%; padding:12px; background:#009C3B; border:none;
+    border-radius:10px; font-size:.86rem; font-weight:800; color:#fff;
+    cursor:pointer; font-family:inherit; transition:background .18s;
+  }
+  .addr-new-form .anf-save:hover{ background:#007a2e; }
+  .addr-new-form .anf-save:disabled{ opacity:.55; cursor:not-allowed; }
+  .checkout__addr-banner{
+    background:#f0faf3; border:1px solid rgba(0,156,59,.18);
+    border-radius:12px; padding:12px 16px; margin-bottom:14px;
+    display:flex; justify-content:space-between; align-items:flex-start; gap:10px;
+  }
+  .checkout__addr-banner-info{ flex:1; }
+  .checkout__addr-banner-label{
+    font-size:.72rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
+    color:#007a2e; margin-bottom:3px;
+  }
+  .checkout__addr-banner-text{ font-size:.84rem; color:#2a4a35; line-height:1.4; }
+  .checkout__addr-banner-btn{
+    background:none; border:1px solid rgba(0,156,59,.3); border-radius:8px;
+    padding:4px 10px; font-size:.75rem; font-weight:700; color:#007a2e;
+    cursor:pointer; white-space:nowrap; font-family:inherit; flex-shrink:0;
+    transition:background .18s;
+  }
+  .checkout__addr-banner-btn:hover{ background:rgba(0,156,59,.1); }
+  dialog.account-modal:not([open]){ display:none !important; }
+  dialog.account-modal{
+    border:none; border-radius:20px; padding:0;
+    width:min(760px,calc(100vw - 24px));
+    max-height:88dvh;
+    background:#fff; color:#0d1f2a;
+    box-shadow:0 28px 80px rgba(7,24,32,.28);
+    overflow:hidden;
+  }
+  dialog.account-modal::backdrop{ background:rgba(6,18,28,.52); backdrop-filter:blur(8px); }
+  .account__header{
+    padding:18px 22px 14px;
+    border-bottom:1px solid #eef0f2;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    background:linear-gradient(120deg, rgba(0,156,59,.08), rgba(0,39,118,.06));
+  }
+  .account__title{ font-size:1rem; font-weight:800; color:#0d1f2a; }
+  .account__subtitle{ margin-top:3px; font-size:.82rem; color:#607080; }
+  .account__close{
+    width:36px; height:36px; border-radius:50%; border:1px solid #dbe3ea;
+    background:#fff; color:#0d1f2a; cursor:pointer; font-weight:800;
+  }
+  .account__tabs{
+    display:flex; gap:8px; padding:12px 18px 0; overflow-x:auto; scrollbar-width:none;
+  }
+  .account__tabs::-webkit-scrollbar{ display:none; }
+  .account__tab{
+    border:1px solid #dbe3ea; border-radius:999px; padding:9px 13px;
+    background:#fff; color:#425466; font-weight:800; font-size:.76rem;
+    letter-spacing:.04em; text-transform:uppercase; cursor:pointer; white-space:nowrap;
+  }
+  .account__tab[aria-selected="true"]{
+    background:linear-gradient(120deg,#009C3B,#002776); color:#FFDF00; border-color:transparent;
+  }
+  .account__body{
+    padding:18px 22px 20px;
+    overflow-y:auto;
+    height:clamp(420px,58dvh,620px);
+    max-height:calc(88dvh - 132px);
+  }
+  .account__panel{ display:none; }
+  .account__panel.is-active{
+    display:flex;
+    flex-direction:column;
+    min-height:100%;
+  }
+  .account__profile{
+    border:1px solid #e3e9ef;
+    border-radius:14px;
+    overflow:hidden;
+    background:#fff;
+  }
+  .account__profile-row{
+    display:grid;
+    grid-template-columns:minmax(120px,0.42fr) minmax(0,1fr) auto;
+    align-items:center;
+    gap:12px;
+    padding:14px 16px;
+    border-bottom:1px solid #eef2f5;
+  }
+  .account__profile-row:last-child{ border-bottom:0; }
+  .account__profile-label{
+    color:#6b7b88; font-size:.74rem; font-weight:800;
+    text-transform:uppercase; letter-spacing:.07em;
+  }
+  .account__profile-value{
+    min-width:0; color:#0d1f2a; font-size:.92rem; font-weight:700;
+    overflow-wrap:anywhere;
+  }
+  .account__profile-action{
+    border:0; background:transparent; color:#0b6f52; font-weight:800;
+    font-size:.76rem; cursor:pointer; padding:6px 0;
+  }
+  .account__profile-note{
+    margin:12px 2px 0; color:#607080; font-size:.8rem; line-height:1.45;
+  }
+  .account__edit{ display:none; }
+  .account__edit.is-active{ display:block; }
+  .account__form{
+    border:1px solid #e3e9ef;
+    border-radius:14px;
+    background:#fff;
+    padding:14px;
+    display:grid;
+    gap:12px;
+  }
+  .account__form-row{ display:grid; gap:5px; }
+  .account__form-row label{
+    color:#6b7b88; font-size:.72rem; font-weight:800;
+    text-transform:uppercase; letter-spacing:.07em;
+  }
+  .account__input{
+    width:100%; min-height:42px; border:1px solid #dbe3ea; border-radius:10px;
+    padding:0 12px; font:700 .9rem/1.2 Inter,system-ui,sans-serif; color:#0d1f2a; outline:none;
+  }
+  .account__input:focus{ border-color:#009C3B; box-shadow:0 0 0 3px rgba(0,156,59,.1); }
+  .account__form-actions{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+  .account__save,.account__cancel{
+    border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer;
+  }
+  .account__save{ border:0; background:linear-gradient(120deg,#009C3B,#002776); color:#FFDF00; }
+  .account__cancel{ border:1px solid #dbe3ea; background:#fff; color:#425466; }
+  .account__status{ min-height:18px; color:#b42323; font-size:.8rem; font-weight:700; }
+  .account__card,.account__order{
+    border:1px solid #e3e9ef; border-radius:14px; background:#fbfcfd; padding:12px 14px;
+  }
+  .account__card span{ display:block; color:#6b7b88; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.07em; }
+  .account__card strong{ display:block; margin-top:3px; color:#0d1f2a; font-size:.92rem; }
+  .account__list{ display:grid; gap:10px; }
+  .account__order-head{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; font-weight:800; }
+  .account__order-meta{ margin-top:5px; color:#607080; font-size:.82rem; line-height:1.4; }
+  .account__items{ margin:8px 0 0; padding-left:18px; color:#344454; font-size:.82rem; }
+  .account__empty{ color:#607080; padding:18px; border:1px dashed #d4dde5; border-radius:14px; background:#fbfcfd; }
+  .account__actions{ margin-top:auto; padding-top:16px; display:flex; justify-content:flex-end; }
+  .account__logout{
+    border:1px solid #ffd1d1; border-radius:10px; background:#fff5f5; color:#b42323;
+    padding:10px 14px; font-weight:800; cursor:pointer;
+  }
+  @media (max-width:640px){
+    .account__profile-row{
+      grid-template-columns:1fr;
+      gap:4px;
+      align-items:start;
+    }
+    .account__profile-action{ justify-self:start; }
+    .account__body{ padding:16px; }
+    .account__header{ padding:16px; }
+  }
+  `;
+  const el = document.createElement("style");
+  el.id = "lemoov-client-styles";
+  el.innerHTML = css;
+  document.head.appendChild(el);
 })();
 
 /* ------------------------------------------------------------
@@ -2244,6 +2655,7 @@ function addCarrinho(prod, animateSource = null){
   } else {
     carrinho.push(item);
   }
+  _touchCart();
   atualizarCart();
   animateCartIcon();
   if (animateSource) animateProductFly(animateSource);
@@ -2255,7 +2667,11 @@ function addCarrinho(prod, animateSource = null){
     quantity: getItemQty(item)
   });
 }
-function removerCarrinho(index){ carrinho.splice(index,1); atualizarCart(); }
+function removerCarrinho(index){
+  carrinho.splice(index,1);
+  _touchCart();
+  atualizarCart();
+}
 function alterarQuantidadeCarrinho(index, delta){
   const item = carrinho[index];
   if (!item) return;
@@ -2264,6 +2680,7 @@ function alterarQuantidadeCarrinho(index, delta){
   if (nextQty <= 0) return;
   if (nextQty > currentQty && !validateCartItemStock(item, nextQty - currentQty)) return;
   item.quantidade = nextQty;
+  _touchCart();
   atualizarCart();
 }
 
@@ -2372,6 +2789,282 @@ function ensureFreteUI() {
   hideLegacyFreteUI();
 }
 
+async function calcularFreteBackend(addr) {
+  try {
+    const r = await fetch('/api/frete', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cidade: addr.cidade, cep: addr.cep })
+    });
+    if (!r.ok) return false;
+    const d = await r.json();
+    if (!d.ok) return false;
+    freteAtual = d.valor;
+    cepAtual   = String(addr.cep).replace(/\D/g, '');
+    entregaDisponivel = true;
+    if (d.tipo === 'Entrega Local') {
+      if (d.valor <= 12)      freteModo = 'local_12';
+      else if (d.valor <= 15) freteModo = 'local_15';
+      else                    freteModo = 'local_25';
+    } else {
+      freteModo = 'sedex';
+    }
+    atualizarCart();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function checkClientSession() {
+  try {
+    const res = await fetch('/api/client/me', { credentials: 'same-origin' });
+    if (!res.ok) return { ok: false };
+    const data = await res.json();
+    return data.ok ? { ok: true, client: data.client } : { ok: false };
+  } catch (_) {
+    return { ok: false };
+  }
+}
+
+async function initiateCheckout() {
+  if (carrinho.length === 0) { showAppMessage("Seu carrinho está vazio."); return; }
+  if (!validateWholeCartStock()) return;
+
+  // Sempre verifica sessão primeiro — sem exceção para modo offline
+  const sessionResult = await checkClientSession();
+  if (!sessionResult.ok) {
+    const redirectTarget = encodeURIComponent(window.location.pathname + '?initiateCheckout=1');
+    window.location.href = `/cliente-login?redirect=${redirectTarget}`;
+    return;
+  }
+  currentClientSession = sessionResult.client;
+
+  let addresses = [];
+  try {
+    const addrRes = await fetch('/api/client/addresses', { credentials: 'same-origin' });
+    if (addrRes.ok) {
+      const addrData = await addrRes.json();
+      addresses = addrData.addresses || [];
+    }
+  } catch (_) {}
+
+  openAddressSelectionModal(addresses);
+}
+
+function openAddressSelectionModal(addresses) {
+  const existing = document.getElementById('addrSelectModal');
+  if (existing) existing.remove();
+
+  const dlg = document.createElement('dialog');
+  dlg.id = 'addrSelectModal';
+  dlg.className = 'addr-select-modal';
+
+  const hasAddresses = addresses.length > 0;
+  const safeAddressLine = (addr) => {
+    const line1 = `${addr.logradouro || ""}, ${addr.numero || ""}${addr.complemento ? ' – ' + addr.complemento : ''}`;
+    const line2 = `${addr.bairro ? addr.bairro + ', ' : ''}${addr.cidade || ""} – ${addr.uf || ""} &bull; CEP ${formatCEPForInput(addr.cep || "")}`;
+    return { line1: escapeHTML(line1), line2: escapeHTML(line2).replace("&amp;bull;", "&bull;") };
+  };
+
+  const clienteName = currentClientSession?.nome ? currentClientSession.nome.split(' ')[0] : '';
+
+  dlg.innerHTML = `
+    <div class="addrmodal__header">
+      <div>
+        <div class="addrmodal__title">Endereço de entrega</div>
+        ${clienteName ? `<div style="font-size:.78rem;color:#556b7d;margin-top:2px;">Olá, <strong>${escapeHTML(clienteName)}</strong>! Selecione onde entregar.</div>` : ''}
+      </div>
+      <button type="button" class="btn btn--ghost" id="btnCloseAddrModal" style="padding:5px 11px;font-size:1rem;">✕</button>
+    </div>
+    <div class="addrmodal__body" id="addrModalBody">
+      ${hasAddresses ? addresses.map((addr, i) => `
+        <label class="addr-card${i === 0 ? ' selected' : ''}" data-addr-idx="${i}" style="cursor:pointer;">
+          <input type="radio" name="addr_sel" value="${i}" ${i === 0 ? 'checked' : ''}>
+          <div class="addr-card__body">
+            <div class="addr-card__line1">${safeAddressLine(addr).line1}</div>
+            <div class="addr-card__line2">${safeAddressLine(addr).line2}</div>
+          </div>
+        </label>
+      `).join('') : ''}
+      <button type="button" class="addr-add-btn" id="btnShowAddrForm">
+        <span>+</span> Adicionar novo endereço
+      </button>
+      <div id="addrNewForm" class="addr-new-form" style="display:none;">
+        <div class="anf-field">
+          <label class="anf-label">CEP *</label>
+          <input type="text" id="addrCep" placeholder="00000-000" inputmode="numeric" maxlength="9">
+        </div>
+        <div class="anf-field">
+          <label class="anf-label">Logradouro *</label>
+          <input type="text" id="addrRua" placeholder="Rua das Flores" readonly>
+        </div>
+        <div class="anf-row anf-3-1">
+          <div class="anf-field"><label class="anf-label">Bairro</label><input type="text" id="addrBairro" placeholder="Bairro" readonly></div>
+          <div class="anf-field"><label class="anf-label">UF</label><input type="text" id="addrUf" placeholder="SP" readonly maxlength="2"></div>
+        </div>
+        <div class="anf-row anf-2">
+          <div class="anf-field">
+            <label class="anf-label">Número *</label>
+            <input type="text" id="addrNumero" placeholder="123" inputmode="text">
+          </div>
+          <div class="anf-field">
+            <label class="anf-label">Complemento</label>
+            <input type="text" id="addrComplemento" placeholder="Apto 42">
+          </div>
+        </div>
+        <div class="anf-field">
+          <label class="anf-label">Cidade *</label>
+          <input type="text" id="addrCidade" placeholder="São Paulo" readonly>
+        </div>
+        <button type="button" class="anf-save" id="btnSaveNewAddr">Salvar e usar este endereço</button>
+      </div>
+    </div>
+    <div class="addrmodal__footer">
+      <button type="button" class="btn btn--ghost" id="btnCancelAddrModal">Cancelar</button>
+      <button type="button" class="btn btn--primary" id="btnConfirmAddr" ${!hasAddresses ? 'disabled' : ''}>Confirmar →</button>
+    </div>
+  `;
+
+  document.body.appendChild(dlg);
+  dlg.showModal();
+
+  let _lastAddrCep = '';
+  selectedDeliveryAddress = hasAddresses ? addresses[0] : null;
+
+  dlg.querySelectorAll('.addr-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      dlg.querySelectorAll('.addr-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      const radio = card.querySelector('input[type="radio"]');
+      if (radio) radio.checked = true;
+      selectedDeliveryAddress = addresses[Number(card.dataset.addrIdx)];
+      dlg.querySelector('#btnConfirmAddr').disabled = false;
+    });
+  });
+
+  dlg.querySelector('#btnShowAddrForm').addEventListener('click', () => {
+    const form = dlg.querySelector('#addrNewForm');
+    const showing = form.style.display !== 'none';
+    form.style.display = showing ? 'none' : 'block';
+    if (!showing) {
+      dlg.querySelector('#btnConfirmAddr').disabled = true;
+      selectedDeliveryAddress = null;
+      dlg.querySelectorAll('.addr-card').forEach(c => c.classList.remove('selected'));
+    } else if (hasAddresses) {
+      selectedDeliveryAddress = addresses[0];
+      dlg.querySelectorAll('.addr-card')[0]?.classList.add('selected');
+      dlg.querySelector('#btnConfirmAddr').disabled = false;
+    }
+  });
+
+  const addrCepInput = dlg.querySelector('#addrCep');
+  addrCepInput.addEventListener('input', function () {
+    let v = this.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+    this.value = v;
+    const plain = v.replace('-', '');
+    if (plain.length === 8 && plain !== _lastAddrCep) {
+      _lastAddrCep = plain;
+      _fetchAddrModalCEP(plain, dlg);
+    }
+  });
+  addrCepInput.addEventListener('blur', function () {
+    const plain = this.value.replace(/\D/g, '');
+    if (plain.length === 8 && plain !== _lastAddrCep) {
+      _lastAddrCep = plain;
+      _fetchAddrModalCEP(plain, dlg);
+    }
+  });
+
+  dlg.querySelector('#btnSaveNewAddr').addEventListener('click', async () => {
+    const cep = dlg.querySelector('#addrCep').value.replace(/\D/g, '');
+    const rua = dlg.querySelector('#addrRua').value.trim();
+    const bairro = dlg.querySelector('#addrBairro').value.trim();
+    const numero = dlg.querySelector('#addrNumero').value.trim();
+    const complemento = dlg.querySelector('#addrComplemento').value.trim();
+    const cidade = dlg.querySelector('#addrCidade').value.trim();
+    const uf = dlg.querySelector('#addrUf').value.trim();
+
+    if (!numero) {
+      dlg.querySelector('#addrNumero').focus();
+      showAppMessage("O campo Número é obrigatório para salvar o endereço.");
+      return;
+    }
+    if (!cep || cep.length !== 8 || !rua || !cidade || !uf) {
+      showAppMessage("Preencha o CEP e o endereço completo antes de continuar.");
+      return;
+    }
+    const saveBtn = dlg.querySelector('#btnSaveNewAddr');
+    saveBtn.disabled = true; saveBtn.textContent = 'Salvando…';
+    try {
+      const res = await fetch('/api/client/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ cep, logradouro: rua, numero, complemento, bairro, cidade, uf })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 503 || res.status === 401) {
+        // Banco offline ou sessão expirada: usa endereço localmente
+        selectedDeliveryAddress = { id: null, cep, logradouro: rua, numero, complemento, bairro, cidade, uf };
+        dlg.querySelector('#btnConfirmAddr').disabled = false;
+        dlg.querySelector('#addrNewForm').style.display = 'none';
+        return;
+      }
+      if (!res.ok) {
+        showAppMessage(data.error || 'Erro ao salvar endereço.');
+        saveBtn.disabled = false; saveBtn.textContent = 'Salvar e usar este endereço';
+        return;
+      }
+      selectedDeliveryAddress = { id: data.id, cep, logradouro: rua, numero, complemento, bairro, cidade, uf };
+      dlg.querySelector('#btnConfirmAddr').disabled = false;
+      dlg.querySelector('#addrNewForm').style.display = 'none';
+    } catch (_) {
+      // Sem conexão: usa endereço localmente para não bloquear o fluxo
+      selectedDeliveryAddress = { id: null, cep, logradouro: rua, numero, complemento, bairro, cidade, uf };
+      dlg.querySelector('#btnConfirmAddr').disabled = false;
+      dlg.querySelector('#addrNewForm').style.display = 'none';
+    }
+  });
+
+  dlg.querySelector('#btnConfirmAddr').addEventListener('click', async () => {
+    if (!selectedDeliveryAddress) {
+      showAppMessage("Selecione ou cadastre um endereço de entrega.");
+      return;
+    }
+    const btn = dlg.querySelector('#btnConfirmAddr');
+    btn.disabled = true; btn.textContent = 'Calculando frete…';
+    if (!retiradaNaLoja && selectedDeliveryAddress.cep) {
+      const backendOk = await calcularFreteBackend(selectedDeliveryAddress);
+      if (!backendOk) {
+        try { await calcularEntregaPorCEP(selectedDeliveryAddress.cep); } catch (_) {}
+      }
+    }
+    dlg.close();
+    dlg.remove();
+    openCheckoutModal();
+  });
+
+  dlg.querySelector('#btnCloseAddrModal').addEventListener('click', () => { dlg.close(); dlg.remove(); });
+  dlg.querySelector('#btnCancelAddrModal').addEventListener('click', () => { dlg.close(); dlg.remove(); });
+}
+
+async function _fetchAddrModalCEP(cep, dlg) {
+  try {
+    const data = await getAddressByCEP(cep);
+    if (!data) { showAppMessage("CEP não encontrado."); return; }
+    const map = { '#addrRua': data.rua, '#addrBairro': data.bairro, '#addrCidade': data.cidade, '#addrUf': data.uf };
+    for (const [sel, val] of Object.entries(map)) {
+      const inp = dlg.querySelector(sel);
+      if (inp) { inp.value = val || ''; inp.readOnly = !!val; }
+    }
+    const numInput = dlg.querySelector('#addrNumero');
+    if (numInput) numInput.focus();
+  } catch (_) {}
+}
+
 function ensureCheckoutButton(){
   const footer = document.querySelector(".cart__footer");
   if (!footer) return;
@@ -2384,9 +3077,296 @@ function ensureCheckoutButton(){
     btn.id = "btnCheckout";
     btn.className = "btn btn--primary";
     btn.textContent = "Ir para pagamento";
-    btn.addEventListener("click", openCheckoutModal);
+    btn.addEventListener("click", initiateCheckout);
     footer.appendChild(btn);
   }
+}
+
+function ensureCartClientSummary() {
+  const cartEl = document.querySelector("#cart");
+  const header = cartEl?.querySelector(".cart__header");
+  if (!cartEl || !header) return;
+  let box = cartEl.querySelector("#cartClientSummary");
+  if (!currentClientSession?.nome) {
+    if (box) box.style.display = "none";
+    return;
+  }
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "cartClientSummary";
+    box.className = "cart__client";
+    box.innerHTML = `<i class="fas fa-user-check" aria-hidden="true"></i><span>Cliente: <strong></strong></span>`;
+    header.insertAdjacentElement("afterend", box);
+  }
+  const nameEl = box.querySelector("strong");
+  if (nameEl) nameEl.textContent = currentClientSession.nome;
+  box.style.display = "";
+}
+
+async function hydrateClientSession() {
+  const result = await checkClientSession();
+  currentClientSession = result.ok ? result.client : null;
+  ensureCartClientSummary();
+}
+
+async function fetchClientAddresses() {
+  try {
+    const res = await fetch('/api/client/addresses', { credentials: 'same-origin' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.addresses) ? data.addresses : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+async function fetchClientOrders() {
+  try {
+    const res = await fetch('/api/client/orders', { credentials: 'same-origin' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.orders) ? data.orders : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function formatAccountDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function renderAccountPanel({ client, addresses, orders }) {
+  const safeClient = client || currentClientSession || {};
+  const addressHtml = addresses.length ? addresses.map((addr) => `
+    <div class="account__card">
+      <strong>${escapeHTML(addr.logradouro || "")}, ${escapeHTML(addr.numero || "")}</strong>
+      <div class="account__order-meta">
+        ${addr.complemento ? `${escapeHTML(addr.complemento)}<br>` : ""}
+        ${addr.bairro ? `${escapeHTML(addr.bairro)} · ` : ""}${escapeHTML(addr.cidade || "")}/${escapeHTML(addr.uf || "")}<br>
+        CEP ${formatCEPForInput(addr.cep || "")}
+      </div>
+    </div>
+  `).join("") : `<div class="account__empty">Nenhum endereço cadastrado.</div>`;
+
+  const ordersHtml = orders.length ? orders.map((order) => {
+    const items = Array.isArray(order.itens) ? order.itens.slice(0, 4) : [];
+    const itemsHtml = items.length ? `<ul class="account__items">${items.map((item) => `
+      <li>${Number(item.quantity || 1)}x ${escapeHTML(item.item_name || "Item")} ${item.price ? `· ${formatBRL(Number(item.price))}` : ""}</li>
+    `).join("")}</ul>` : "";
+    return `
+      <div class="account__order">
+        <div class="account__order-head">
+          <span>Pedido ${escapeHTML(order.pedido || "—")}</span>
+          <span>${formatBRL(Number(order.total || 0))}</span>
+        </div>
+        <div class="account__order-meta">
+          Status: ${escapeHTML(order.status || "—")} · Data: ${formatAccountDate(order.createdAt)}
+          ${order.frete_modo ? `<br>Frete: ${escapeHTML(getDeliveryModeLabel(order.frete_modo))}` : ""}
+        </div>
+        ${itemsHtml}
+      </div>
+    `;
+  }).join("") : `<div class="account__empty">Você ainda não tem pedidos confirmados.</div>`;
+
+  return `
+    <div class="account__panel is-active" data-account-panel="dados">
+      <div class="account__profile" id="accountProfileView" aria-label="Dados cadastrais">
+        <div class="account__profile-row">
+          <div class="account__profile-label">Nome</div>
+          <div class="account__profile-value">${escapeHTML(safeClient.nome || "—")}</div>
+          <button type="button" class="account__profile-action" data-account-edit>Editar</button>
+        </div>
+        <div class="account__profile-row">
+          <div class="account__profile-label">E-mail</div>
+          <div class="account__profile-value">${escapeHTML(safeClient.email || "—")}</div>
+          <button type="button" class="account__profile-action" data-account-edit>Editar</button>
+        </div>
+        <div class="account__profile-row">
+          <div class="account__profile-label">Telefone</div>
+          <div class="account__profile-value">${escapeHTML(formatPhoneForInput(safeClient.telefone || "") || "—")}</div>
+          <button type="button" class="account__profile-action" data-account-edit>Editar</button>
+        </div>
+        <div class="account__profile-row">
+          <div class="account__profile-label">Código do cliente</div>
+          <div class="account__profile-value">#${escapeHTML(safeClient.id || "—")}</div>
+          <span></span>
+        </div>
+      </div>
+      <div class="account__edit" id="accountProfileEdit">
+        <form class="account__form" id="accountProfileForm">
+          <div class="account__form-row">
+            <label for="accountNome">Nome completo</label>
+            <input class="account__input" id="accountNome" name="nome" autocomplete="name" value="${escapeHTML(safeClient.nome || "")}" required>
+          </div>
+          <div class="account__form-row">
+            <label for="accountEmail">E-mail</label>
+            <input class="account__input" id="accountEmail" name="email" type="email" autocomplete="email" value="${escapeHTML(safeClient.email || "")}" required>
+          </div>
+          <div class="account__form-row">
+            <label for="accountTelefone">Telefone</label>
+            <input class="account__input" id="accountTelefone" name="telefone" inputmode="tel" autocomplete="tel-national" value="${escapeHTML(formatPhoneForInput(safeClient.telefone || ""))}">
+          </div>
+          <div class="account__status" id="accountProfileStatus"></div>
+          <div class="account__form-actions">
+            <button type="button" class="account__cancel" id="btnCancelProfileEdit">Cancelar</button>
+            <button type="submit" class="account__save" id="btnSaveProfile">Salvar alterações</button>
+          </div>
+        </form>
+      </div>
+      <p class="account__profile-note">Mantenha seus dados atualizados para evitar erros em pedidos, pagamento e entrega.</p>
+      <div class="account__actions"><button type="button" class="account__logout" id="btnClientLogout">Sair da conta</button></div>
+    </div>
+    <div class="account__panel" data-account-panel="enderecos">
+      <div class="account__list">${addressHtml}</div>
+    </div>
+    <div class="account__panel" data-account-panel="pedidos">
+      <div class="account__list">${ordersHtml}</div>
+    </div>
+  `;
+}
+
+function bindAccountModal(dlg) {
+  dlg.querySelector("#btnCloseAccount")?.addEventListener("click", () => dlg.close());
+  dlg.querySelectorAll(".account__tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.accountTab;
+      dlg.querySelectorAll(".account__tab").forEach((btn) => btn.setAttribute("aria-selected", btn === tab ? "true" : "false"));
+      dlg.querySelectorAll(".account__panel").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.accountPanel === target));
+    });
+  });
+  dlg.querySelector("#btnClientLogout")?.addEventListener("click", async () => {
+    try {
+      await fetch('/api/client/logout', { method: 'POST', credentials: 'same-origin' });
+    } catch (_) {}
+    currentClientSession = null;
+    ensureCartClientSummary();
+    dlg.close();
+    showAppMessage("Você saiu da sua conta.");
+  });
+  const view = dlg.querySelector("#accountProfileView");
+  const edit = dlg.querySelector("#accountProfileEdit");
+  const form = dlg.querySelector("#accountProfileForm");
+  const status = dlg.querySelector("#accountProfileStatus");
+  const setEditMode = (enabled) => {
+    if (view) view.style.display = enabled ? "none" : "";
+    if (edit) edit.classList.toggle("is-active", enabled);
+    if (enabled) dlg.querySelector("#accountNome")?.focus();
+    if (status) status.textContent = "";
+  };
+  dlg.querySelectorAll("[data-account-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => setEditMode(true));
+  });
+  dlg.querySelector("#btnCancelProfileEdit")?.addEventListener("click", () => setEditMode(false));
+  const phoneInput = dlg.querySelector("#accountTelefone");
+  if (phoneInput && !phoneInput._lemoovMask) {
+    phoneInput._lemoovMask = true;
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = formatPhoneForInput(phoneInput.value);
+    });
+  }
+  if (form && !form._lemoovBound) {
+    form._lemoovBound = true;
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const btn = dlg.querySelector("#btnSaveProfile");
+      const payload = {
+        nome: dlg.querySelector("#accountNome")?.value.trim() || "",
+        email: dlg.querySelector("#accountEmail")?.value.trim() || "",
+        telefone: normalizePhone(dlg.querySelector("#accountTelefone")?.value || "")
+      };
+      if (!payload.nome || !payload.email) {
+        if (status) status.textContent = "Preencha nome e e-mail.";
+        return;
+      }
+      if (btn) { btn.disabled = true; btn.textContent = "Salvando..."; }
+      if (status) status.textContent = "";
+      try {
+        const res = await fetch('/api/client/me', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          if (status) status.textContent = data.error || "Não foi possível salvar.";
+          return;
+        }
+        currentClientSession = data.client;
+        ensureCartClientSummary();
+        const [addresses, orders] = await Promise.all([fetchClientAddresses(), fetchClientOrders()]);
+        const body = dlg.querySelector(".account__body");
+        if (body) body.innerHTML = renderAccountPanel({ client: currentClientSession, addresses, orders });
+        bindAccountModal(dlg);
+      } catch (_) {
+        if (status) status.textContent = "Erro de conexão. Tente novamente.";
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Salvar alterações"; }
+      }
+    });
+  }
+}
+
+async function openAccountModal() {
+  if (!currentClientSession) {
+    const session = await checkClientSession();
+    if (!session.ok) {
+      window.location.href = "cliente-login.html";
+      return;
+    }
+    currentClientSession = session.client;
+  }
+
+  let dlg = document.getElementById("accountModal");
+  if (!dlg) {
+    dlg = document.createElement("dialog");
+    dlg.id = "accountModal";
+    dlg.className = "account-modal";
+    document.body.appendChild(dlg);
+  }
+  dlg.innerHTML = `
+    <div class="account__header">
+      <div>
+        <div class="account__title">Minha conta</div>
+        <div class="account__subtitle">Olá, ${escapeHTML((currentClientSession.nome || "").split(" ")[0] || "cliente")}</div>
+      </div>
+      <button type="button" class="account__close" id="btnCloseAccount" aria-label="Fechar">×</button>
+    </div>
+    <div class="account__tabs" role="tablist">
+      <button type="button" class="account__tab" data-account-tab="dados" aria-selected="true">Dados</button>
+      <button type="button" class="account__tab" data-account-tab="enderecos" aria-selected="false">Endereços</button>
+      <button type="button" class="account__tab" data-account-tab="pedidos" aria-selected="false">Pedidos</button>
+    </div>
+    <div class="account__body"><div class="account__empty">Carregando dados da conta...</div></div>
+  `;
+  bindAccountModal(dlg);
+  if (typeof dlg.showModal === "function" && !dlg.open) dlg.showModal();
+  const [addresses, orders] = await Promise.all([fetchClientAddresses(), fetchClientOrders()]);
+  const body = dlg.querySelector(".account__body");
+  if (body) body.innerHTML = renderAccountPanel({ client: currentClientSession, addresses, orders });
+  bindAccountModal(dlg);
+}
+
+function bindAccountLinks() {
+  document.querySelectorAll('a[href*="cliente-login"]').forEach((link) => {
+    if (link._lemoovAccountBound) return;
+    link._lemoovAccountBound = true;
+    link.addEventListener("click", async (event) => {
+      event.preventDefault();
+      if (!currentClientSession) {
+        const session = await checkClientSession();
+        if (!session.ok) {
+          window.location.href = link.getAttribute("href") || "cliente-login.html";
+          return;
+        }
+        currentClientSession = session.client;
+      }
+      openAccountModal();
+    });
+  });
 }
 
 let checkoutScrollPos = null;
@@ -2416,12 +3396,14 @@ function _reopenCheckoutModalDisplay(){
 }
 
 function atualizarCart(){
+  _saveCart();
   try{ ensureFreteShownOnce(); }catch(e){}
 
   const cartCount = el("#cartCount");
   if (cartCount) cartCount.textContent = getCartCount();
   const list = el("#cartList");
   if (!list) return;
+  ensureCartClientSummary();
   list.innerHTML = "";
 
   if (carrinho.length === 0) {
@@ -2487,7 +3469,7 @@ function atualizarCart(){
       freteEl.textContent = "Informe o CEP";
     } else if (freteModo === "uber_free") {
       freteEl.textContent = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
-    } else if (freteModo === "local_12" || freteModo === "local_14") {
+    } else if (["local_12","local_15","local_25","sedex"].includes(freteModo)) {
       freteEl.textContent = getDeliveryModeLabel(freteModo);
     } else {
       freteEl.textContent = "Consultar via WhatsApp";
@@ -2550,7 +3532,7 @@ if (openCartCta && cart) {
 }
 const closeCartBtn = el("#closeCart");
 if (closeCartBtn && cart) closeCartBtn.addEventListener("click", closeCart);
-if (backdrop && cart) backdrop.addEventListener("click", closeCart);
+// backdrop click intencional não fecha o carrinho — usa o botão fechar
 document.addEventListener("keydown", (e)=> {
   if (e.key === "Escape") {
     const dlg = el("#checkoutModal");
@@ -2606,11 +3588,17 @@ async function initCatalog(){
    Boot
 ------------------------------------------------------------ */
 if (!restorePaymentOriginIfNeeded()) {
-  initCatalog();
+  initCatalog().then(() => {
+    if (new URLSearchParams(location.search).get('initiateCheckout') === '1') {
+      history.replaceState(null, '', location.pathname);
+      initiateCheckout();
+    }
+  });
 }
 const yearEl = document.getElementById("year");
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 atualizarCart();
+_scheduleCartExpiry();
 const toggleWhats = el("#toggleWhats");
 if (toggleWhats) {
   toggleWhats.addEventListener("click", ()=>{
@@ -2817,6 +3805,7 @@ async function brasilApiGetAddress(cep) {
     const data = await fetchJSON(`https://brasilapi.com.br/api/cep/v1/${cep}`, {}, 10000);
     if (data?.city && data?.state) {
       return {
+        cep: normalizeCEP(cep),
         rua: data.street || "",
         bairro: data.neighborhood || "",
         cidade: data.city || "",
@@ -2831,6 +3820,7 @@ async function viaCepGetAddress(cep) {
     const data = await fetchJSON(`https://viacep.com.br/ws/${cep}/json/`, {}, 10000);
     if (!data?.erro) {
       return {
+        cep: normalizeCEP(cep),
         rua: data.logradouro || "",
         bairro: data.bairro || "",
         cidade: data.localidade || "",
@@ -2961,17 +3951,32 @@ async function calcularEntregaPorCEP(cepRaw) {
     return;
   }
   if (localPrice === DELIVERY_MARACANAU_PRICE) {
-    freteModo = "local_14";
+    freteModo = "local_15";
     freteAtual = DELIVERY_MARACANAU_PRICE;
     if (freteMsg) freteMsg.textContent = `Entrega em Maracanaú — R$ ${DELIVERY_MARACANAU_PRICE},00.`;
     atualizarCart();
     return;
   }
+  if (localPrice === DELIVERY_EUSEBIO_PRICE) {
+    freteModo = "local_25";
+    freteAtual = DELIVERY_EUSEBIO_PRICE;
+    if (freteMsg) freteMsg.textContent = `Entrega em ${city} — R$ ${DELIVERY_EUSEBIO_PRICE},00.`;
+    atualizarCart();
+    return;
+  }
 
-  freteModo = "whatsapp";
-  freteAtual = 0;
-  if (freteMsg) freteMsg.textContent = "Cidade fora da área de valor fixo — favor consultar via WhatsApp.";
-  atualizarCart();
+  // Fora da RMF → consulta SEDEX no backend
+  if (freteMsg) freteMsg.textContent = "Consultando frete SEDEX…";
+  const sedexOk = await calcularFreteBackend({ cidade: city || '', cep });
+  if (!sedexOk) {
+    freteModo = "whatsapp";
+    freteAtual = 0;
+    if (freteMsg) freteMsg.textContent = "Não foi possível calcular o frete. Consulte via WhatsApp.";
+    atualizarCart();
+  } else if (freteMsg) {
+    const contingencia = freteModo === "sedex" ? " (estimativa)" : "";
+    freteMsg.textContent = `SEDEX – R$ ${freteAtual.toFixed(2).replace(".", ",")}${contingencia}.`;
+  }
 }
 
 /* ------------------------------------------------------------
@@ -3065,6 +4070,10 @@ function openCheckoutModal(){
     showAppMessage("Informe o CEP para calcular a entrega.");
     return;
   }
+  if (!retiradaNaLoja && (!entregaDisponivel || !isFixedFreteMode())) {
+    showAppMessage("Não foi possível fechar o valor do frete para este endereço. Consulte a Lemoov pelo WhatsApp antes de pagar.");
+    return;
+  }
 
   let dlg = el("#checkoutModal");
   if (!dlg) {
@@ -3096,6 +4105,15 @@ function openCheckoutModal(){
               <div>Total <strong id="ckTotal">—</strong></div>
             </div>
             <div class="checkout__note" id="checkoutFreteNote"></div>
+          </div>
+
+          <div class="checkout__right">
+          <div id="ckAddrBanner" class="checkout__addr-banner" style="display:none;">
+            <div class="checkout__addr-banner-info">
+              <div class="checkout__addr-banner-label">Entregar em</div>
+              <div class="checkout__addr-banner-text" id="ckAddrBannerText">—</div>
+            </div>
+            <button type="button" class="checkout__addr-banner-btn" id="btnChangeAddr">Alterar</button>
           </div>
 
           <div class="checkout__grid">
@@ -3145,6 +4163,7 @@ function openCheckoutModal(){
               </div>
             </div>
           </div>
+          </div><!-- /.checkout__right -->
         </div>
 
         <div class="checkout__footer">
@@ -3198,7 +4217,52 @@ function openCheckoutModal(){
     }
 
     dlg.querySelector("#checkoutForm").addEventListener("submit", handleSubmitCheckout);
+
+    const btnChangeAddr = dlg.querySelector("#btnChangeAddr");
+    if (btnChangeAddr) {
+      btnChangeAddr.addEventListener("click", async () => {
+        closeCheckoutModal();
+        let addrs = [];
+        try {
+          const r = await fetch('/api/client/addresses', { credentials: 'same-origin' });
+          if (r.ok) { const d = await r.json(); addrs = d.addresses || []; }
+        } catch (_) {}
+        openAddressSelectionModal(addrs);
+      });
+    }
   }
+
+  // Address banner
+  const addrBanner = el("#ckAddrBanner");
+  const addrBannerText = el("#ckAddrBannerText");
+  if (addrBanner && addrBannerText) {
+    if (selectedDeliveryAddress && !retiradaNaLoja) {
+      const addr = selectedDeliveryAddress;
+      const line1 = `${addr.logradouro}, ${addr.numero}${addr.complemento ? ' – ' + addr.complemento : ''}`;
+      const line2 = `${addr.bairro ? addr.bairro + ', ' : ''}${addr.cidade} – ${addr.uf}`;
+      addrBannerText.textContent = `${line1} · ${line2}`;
+      addrBanner.style.display = '';
+    } else {
+      addrBanner.style.display = 'none';
+    }
+  }
+
+  // Pre-fill client data from session
+  if (currentClientSession) {
+    const nomeInput    = dlg.querySelector('input[name="nome"]');
+    const emailInput   = dlg.querySelector('input[name="email"]');
+    const telefoneInput = dlg.querySelector('input[name="telefone"]');
+    const ckCepInput   = dlg.querySelector('#ckCep');
+    if (nomeInput    && !nomeInput.value)    nomeInput.value    = currentClientSession.nome  || '';
+    if (emailInput   && !emailInput.value)   emailInput.value   = currentClientSession.email || '';
+    if (telefoneInput && !telefoneInput.value && currentClientSession.telefone) {
+      telefoneInput.value = formatPhoneForInput(currentClientSession.telefone);
+    }
+    if (ckCepInput && !ckCepInput.value && selectedDeliveryAddress?.cep) {
+      ckCepInput.value = formatCEPForInput(selectedDeliveryAddress.cep);
+    }
+  }
+
   const previewOrder = peekNextOrderNumber();
   const pedidoEl = el("#ckPedido");
   if (pedidoEl) pedidoEl.textContent = previewOrder || "—";
@@ -3220,13 +4284,7 @@ function openCheckoutModal(){
   }).join("<br>");
 
   el("#ckSubtotal").textContent = formatBRL(subtotal);
-  let freteResumo = retiradaNaLoja ? "Retirada pelo cliente" : "Informe o CEP";
-  if (!retiradaNaLoja && entregaDisponivel) {
-    if (freteModo === "uber_free") freteResumo = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
-    else if (freteModo === "local_12" || freteModo === "local_14") freteResumo = getDeliveryModeLabel(freteModo);
-    else freteResumo = "Consultar via WhatsApp";
-  }
-  el("#ckFrete").textContent = freteResumo;
+  el("#ckFrete").textContent = getFreteResumoLabel();
   const freteVia = el("#ckFreteVia");
   if (freteVia) freteVia.textContent = "";
   const fixedFrete2 = isFixedFreteMode();
@@ -3240,8 +4298,8 @@ function openCheckoutModal(){
     if (retiradaNaLoja) {
       freteNote.textContent = "Você marcou retirada e se compromete a buscar o pedido.";
       freteNote.style.display = "";
-    } else if (freteModo === "whatsapp") {
-      freteNote.textContent = "Cidade fora da área de valor fixo — favor consultar via WhatsApp.";
+    } else if (!isFixedFreteMode()) {
+      freteNote.textContent = "Frete sem valor fechado. Consulte pelo WhatsApp antes de pagar.";
       freteNote.style.display = "";
     } else {
       freteNote.textContent = "";
@@ -3333,12 +4391,6 @@ function buildWhatsMessage(data, options = {}) {
 
   const subtotal = getCartSubtotal();
   const total = subtotal + (!retiradaNaLoja && entregaDisponivel ? (freteAtual||0) : 0);
-  const viaCEP = !retiradaNaLoja && (typeof cepAtual === "string" && cepAtual.length === 8);
-  let freteInfo = "";
-  if (entregaDisponivel && viaCEP) {
-    freteInfo = ` (CEP ${formatCEPForInput(cepAtual)})`;
-  }
-
   const linhas = [];
   linhas.push("📝 *Pedido Lemoov*");
   if (numeroPedido) linhas.push(`Pedido nº ${numeroPedido}`);
@@ -3371,13 +4423,7 @@ function buildWhatsMessage(data, options = {}) {
   linhas.push("");
   linhas.push("*Resumo*");
   linhas.push(`Produtos: ${formatBRL(subtotal)}`);
-  let freteLabel = retiradaNaLoja ? "Retirada pelo cliente" : "A calcular";
-  if (!retiradaNaLoja && entregaDisponivel) {
-    if (freteModo === "uber_free") freteLabel = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)${freteInfo}`;
-    else if (freteModo === "local_12" || freteModo === "local_14") freteLabel = `${getDeliveryModeLabel(freteModo)}${freteInfo}`;
-    else freteLabel = `Consultar via WhatsApp.${freteInfo}`;
-  }
-  linhas.push(`Frete: ${freteLabel}`);
+  linhas.push(`Frete: ${getFreteResumoLabel({ includeCep: true })}`);
   const totalLabel = !retiradaNaLoja && entregaDisponivel
     ? (isFixedFreteMode() ? formatBRL(total) : `${formatBRL(total)} + frete`)
     : formatBRL(total);
@@ -3488,21 +4534,34 @@ async function handleSubmitCheckout(ev){
   try {
     const fdUI = new FormData(form);
     const cliente = {
-      nome: (fdUI.get("nome") || "").toString().trim(),
+      nome: (fdUI.get("nome") || currentClientSession?.nome || "").toString().trim(),
       telefone: formatPhoneForInput((fdUI.get("telefone") || "").toString()),
-      email: (fdUI.get("email") || "").toString().trim(),
+      email: (fdUI.get("email") || currentClientSession?.email || "").toString().trim(),
     };
+    const _sda = selectedDeliveryAddress;
     const endereco = {
-      cep: retiradaNaLoja ? "" : normalizeCEP((fdUI.get("cep") || "").toString()),
-      rua:    retiradaNaLoja ? "" : (enderecoAutofill?.rua    || ""),
-      bairro: retiradaNaLoja ? "" : (enderecoAutofill?.bairro || ""),
-      cidade: retiradaNaLoja ? "" : (enderecoAutofill?.cidade || ""),
-      uf:     retiradaNaLoja ? "" : (enderecoAutofill?.uf     || ""),
+      cep:         retiradaNaLoja ? "" : (_sda?.cep || normalizeCEP((fdUI.get("cep") || "").toString())),
+      rua:         retiradaNaLoja ? "" : (_sda?.logradouro || enderecoAutofill?.rua    || ""),
+      numero:      retiradaNaLoja ? "" : (_sda?.numero || ""),
+      complemento: retiradaNaLoja ? "" : (_sda?.complemento || ""),
+      bairro:      retiradaNaLoja ? "" : (_sda?.bairro || enderecoAutofill?.bairro || ""),
+      cidade:      retiradaNaLoja ? "" : (_sda?.cidade || enderecoAutofill?.cidade || ""),
+      uf:          retiradaNaLoja ? "" : (_sda?.uf     || enderecoAutofill?.uf     || ""),
     };
     const pagamento = (fdUI.get("pagamento") || "pix").toString();
 
     const faltantes = [];
     if (!cliente.nome) faltantes.push("nome completo");
+    if (!retiradaNaLoja) {
+      if (!endereco.cep || endereco.cep.length !== 8) faltantes.push("CEP");
+      if (!endereco.rua) faltantes.push("rua");
+      if (!endereco.numero) faltantes.push("número");
+      if (!endereco.cidade) faltantes.push("cidade");
+      if (!endereco.uf) faltantes.push("UF");
+      if (!entregaDisponivel || !isFixedFreteMode()) {
+        throw new Error("Calcule um frete com valor fechado antes de ir para pagamento.");
+      }
+    }
     if (faltantes.length) {
       throw new Error("Preencha: " + faltantes.join(", ") + ".");
     }
@@ -3540,15 +4599,21 @@ async function handleSubmitCheckout(ev){
       cliente_nome: cliente.nome || "",
       cliente_telefone: cliente.telefone || "",
       cliente_email: cliente.email || "",
+      numero: endereco.numero || "",
+      complemento: endereco.complemento || "",
+      ...(currentClientSession ? { client_id: currentClientSession.id } : {}),
+      ...(_sda?.id ? { address_id: _sda.id } : {}),
       cliente: {
-        nome:     cliente.nome || "",
-        telefone: cliente.telefone || "",
-        email:    cliente.email || "",
-        cep:      endereco.cep || "",
-        cidade:   endereco.cidade || "",
-        uf:       endereco.uf || "",
-        bairro:   endereco.bairro || "",
-        rua:      endereco.rua || "",
+        nome:        cliente.nome || "",
+        telefone:    cliente.telefone || "",
+        email:       cliente.email || "",
+        cep:         endereco.cep || "",
+        cidade:      endereco.cidade || "",
+        uf:          endereco.uf || "",
+        bairro:      endereco.bairro || "",
+        rua:         endereco.rua || "",
+        numero:      endereco.numero || "",
+        complemento: endereco.complemento || "",
       },
     };
     const pagamentoOnline = await createInfinityPayment({
@@ -3651,7 +4716,7 @@ function ensureFreteShownOnce(){
     if (freteModo === "uber_free" && val) {
       if (lbl) lbl.textContent = "Frete:";
       val.textContent = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
-    } else if ((freteModo === "local_12" || freteModo === "local_14") && val) {
+    } else if (["local_12","local_15","local_25","sedex"].includes(freteModo) && val) {
       if (lbl) lbl.textContent = "Frete:";
       val.textContent = getDeliveryModeLabel(freteModo);
     } else if (freteModo === "whatsapp" && val) {

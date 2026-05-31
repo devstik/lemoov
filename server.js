@@ -6,6 +6,7 @@ const multer = require('multer');
 const mysql = require('mysql2/promise');
 const app = express();
 
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use((req, res, next) => {
   const origin = req.headers.origin || '';
@@ -50,6 +51,8 @@ const mysqlPool = MYSQL_ENABLED ? mysql.createPool({
 let mysqlInitPromise = null;
 const sessions = new Map();
 const SESSION_TTL_MS = 60 * 60 * 1000;
+const clientSessions = new Map();
+const CLIENT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // garante arquivo
 if (!fs.existsSync(DB_PATH)) fs.writeFileSync(DB_PATH, '[]', 'utf-8');
@@ -134,6 +137,35 @@ async function initDatabase() {
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_clients (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(200) NOT NULL,
+        email VARCHAR(200) NOT NULL UNIQUE,
+        senha_hash VARCHAR(255) NOT NULL,
+        cpf VARCHAR(14),
+        telefone VARCHAR(20),
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_client_addresses (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        client_id INT NOT NULL,
+        cep VARCHAR(8) NOT NULL,
+        logradouro VARCHAR(200) NOT NULL,
+        numero VARCHAR(20) NOT NULL,
+        complemento VARCHAR(100),
+        bairro VARCHAR(100),
+        cidade VARCHAR(100) NOT NULL,
+        uf VARCHAR(2) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (client_id) REFERENCES lemoov_clients(id) ON DELETE CASCADE
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    for (const colDef of ['client_id INT NULL', 'address_id INT NULL']) {
+      try { await mysqlPool.execute(`ALTER TABLE lemoov_orders ADD COLUMN ${colDef}`); } catch (_) {}
+    }
     const [rows] = await mysqlPool.execute('SELECT COUNT(*) AS total FROM lemoov_products');
     if (Number(rows?.[0]?.total || 0) === 0) {
       const localProducts = ensureProductIds(readProdutos());
@@ -443,6 +475,11 @@ function parseCookies(req) {
   }, {});
 }
 
+function clientSessionCookie(token, maxAgeSeconds) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  return `lemoov_client_session=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure}`;
+}
+
 function authRequired(req, res, next) {
   const cookies = parseCookies(req);
   const token = cookies.lemoov_session;
@@ -460,6 +497,338 @@ function authRequired(req, res, next) {
   }
   return res.status(401).json({ ok: false, error: 'unauthorized' });
 }
+
+function clientAuthRequired(req, res, next) {
+  const cookies = parseCookies(req);
+  const token = cookies.lemoov_client_session;
+  if (token && clientSessions.has(token)) {
+    const session = clientSessions.get(token);
+    if (session && Date.now() - session.createdAt <= CLIENT_SESSION_TTL_MS) {
+      req.clientSession = session;
+      return next();
+    }
+    clientSessions.delete(token);
+  }
+  return res.status(401).json({ ok: false, error: 'não autenticado' });
+}
+
+function hashClientPwd(pwd) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(pwd, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+function verifyClientPwd(pwd, stored) {
+  const [salt, hash] = stored.split(':');
+  return crypto.scryptSync(pwd, salt, 64).toString('hex') === hash;
+}
+
+// ─── Rotas de cliente ──────────────────────────────────────────────────────
+
+app.get('/cliente-login', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'cliente-login.html'));
+});
+app.get('/cliente-login.html', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'cliente-login.html'));
+});
+
+app.get('/api/client/me', (req, res) => {
+  const cookies = parseCookies(req);
+  const token = cookies.lemoov_client_session;
+  if (!token || !clientSessions.has(token)) return res.status(401).json({ ok: false, error: 'não autenticado' });
+  const session = clientSessions.get(token);
+  if (!session || Date.now() - session.createdAt > CLIENT_SESSION_TTL_MS) {
+    if (token) clientSessions.delete(token);
+    return res.status(401).json({ ok: false, error: 'sessão expirada' });
+  }
+  return res.json({ ok: true, client: { id: session.clientId, nome: session.nome, email: session.email, telefone: session.telefone || '' } });
+});
+
+app.put('/api/client/me', clientAuthRequired, async (req, res) => {
+  const nome = String(req.body?.nome || '').trim();
+  const email = String(req.body?.email || '').toLowerCase().trim();
+  const telefone = String(req.body?.telefone || '').replace(/\D/g, '');
+  if (!nome || nome.length < 3) return res.status(400).json({ ok: false, error: 'Nome inválido.' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ ok: false, error: 'E-mail inválido.' });
+  if (telefone && (telefone.length < 10 || telefone.length > 11)) return res.status(400).json({ ok: false, error: 'Telefone inválido.' });
+
+  try {
+    if (MYSQL_ENABLED) {
+      await initDatabase();
+      const [existing] = await mysqlPool.execute(
+        'SELECT id FROM lemoov_clients WHERE email = ? AND id <> ?',
+        [email, req.clientSession.clientId]
+      );
+      if (existing.length) return res.status(409).json({ ok: false, error: 'Este e-mail já está em uso.' });
+      await mysqlPool.execute(
+        'UPDATE lemoov_clients SET nome = ?, email = ?, telefone = ? WHERE id = ?',
+        [nome, email, telefone || null, req.clientSession.clientId]
+      );
+    }
+    req.clientSession.nome = nome;
+    req.clientSession.email = email;
+    req.clientSession.telefone = telefone;
+    return res.json({ ok: true, client: { id: req.clientSession.clientId, nome, email, telefone } });
+  } catch (e) {
+    console.error('[client/me PUT]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao atualizar cadastro.' });
+  }
+});
+
+app.post('/api/client/login', async (req, res) => {
+  if (!MYSQL_ENABLED) return res.status(503).json({ ok: false, error: 'Banco de dados não disponível.' });
+  const { email, senha } = req.body || {};
+  if (!email || !senha) return res.status(400).json({ ok: false, error: 'E-mail e senha são obrigatórios.' });
+  try {
+    await initDatabase();
+    const [rows] = await mysqlPool.execute('SELECT id, nome, email, senha_hash, telefone FROM lemoov_clients WHERE email = ?', [String(email).toLowerCase().trim()]);
+    if (!rows.length || !verifyClientPwd(String(senha), rows[0].senha_hash)) {
+      return res.status(401).json({ ok: false, error: 'E-mail ou senha incorretos.' });
+    }
+    const client = rows[0];
+    const token = crypto.randomBytes(24).toString('hex');
+    clientSessions.set(token, { clientId: client.id, nome: client.nome, email: client.email, telefone: client.telefone || '', createdAt: Date.now() });
+    res.setHeader('Set-Cookie', clientSessionCookie(token, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
+    return res.json({ ok: true, client: { id: client.id, nome: client.nome, email: client.email, telefone: client.telefone || '' } });
+  } catch (e) {
+    console.error('[client/login]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro interno.' });
+  }
+});
+
+app.post('/api/client/register', async (req, res) => {
+  if (!MYSQL_ENABLED) return res.status(503).json({ ok: false, error: 'Banco de dados não disponível.' });
+  const { nome, email, cpf, telefone, senha, endereco } = req.body || {};
+  if (!nome || !email || !senha) return res.status(400).json({ ok: false, error: 'Nome, e-mail e senha são obrigatórios.' });
+  if (!endereco?.numero) return res.status(400).json({ ok: false, error: 'Número do endereço é obrigatório.' });
+  try {
+    await initDatabase();
+    const emailNorm = String(email).toLowerCase().trim();
+    const [existing] = await mysqlPool.execute('SELECT id FROM lemoov_clients WHERE email = ?', [emailNorm]);
+    if (existing.length) return res.status(409).json({ ok: false, error: 'E-mail já cadastrado.' });
+    const senhaHash = hashClientPwd(String(senha));
+    const [result] = await mysqlPool.execute(
+      'INSERT INTO lemoov_clients (nome, email, senha_hash, cpf, telefone) VALUES (?, ?, ?, ?, ?)',
+      [String(nome).trim(), emailNorm, senhaHash, String(cpf || '').replace(/\D/g, '') || null, String(telefone || '').replace(/\D/g, '') || null]
+    );
+    const clientId = result.insertId;
+    if (endereco?.cep) {
+      await mysqlPool.execute(
+        'INSERT INTO lemoov_client_addresses (client_id, cep, logradouro, numero, complemento, bairro, cidade, uf) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [clientId, String(endereco.cep).replace(/\D/g, ''), String(endereco.logradouro || ''), String(endereco.numero), String(endereco.complemento || '') || null, String(endereco.bairro || '') || null, String(endereco.cidade || ''), String(endereco.uf || '')]
+      );
+    }
+    const token = crypto.randomBytes(24).toString('hex');
+    clientSessions.set(token, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), createdAt: Date.now() });
+    res.setHeader('Set-Cookie', clientSessionCookie(token, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
+    return res.status(201).json({ ok: true, client: { id: clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, '') } });
+  } catch (e) {
+    console.error('[client/register]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao criar conta.' });
+  }
+});
+
+app.post('/api/client/logout', (req, res) => {
+  const cookies = parseCookies(req);
+  const token = cookies.lemoov_client_session;
+  if (token) clientSessions.delete(token);
+  res.setHeader('Set-Cookie', clientSessionCookie('', 0));
+  res.json({ ok: true });
+});
+
+app.get('/api/client/addresses', clientAuthRequired, async (req, res) => {
+  if (!MYSQL_ENABLED) {
+    // Modo offline: retorna endereço fictício para testes
+    return res.json({ ok: true, addresses: [{
+      id: 1,
+      cep: '60360760',
+      logradouro: 'Rua das Esmeraldas',
+      numero: '42',
+      complemento: 'Apto 3',
+      bairro: 'Maraponga',
+      cidade: 'Fortaleza',
+      uf: 'CE'
+    }]});
+  }
+  try {
+    await initDatabase();
+    const [rows] = await mysqlPool.execute(
+      'SELECT id, cep, logradouro, numero, complemento, bairro, cidade, uf FROM lemoov_client_addresses WHERE client_id = ? ORDER BY id',
+      [req.clientSession.clientId]
+    );
+    return res.json({ ok: true, addresses: rows });
+  } catch (e) {
+    console.error('[client/addresses GET]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao buscar endereços.' });
+  }
+});
+
+app.post('/api/client/addresses', clientAuthRequired, async (req, res) => {
+  if (!MYSQL_ENABLED) return res.status(503).json({ ok: false, error: 'Banco de dados não disponível.' });
+  const { cep, logradouro, numero, complemento, bairro, cidade, uf } = req.body || {};
+  if (!cep || !logradouro || !numero || !cidade || !uf) return res.status(400).json({ ok: false, error: 'CEP, logradouro, número, cidade e UF são obrigatórios.' });
+  try {
+    await initDatabase();
+    const [result] = await mysqlPool.execute(
+      'INSERT INTO lemoov_client_addresses (client_id, cep, logradouro, numero, complemento, bairro, cidade, uf) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [req.clientSession.clientId, String(cep).replace(/\D/g, ''), String(logradouro), String(numero), String(complemento || '') || null, String(bairro || '') || null, String(cidade), String(uf)]
+    );
+    return res.status(201).json({ ok: true, id: result.insertId });
+  } catch (e) {
+    console.error('[client/addresses POST]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao salvar endereço.' });
+  }
+});
+
+app.delete('/api/client/addresses/:id', clientAuthRequired, async (req, res) => {
+  if (!MYSQL_ENABLED) return res.status(503).json({ ok: false, error: 'Banco de dados não disponível.' });
+  try {
+    await initDatabase();
+    await mysqlPool.execute(
+      'DELETE FROM lemoov_client_addresses WHERE id = ? AND client_id = ?',
+      [Number(req.params.id), req.clientSession.clientId]
+    );
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('[client/addresses DELETE]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao remover endereço.' });
+  }
+});
+
+app.get('/api/client/orders', clientAuthRequired, async (req, res) => {
+  try {
+    const pedidos = await readPedidosStore();
+    const clientId = String(req.clientSession.clientId || '');
+    const email = String(req.clientSession.email || '').toLowerCase();
+    const mine = pedidos
+      .filter((pedido) => {
+        const pedidoClientId = String(pedido.client_id || pedido.cliente?.id || '');
+        const pedidoEmail = String(pedido.cliente_email || pedido.cliente?.email || '').toLowerCase();
+        return (clientId && pedidoClientId === clientId) || (email && pedidoEmail === email);
+      })
+      .sort((a, b) => new Date(b.recebidoEm || b.confirmedAt || b.createdAt || 0) - new Date(a.recebidoEm || a.confirmedAt || a.createdAt || 0))
+      .map((pedido) => ({
+        pedido: pedido.pedido || pedido.order_number || '',
+        status: pedido.status || pedido.pagamento_status || '',
+        total: Number(pedido.total || 0),
+        createdAt: pedido.recebidoEm || pedido.confirmedAt || pedido.createdAt || '',
+        frete_modo: pedido.frete_modo || '',
+        retirada: Boolean(pedido.retirada),
+        itens: Array.isArray(pedido.itens) ? pedido.itens.map((item) => ({
+          item_name: item.item_name || item.nome || item.name || '',
+          quantity: Number(item.quantity || item.quantidade || 1),
+          price: Number(item.price || item.preco || 0)
+        })) : []
+      }));
+    return res.json({ ok: true, orders: mine });
+  } catch (e) {
+    console.error('[client/orders GET]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao buscar pedidos.' });
+  }
+});
+
+// Rota dev: cria sessão de cliente sem MySQL (só disponível fora de produção)
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/dev/test-session', (req, res) => {
+    const nome = req.query.nome || 'Cliente Teste';
+    const email = req.query.email || 'teste@lemoov.com.br';
+    const token = crypto.randomBytes(24).toString('hex');
+    clientSessions.set(token, { clientId: 999, nome, email, telefone: req.query.telefone || '85999990000', createdAt: Date.now() });
+    res.setHeader('Set-Cookie', clientSessionCookie(token, 3600));
+    const redirect = req.query.redirect || '/catalogo-produtos.html';
+    res.send(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${redirect}"></head><body>
+      <p style="font-family:sans-serif;padding:20px">Sessão de teste criada para <strong>${nome}</strong>. Redirecionando…</p>
+    </body></html>`);
+  });
+}
+
+// ── Motor de Frete Híbrido ────────────────────────────────────────────────
+
+function _normalizarCidade(cidade) {
+  return (cidade || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+async function _consultarMelhorEnvioSedex(cepDestino) {
+  const token = process.env.MELHOR_ENVIO_TOKEN;
+  if (!token) throw new Error('MELHOR_ENVIO_TOKEN não configurado');
+
+  const cepOrigem = (process.env.CEP_ORIGEM || '60360760').replace(/\D/g, '');
+  const cepDest   = String(cepDestino).replace(/\D/g, '');
+
+  const baseUrl = process.env.NODE_ENV === 'production'
+    ? 'https://www.melhorenvio.com.br'
+    : 'https://sandbox.melhorenvio.com.br';
+
+  const resp = await fetch(`${baseUrl}/api/v2/me/shipment/calculate`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'Lemoov/1.0 (contato@lemoov.com.br)'
+    },
+    body: JSON.stringify({
+      from: { postal_code: cepOrigem },
+      to:   { postal_code: cepDest },
+      package: { height: 5, width: 20, length: 25, weight: 0.5 },
+      options: { insurance_value: 50, receipt: false, own_hand: false },
+      services: '4'   // 4 = SEDEX na Melhor Envio
+    })
+  });
+
+  if (!resp.ok) throw new Error(`Melhor Envio HTTP ${resp.status}`);
+  const data = await resp.json();
+
+  // Retorna o primeiro serviço com preço válido (sem campo error)
+  const option = Array.isArray(data)
+    ? data.find(s => s.price && !s.error)
+    : (data.price && !data.error ? data : null);
+  if (!option) throw new Error('Nenhuma opção SEDEX disponível para esta rota');
+
+  return parseFloat(option.price);
+}
+
+async function calcularFreteDoPedido(cidade, cepDestino) {
+  const cidadeLimpa = _normalizarCidade(cidade);
+
+  // Região Metropolitana de Fortaleza — taxas fixas
+  if (cidadeLimpa === 'fortaleza' || cidadeLimpa === 'caucaia') {
+    return { tipo: 'Entrega Local', valor: 12.00, label: 'Entrega Local – R$ 12,00' };
+  }
+  if (cidadeLimpa === 'maracanau') {
+    return { tipo: 'Entrega Local', valor: 15.00, label: 'Entrega Local – R$ 15,00' };
+  }
+  if (['eusebio', 'itaitinga', 'pacatuba'].includes(cidadeLimpa)) {
+    return { tipo: 'Entrega Local', valor: 25.00, label: 'Entrega Local – R$ 25,00' };
+  }
+
+  // Demais localidades — SEDEX via Melhor Envio (com contingência)
+  try {
+    const valorSedex = await _consultarMelhorEnvioSedex(cepDestino);
+    return { tipo: 'SEDEX', valor: valorSedex, label: `SEDEX – R$ ${valorSedex.toFixed(2).replace('.', ',')}` };
+  } catch (err) {
+    console.error('[frete] Falha na API SEDEX, aplicando contingência:', err.message);
+    return { tipo: 'SEDEX', valor: 30.00, label: 'SEDEX – R$ 30,00 (estimativa)', contingencia: true };
+  }
+}
+
+app.post('/api/frete', async (req, res) => {
+  const { cidade, cep } = req.body || {};
+  if (!cidade && !cep) {
+    return res.status(400).json({ ok: false, error: 'Informe cidade ou CEP.' });
+  }
+  try {
+    const resultado = await calcularFreteDoPedido(
+      String(cidade || ''),
+      String(cep || '').replace(/\D/g, '')
+    );
+    return res.json({ ok: true, ...resultado });
+  } catch (e) {
+    console.error('[/api/frete]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao calcular frete.' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────
 
 app.post('/api/pedidos', async (req, res) => {
   let conn = null;

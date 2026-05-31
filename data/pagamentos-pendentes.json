@@ -1,1 +1,1056 @@
-[]
+[
+  {
+    "pedido": "202605241",
+    "order_nsu": "202605241",
+    "status": "aguardando_pagamento",
+    "total": 169.9,
+    "currency": "BRL",
+    "metodo": "online",
+    "cliente": {
+      "nome": "Cliente Teste",
+      "telefone": "(85) 99999-0000",
+      "email": "teste@lemoov.com.br"
+    },
+    "endereco": {
+      "cep": "60360760",
+      "rua": "Rua das Esmeraldas",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "bairro": "Maraponga",
+      "cidade": "Fortaleza",
+      "uf": "CE"
+    },
+    "itens": [
+      {
+        "productId": 24,
+        "colorIndex": 0,
+        "nome": "Macacão Selene",
+        "categoria": "Macacão",
+        "cor": "Selene",
+        "corSelecionada": "Selene",
+        "tamanho": "P",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1,
+        "preco": 169.9,
+        "precoUnitario": 169.9,
+        "imagemSelecionada": "image/Macacao/macacao_selene_1.jpeg",
+        "descricaoCurta": "Poliamida gramatura 295 • Compressão Média • Transparência Zero • Extras: Toque macio",
+        "item_name": "Macacão Selene",
+        "item_category": "Macacão",
+        "price": 169.9,
+        "quantity": 1
+      }
+    ],
+    "itensEstoque": [
+      {
+        "productId": 24,
+        "colorIndex": 0,
+        "nome": "Macacão Selene",
+        "corSelecionada": "Selene",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1
+      }
+    ],
+    "pedidoPayload": {
+      "pedido": "202605241",
+      "status": "reservado",
+      "total": 169.9,
+      "currency": "BRL",
+      "item_count": 1,
+      "itens": [
+        {
+          "productId": 24,
+          "colorIndex": 0,
+          "nome": "Macacão Selene",
+          "categoria": "Macacão",
+          "cor": "Selene",
+          "corSelecionada": "Selene",
+          "tamanho": "P",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1,
+          "preco": 169.9,
+          "precoUnitario": 169.9,
+          "imagemSelecionada": "image/Macacao/macacao_selene_1.jpeg",
+          "descricaoCurta": "Poliamida gramatura 295 • Compressão Média • Transparência Zero • Extras: Toque macio",
+          "item_name": "Macacão Selene",
+          "item_category": "Macacão",
+          "price": 169.9,
+          "quantity": 1
+        }
+      ],
+      "itensEstoque": [
+        {
+          "productId": 24,
+          "colorIndex": 0,
+          "nome": "Macacão Selene",
+          "corSelecionada": "Selene",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1
+        }
+      ],
+      "frete_modo": "uber_free",
+      "retirada": false,
+      "cep": "60360760",
+      "cidade": "Fortaleza",
+      "uf": "CE",
+      "bairro": "Maraponga",
+      "rua": "Rua das Esmeraldas",
+      "visitor_city": "Fortaleza",
+      "visitor_region": "Ceará",
+      "visitor_country": "Brazil",
+      "pagamento": "online",
+      "origem_cep": "60360760",
+      "cliente_nome": "Cliente Teste",
+      "cliente_telefone": "(85) 99999-0000",
+      "cliente_email": "teste@lemoov.com.br",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "client_id": 999,
+      "address_id": 1,
+      "cliente": {
+        "nome": "Cliente Teste",
+        "telefone": "(85) 99999-0000",
+        "email": "teste@lemoov.com.br",
+        "cep": "60360760",
+        "cidade": "Fortaleza",
+        "uf": "CE",
+        "bairro": "Maraponga",
+        "rua": "Rua das Esmeraldas",
+        "numero": "42",
+        "complemento": "Apto 3"
+      }
+    },
+    "createdAt": "2026-05-25T01:20:06.199Z",
+    "payment_reference": "dev-202605241",
+    "configured": false
+  },
+  {
+    "pedido": "202605242",
+    "order_nsu": "202605242",
+    "status": "aguardando_pagamento",
+    "total": 169.9,
+    "currency": "BRL",
+    "metodo": "online",
+    "cliente": {
+      "nome": "Cliente Teste",
+      "telefone": "(85) 99999-0000",
+      "email": "teste@lemoov.com.br"
+    },
+    "endereco": {
+      "cep": "60360760",
+      "rua": "Rua das Esmeraldas",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "bairro": "Maraponga",
+      "cidade": "Fortaleza",
+      "uf": "CE"
+    },
+    "itens": [
+      {
+        "productId": 24,
+        "colorIndex": 0,
+        "nome": "Macacão Selene",
+        "categoria": "Macacão",
+        "cor": "Selene",
+        "corSelecionada": "Selene",
+        "tamanho": "P",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1,
+        "preco": 169.9,
+        "precoUnitario": 169.9,
+        "imagemSelecionada": "image/Macacao/macacao_selene_1.jpeg",
+        "descricaoCurta": "Poliamida gramatura 295 • Compressão Média • Transparência Zero • Extras: Toque macio",
+        "item_name": "Macacão Selene",
+        "item_category": "Macacão",
+        "price": 169.9,
+        "quantity": 1
+      }
+    ],
+    "itensEstoque": [
+      {
+        "productId": 24,
+        "colorIndex": 0,
+        "nome": "Macacão Selene",
+        "corSelecionada": "Selene",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1
+      }
+    ],
+    "pedidoPayload": {
+      "pedido": "202605242",
+      "status": "reservado",
+      "total": 169.9,
+      "currency": "BRL",
+      "item_count": 1,
+      "itens": [
+        {
+          "productId": 24,
+          "colorIndex": 0,
+          "nome": "Macacão Selene",
+          "categoria": "Macacão",
+          "cor": "Selene",
+          "corSelecionada": "Selene",
+          "tamanho": "P",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1,
+          "preco": 169.9,
+          "precoUnitario": 169.9,
+          "imagemSelecionada": "image/Macacao/macacao_selene_1.jpeg",
+          "descricaoCurta": "Poliamida gramatura 295 • Compressão Média • Transparência Zero • Extras: Toque macio",
+          "item_name": "Macacão Selene",
+          "item_category": "Macacão",
+          "price": 169.9,
+          "quantity": 1
+        }
+      ],
+      "itensEstoque": [
+        {
+          "productId": 24,
+          "colorIndex": 0,
+          "nome": "Macacão Selene",
+          "corSelecionada": "Selene",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1
+        }
+      ],
+      "frete_modo": "uber_free",
+      "retirada": false,
+      "cep": "60360760",
+      "cidade": "Fortaleza",
+      "uf": "CE",
+      "bairro": "Maraponga",
+      "rua": "Rua das Esmeraldas",
+      "visitor_city": "Fortaleza",
+      "visitor_region": "Ceará",
+      "visitor_country": "Brazil",
+      "pagamento": "online",
+      "origem_cep": "60360760",
+      "cliente_nome": "Cliente Teste",
+      "cliente_telefone": "(85) 99999-0000",
+      "cliente_email": "teste@lemoov.com.br",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "client_id": 999,
+      "address_id": 1,
+      "cliente": {
+        "nome": "Cliente Teste",
+        "telefone": "(85) 99999-0000",
+        "email": "teste@lemoov.com.br",
+        "cep": "60360760",
+        "cidade": "Fortaleza",
+        "uf": "CE",
+        "bairro": "Maraponga",
+        "rua": "Rua das Esmeraldas",
+        "numero": "42",
+        "complemento": "Apto 3"
+      }
+    },
+    "createdAt": "2026-05-25T01:20:13.684Z",
+    "payment_reference": "dev-202605242",
+    "configured": false
+  },
+  {
+    "pedido": "202605243",
+    "order_nsu": "202605243",
+    "status": "aguardando_pagamento",
+    "total": 210.8,
+    "currency": "BRL",
+    "metodo": "online",
+    "cliente": {
+      "nome": "Cliente Teste",
+      "telefone": "(85) 99999-0000",
+      "email": "teste@lemoov.com.br"
+    },
+    "endereco": {
+      "cep": "60360760",
+      "rua": "Rua das Esmeraldas",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "bairro": "Maraponga",
+      "cidade": "Fortaleza",
+      "uf": "CE"
+    },
+    "itens": [
+      {
+        "productId": 24,
+        "colorIndex": 0,
+        "nome": "Macacão Selene",
+        "categoria": "Macacão",
+        "cor": "Selene",
+        "corSelecionada": "Selene",
+        "tamanho": "P",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1,
+        "preco": 169.9,
+        "precoUnitario": 169.9,
+        "imagemSelecionada": "image/Macacao/macacao_selene_1.jpeg",
+        "descricaoCurta": "Poliamida gramatura 295 • Compressão Média • Transparência Zero • Extras: Toque macio",
+        "item_name": "Macacão Selene",
+        "item_category": "Macacão",
+        "price": 169.9,
+        "quantity": 1
+      },
+      {
+        "productId": 25,
+        "colorIndex": 0,
+        "nome": "Top Manteiga",
+        "categoria": "Top",
+        "cor": "Manteiga",
+        "corSelecionada": "Manteiga",
+        "tamanho": "M",
+        "tamanhoSelecionado": "M",
+        "quantidade": 1,
+        "preco": 40.9,
+        "precoUnitario": 40.9,
+        "imagemSelecionada": "image/Top/top_manteiga.jpeg",
+        "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Top com alças reguláveis, Top forrado com entrada para bojo • Tecnologias: 4-way stretch, secagem rápida",
+        "item_name": "Top Manteiga",
+        "item_category": "Top",
+        "price": 40.9,
+        "quantity": 1
+      }
+    ],
+    "itensEstoque": [
+      {
+        "productId": 24,
+        "colorIndex": 0,
+        "nome": "Macacão Selene",
+        "corSelecionada": "Selene",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1
+      },
+      {
+        "productId": 25,
+        "colorIndex": 0,
+        "nome": "Top Manteiga",
+        "corSelecionada": "Manteiga",
+        "tamanhoSelecionado": "M",
+        "quantidade": 1
+      }
+    ],
+    "pedidoPayload": {
+      "pedido": "202605243",
+      "status": "reservado",
+      "total": 210.8,
+      "currency": "BRL",
+      "item_count": 2,
+      "itens": [
+        {
+          "productId": 24,
+          "colorIndex": 0,
+          "nome": "Macacão Selene",
+          "categoria": "Macacão",
+          "cor": "Selene",
+          "corSelecionada": "Selene",
+          "tamanho": "P",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1,
+          "preco": 169.9,
+          "precoUnitario": 169.9,
+          "imagemSelecionada": "image/Macacao/macacao_selene_1.jpeg",
+          "descricaoCurta": "Poliamida gramatura 295 • Compressão Média • Transparência Zero • Extras: Toque macio",
+          "item_name": "Macacão Selene",
+          "item_category": "Macacão",
+          "price": 169.9,
+          "quantity": 1
+        },
+        {
+          "productId": 25,
+          "colorIndex": 0,
+          "nome": "Top Manteiga",
+          "categoria": "Top",
+          "cor": "Manteiga",
+          "corSelecionada": "Manteiga",
+          "tamanho": "M",
+          "tamanhoSelecionado": "M",
+          "quantidade": 1,
+          "preco": 40.9,
+          "precoUnitario": 40.9,
+          "imagemSelecionada": "image/Top/top_manteiga.jpeg",
+          "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Top com alças reguláveis, Top forrado com entrada para bojo • Tecnologias: 4-way stretch, secagem rápida",
+          "item_name": "Top Manteiga",
+          "item_category": "Top",
+          "price": 40.9,
+          "quantity": 1
+        }
+      ],
+      "itensEstoque": [
+        {
+          "productId": 24,
+          "colorIndex": 0,
+          "nome": "Macacão Selene",
+          "corSelecionada": "Selene",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1
+        },
+        {
+          "productId": 25,
+          "colorIndex": 0,
+          "nome": "Top Manteiga",
+          "corSelecionada": "Manteiga",
+          "tamanhoSelecionado": "M",
+          "quantidade": 1
+        }
+      ],
+      "frete_modo": "uber_free",
+      "retirada": false,
+      "cep": "60360760",
+      "cidade": "Fortaleza",
+      "uf": "CE",
+      "bairro": "Maraponga",
+      "rua": "Rua das Esmeraldas",
+      "visitor_city": "Fortaleza",
+      "visitor_region": "Ceará",
+      "visitor_country": "Brazil",
+      "pagamento": "online",
+      "origem_cep": "60360760",
+      "cliente_nome": "Cliente Teste",
+      "cliente_telefone": "(85) 99999-0000",
+      "cliente_email": "teste@lemoov.com.br",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "client_id": 999,
+      "address_id": 1,
+      "cliente": {
+        "nome": "Cliente Teste",
+        "telefone": "(85) 99999-0000",
+        "email": "teste@lemoov.com.br",
+        "cep": "60360760",
+        "cidade": "Fortaleza",
+        "uf": "CE",
+        "bairro": "Maraponga",
+        "rua": "Rua das Esmeraldas",
+        "numero": "42",
+        "complemento": "Apto 3"
+      }
+    },
+    "createdAt": "2026-05-25T01:21:07.242Z",
+    "payment_reference": "dev-202605243",
+    "configured": false
+  },
+  {
+    "pedido": "202605251",
+    "order_nsu": "202605251",
+    "status": "aguardando_pagamento",
+    "total": 52.9,
+    "currency": "BRL",
+    "metodo": "online",
+    "cliente": {
+      "nome": "Cliente Teste",
+      "telefone": "(85) 99999-0000",
+      "email": "teste@lemoov.com.br"
+    },
+    "endereco": {
+      "cep": "60360760",
+      "rua": "Rua das Esmeraldas",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "bairro": "Maraponga",
+      "cidade": "Fortaleza",
+      "uf": "CE"
+    },
+    "itens": [
+      {
+        "productId": 25,
+        "colorIndex": 0,
+        "nome": "Top Manteiga",
+        "categoria": "Top",
+        "cor": "Manteiga",
+        "corSelecionada": "Manteiga",
+        "tamanho": "M",
+        "tamanhoSelecionado": "M",
+        "quantidade": 1,
+        "preco": 40.9,
+        "precoUnitario": 40.9,
+        "imagemSelecionada": "image/Top/top_manteiga.jpeg",
+        "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Top com alças reguláveis, Top forrado com entrada para bojo • Tecnologias: 4-way stretch, secagem rápida",
+        "item_name": "Top Manteiga",
+        "item_category": "Top",
+        "price": 40.9,
+        "quantity": 1
+      }
+    ],
+    "itensEstoque": [
+      {
+        "productId": 25,
+        "colorIndex": 0,
+        "nome": "Top Manteiga",
+        "corSelecionada": "Manteiga",
+        "tamanhoSelecionado": "M",
+        "quantidade": 1
+      }
+    ],
+    "pedidoPayload": {
+      "pedido": "202605251",
+      "status": "reservado",
+      "total": 52.9,
+      "currency": "BRL",
+      "item_count": 1,
+      "itens": [
+        {
+          "productId": 25,
+          "colorIndex": 0,
+          "nome": "Top Manteiga",
+          "categoria": "Top",
+          "cor": "Manteiga",
+          "corSelecionada": "Manteiga",
+          "tamanho": "M",
+          "tamanhoSelecionado": "M",
+          "quantidade": 1,
+          "preco": 40.9,
+          "precoUnitario": 40.9,
+          "imagemSelecionada": "image/Top/top_manteiga.jpeg",
+          "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Top com alças reguláveis, Top forrado com entrada para bojo • Tecnologias: 4-way stretch, secagem rápida",
+          "item_name": "Top Manteiga",
+          "item_category": "Top",
+          "price": 40.9,
+          "quantity": 1
+        }
+      ],
+      "itensEstoque": [
+        {
+          "productId": 25,
+          "colorIndex": 0,
+          "nome": "Top Manteiga",
+          "corSelecionada": "Manteiga",
+          "tamanhoSelecionado": "M",
+          "quantidade": 1
+        }
+      ],
+      "frete_modo": "local_12",
+      "retirada": false,
+      "cep": "60360760",
+      "cidade": "Fortaleza",
+      "uf": "CE",
+      "bairro": "Maraponga",
+      "rua": "Rua das Esmeraldas",
+      "visitor_city": "Fortaleza",
+      "visitor_region": "Ceará",
+      "visitor_country": "Brazil",
+      "pagamento": "online",
+      "origem_cep": "60360760",
+      "cliente_nome": "Cliente Teste",
+      "cliente_telefone": "(85) 99999-0000",
+      "cliente_email": "teste@lemoov.com.br",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "client_id": 999,
+      "address_id": 1,
+      "cliente": {
+        "nome": "Cliente Teste",
+        "telefone": "(85) 99999-0000",
+        "email": "teste@lemoov.com.br",
+        "cep": "60360760",
+        "cidade": "Fortaleza",
+        "uf": "CE",
+        "bairro": "Maraponga",
+        "rua": "Rua das Esmeraldas",
+        "numero": "42",
+        "complemento": "Apto 3"
+      }
+    },
+    "createdAt": "2026-05-26T01:23:48.813Z",
+    "payment_reference": "dev-202605251",
+    "configured": false
+  },
+  {
+    "pedido": "202605252",
+    "order_nsu": "202605252",
+    "status": "aguardando_pagamento",
+    "total": 52.9,
+    "currency": "BRL",
+    "metodo": "online",
+    "cliente": {
+      "nome": "Cliente Teste",
+      "telefone": "(85) 99999-0000",
+      "email": "teste@lemoov.com.br"
+    },
+    "endereco": {
+      "cep": "60360760",
+      "rua": "Rua das Esmeraldas",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "bairro": "Maraponga",
+      "cidade": "Fortaleza",
+      "uf": "CE"
+    },
+    "itens": [
+      {
+        "productId": 25,
+        "colorIndex": 0,
+        "nome": "Top Manteiga",
+        "categoria": "Top",
+        "cor": "Manteiga",
+        "corSelecionada": "Manteiga",
+        "tamanho": "M",
+        "tamanhoSelecionado": "M",
+        "quantidade": 1,
+        "preco": 40.9,
+        "precoUnitario": 40.9,
+        "imagemSelecionada": "image/Top/top_manteiga.jpeg",
+        "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Top com alças reguláveis, Top forrado com entrada para bojo • Tecnologias: 4-way stretch, secagem rápida",
+        "item_name": "Top Manteiga",
+        "item_category": "Top",
+        "price": 40.9,
+        "quantity": 1
+      }
+    ],
+    "itensEstoque": [
+      {
+        "productId": 25,
+        "colorIndex": 0,
+        "nome": "Top Manteiga",
+        "corSelecionada": "Manteiga",
+        "tamanhoSelecionado": "M",
+        "quantidade": 1
+      }
+    ],
+    "pedidoPayload": {
+      "pedido": "202605252",
+      "status": "reservado",
+      "total": 52.9,
+      "currency": "BRL",
+      "item_count": 1,
+      "itens": [
+        {
+          "productId": 25,
+          "colorIndex": 0,
+          "nome": "Top Manteiga",
+          "categoria": "Top",
+          "cor": "Manteiga",
+          "corSelecionada": "Manteiga",
+          "tamanho": "M",
+          "tamanhoSelecionado": "M",
+          "quantidade": 1,
+          "preco": 40.9,
+          "precoUnitario": 40.9,
+          "imagemSelecionada": "image/Top/top_manteiga.jpeg",
+          "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Top com alças reguláveis, Top forrado com entrada para bojo • Tecnologias: 4-way stretch, secagem rápida",
+          "item_name": "Top Manteiga",
+          "item_category": "Top",
+          "price": 40.9,
+          "quantity": 1
+        }
+      ],
+      "itensEstoque": [
+        {
+          "productId": 25,
+          "colorIndex": 0,
+          "nome": "Top Manteiga",
+          "corSelecionada": "Manteiga",
+          "tamanhoSelecionado": "M",
+          "quantidade": 1
+        }
+      ],
+      "frete_modo": "local_12",
+      "retirada": false,
+      "cep": "60360760",
+      "cidade": "Fortaleza",
+      "uf": "CE",
+      "bairro": "Maraponga",
+      "rua": "Rua das Esmeraldas",
+      "visitor_city": "Fortaleza",
+      "visitor_region": "Ceará",
+      "visitor_country": "Brazil",
+      "pagamento": "online",
+      "origem_cep": "60360760",
+      "cliente_nome": "Cliente Teste",
+      "cliente_telefone": "(85) 99999-0000",
+      "cliente_email": "teste@lemoov.com.br",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "client_id": 999,
+      "address_id": 1,
+      "cliente": {
+        "nome": "Cliente Teste",
+        "telefone": "(85) 99999-0000",
+        "email": "teste@lemoov.com.br",
+        "cep": "60360760",
+        "cidade": "Fortaleza",
+        "uf": "CE",
+        "bairro": "Maraponga",
+        "rua": "Rua das Esmeraldas",
+        "numero": "42",
+        "complemento": "Apto 3"
+      }
+    },
+    "createdAt": "2026-05-26T01:26:54.769Z",
+    "payment_reference": "dev-202605252",
+    "configured": false
+  },
+  {
+    "pedido": "202605253",
+    "order_nsu": "202605253",
+    "status": "aguardando_pagamento",
+    "total": 40.9,
+    "currency": "BRL",
+    "metodo": "online",
+    "cliente": {
+      "nome": "Cliente Teste",
+      "telefone": "(85) 99999-0000",
+      "email": "teste@lemoov.com.br"
+    },
+    "endereco": {
+      "cep": "",
+      "rua": "",
+      "numero": "",
+      "complemento": "",
+      "bairro": "",
+      "cidade": "",
+      "uf": ""
+    },
+    "itens": [
+      {
+        "productId": 25,
+        "colorIndex": 0,
+        "nome": "Top Manteiga",
+        "categoria": "Top",
+        "cor": "Manteiga",
+        "corSelecionada": "Manteiga",
+        "tamanho": "M",
+        "tamanhoSelecionado": "M",
+        "quantidade": 1,
+        "preco": 40.9,
+        "precoUnitario": 40.9,
+        "imagemSelecionada": "image/Top/top_manteiga.jpeg",
+        "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Top com alças reguláveis, Top forrado com entrada para bojo • Tecnologias: 4-way stretch, secagem rápida",
+        "item_name": "Top Manteiga",
+        "item_category": "Top",
+        "price": 40.9,
+        "quantity": 1
+      }
+    ],
+    "itensEstoque": [
+      {
+        "productId": 25,
+        "colorIndex": 0,
+        "nome": "Top Manteiga",
+        "corSelecionada": "Manteiga",
+        "tamanhoSelecionado": "M",
+        "quantidade": 1
+      }
+    ],
+    "pedidoPayload": {
+      "pedido": "202605253",
+      "status": "reservado",
+      "total": 40.9,
+      "currency": "BRL",
+      "item_count": 1,
+      "itens": [
+        {
+          "productId": 25,
+          "colorIndex": 0,
+          "nome": "Top Manteiga",
+          "categoria": "Top",
+          "cor": "Manteiga",
+          "corSelecionada": "Manteiga",
+          "tamanho": "M",
+          "tamanhoSelecionado": "M",
+          "quantidade": 1,
+          "preco": 40.9,
+          "precoUnitario": 40.9,
+          "imagemSelecionada": "image/Top/top_manteiga.jpeg",
+          "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Top com alças reguláveis, Top forrado com entrada para bojo • Tecnologias: 4-way stretch, secagem rápida",
+          "item_name": "Top Manteiga",
+          "item_category": "Top",
+          "price": 40.9,
+          "quantity": 1
+        }
+      ],
+      "itensEstoque": [
+        {
+          "productId": 25,
+          "colorIndex": 0,
+          "nome": "Top Manteiga",
+          "corSelecionada": "Manteiga",
+          "tamanhoSelecionado": "M",
+          "quantidade": 1
+        }
+      ],
+      "frete_modo": "retirada",
+      "retirada": true,
+      "cep": "",
+      "cidade": "",
+      "uf": "",
+      "bairro": "",
+      "rua": "",
+      "visitor_city": "Fortaleza",
+      "visitor_region": "Ceará",
+      "visitor_country": "Brazil",
+      "pagamento": "online",
+      "origem_cep": "60360760",
+      "cliente_nome": "Cliente Teste",
+      "cliente_telefone": "(85) 99999-0000",
+      "cliente_email": "teste@lemoov.com.br",
+      "numero": "",
+      "complemento": "",
+      "client_id": 999,
+      "address_id": 1,
+      "cliente": {
+        "nome": "Cliente Teste",
+        "telefone": "(85) 99999-0000",
+        "email": "teste@lemoov.com.br",
+        "cep": "",
+        "cidade": "",
+        "uf": "",
+        "bairro": "",
+        "rua": "",
+        "numero": "",
+        "complemento": ""
+      }
+    },
+    "createdAt": "2026-05-26T01:27:22.376Z",
+    "payment_reference": "dev-202605253",
+    "configured": false
+  },
+  {
+    "pedido": "202605254",
+    "order_nsu": "202605254",
+    "status": "aguardando_pagamento",
+    "total": 13,
+    "currency": "BRL",
+    "metodo": "online",
+    "cliente": {
+      "nome": "Cliente Teste",
+      "telefone": "(85) 99999-0000",
+      "email": "teste@lemoov.com.br"
+    },
+    "endereco": {
+      "cep": "60360760",
+      "rua": "Rua das Esmeraldas",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "bairro": "Maraponga",
+      "cidade": "Fortaleza",
+      "uf": "CE"
+    },
+    "itens": [
+      {
+        "productId": 39,
+        "colorIndex": 0,
+        "nome": "Top Sun Moov",
+        "categoria": "Top",
+        "cor": "Branco",
+        "corSelecionada": "Branco",
+        "tamanho": "P",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1,
+        "preco": 1,
+        "precoUnitario": 1,
+        "imagemSelecionada": "image/Conjunto_Short/sunmoov_branco_0355.jpg",
+        "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Peça forrada, toque macio • Tecnologias: UPF 50+, 4-way stretch",
+        "item_name": "Top Sun Moov",
+        "item_category": "Top",
+        "price": 1,
+        "quantity": 1
+      }
+    ],
+    "itensEstoque": [
+      {
+        "productId": 39,
+        "colorIndex": 0,
+        "nome": "Top Sun Moov",
+        "corSelecionada": "Branco",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1
+      }
+    ],
+    "pedidoPayload": {
+      "pedido": "202605254",
+      "status": "reservado",
+      "total": 13,
+      "currency": "BRL",
+      "item_count": 1,
+      "itens": [
+        {
+          "productId": 39,
+          "colorIndex": 0,
+          "nome": "Top Sun Moov",
+          "categoria": "Top",
+          "cor": "Branco",
+          "corSelecionada": "Branco",
+          "tamanho": "P",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1,
+          "preco": 1,
+          "precoUnitario": 1,
+          "imagemSelecionada": "image/Conjunto_Short/sunmoov_branco_0355.jpg",
+          "descricaoCurta": "Poliamida com elastano • Compressão Média • Transparência Zero • Extras: Peça forrada, toque macio • Tecnologias: UPF 50+, 4-way stretch",
+          "item_name": "Top Sun Moov",
+          "item_category": "Top",
+          "price": 1,
+          "quantity": 1
+        }
+      ],
+      "itensEstoque": [
+        {
+          "productId": 39,
+          "colorIndex": 0,
+          "nome": "Top Sun Moov",
+          "corSelecionada": "Branco",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1
+        }
+      ],
+      "frete_modo": "local_12",
+      "retirada": false,
+      "cep": "60360760",
+      "cidade": "Fortaleza",
+      "uf": "CE",
+      "bairro": "Maraponga",
+      "rua": "Rua das Esmeraldas",
+      "visitor_city": "Fortaleza",
+      "visitor_region": "Ceará",
+      "visitor_country": "Brazil",
+      "pagamento": "online",
+      "origem_cep": "60360760",
+      "cliente_nome": "Cliente Teste",
+      "cliente_telefone": "(85) 99999-0000",
+      "cliente_email": "teste@lemoov.com.br",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "client_id": 999,
+      "address_id": 1,
+      "cliente": {
+        "nome": "Cliente Teste",
+        "telefone": "(85) 99999-0000",
+        "email": "teste@lemoov.com.br",
+        "cep": "60360760",
+        "cidade": "Fortaleza",
+        "uf": "CE",
+        "bairro": "Maraponga",
+        "rua": "Rua das Esmeraldas",
+        "numero": "42",
+        "complemento": "Apto 3"
+      }
+    },
+    "createdAt": "2026-05-26T01:59:24.708Z",
+    "payment_reference": "dev-202605254",
+    "configured": false
+  },
+  {
+    "pedido": "202605301",
+    "order_nsu": "202605301",
+    "status": "aguardando_pagamento",
+    "total": 181.9,
+    "currency": "BRL",
+    "metodo": "online",
+    "cliente": {
+      "nome": "Cliente Teste",
+      "telefone": "(85) 99999-0000",
+      "email": "teste@lemoov.com.br"
+    },
+    "endereco": {
+      "cep": "60360760",
+      "rua": "Rua das Esmeraldas",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "bairro": "Maraponga",
+      "cidade": "Fortaleza",
+      "uf": "CE"
+    },
+    "itens": [
+      {
+        "productId": 24,
+        "colorIndex": 0,
+        "nome": "Macacão Selene",
+        "categoria": "Macacão",
+        "cor": "Selene",
+        "corSelecionada": "Selene",
+        "tamanho": "P",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1,
+        "preco": 169.9,
+        "precoUnitario": 169.9,
+        "imagemSelecionada": "image/Macacao/macacao_selene_1.jpeg",
+        "descricaoCurta": "Poliamida gramatura 295 • Compressão Média • Transparência Zero • Extras: Toque macio",
+        "item_name": "Macacão Selene",
+        "item_category": "Macacão",
+        "price": 169.9,
+        "quantity": 1
+      }
+    ],
+    "itensEstoque": [
+      {
+        "productId": 24,
+        "colorIndex": 0,
+        "nome": "Macacão Selene",
+        "corSelecionada": "Selene",
+        "tamanhoSelecionado": "P",
+        "quantidade": 1
+      }
+    ],
+    "pedidoPayload": {
+      "pedido": "202605301",
+      "status": "reservado",
+      "total": 181.9,
+      "currency": "BRL",
+      "item_count": 1,
+      "itens": [
+        {
+          "productId": 24,
+          "colorIndex": 0,
+          "nome": "Macacão Selene",
+          "categoria": "Macacão",
+          "cor": "Selene",
+          "corSelecionada": "Selene",
+          "tamanho": "P",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1,
+          "preco": 169.9,
+          "precoUnitario": 169.9,
+          "imagemSelecionada": "image/Macacao/macacao_selene_1.jpeg",
+          "descricaoCurta": "Poliamida gramatura 295 • Compressão Média • Transparência Zero • Extras: Toque macio",
+          "item_name": "Macacão Selene",
+          "item_category": "Macacão",
+          "price": 169.9,
+          "quantity": 1
+        }
+      ],
+      "itensEstoque": [
+        {
+          "productId": 24,
+          "colorIndex": 0,
+          "nome": "Macacão Selene",
+          "corSelecionada": "Selene",
+          "tamanhoSelecionado": "P",
+          "quantidade": 1
+        }
+      ],
+      "frete_modo": "local_12",
+      "retirada": false,
+      "cep": "60360760",
+      "cidade": "Fortaleza",
+      "uf": "CE",
+      "bairro": "Maraponga",
+      "rua": "Rua das Esmeraldas",
+      "visitor_city": "Fortaleza",
+      "visitor_region": "Ceará",
+      "visitor_country": "Brazil",
+      "pagamento": "online",
+      "origem_cep": "60360760",
+      "cliente_nome": "Cliente Teste",
+      "cliente_telefone": "(85) 99999-0000",
+      "cliente_email": "teste@lemoov.com.br",
+      "numero": "42",
+      "complemento": "Apto 3",
+      "client_id": 999,
+      "address_id": 1,
+      "cliente": {
+        "nome": "Cliente Teste",
+        "telefone": "(85) 99999-0000",
+        "email": "teste@lemoov.com.br",
+        "cep": "60360760",
+        "cidade": "Fortaleza",
+        "uf": "CE",
+        "bairro": "Maraponga",
+        "rua": "Rua das Esmeraldas",
+        "numero": "42",
+        "complemento": "Apto 3"
+      }
+    },
+    "createdAt": "2026-05-31T02:29:31.192Z",
+    "payment_reference": "dev-202605301",
+    "configured": false
+  }
+]

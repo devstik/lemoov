@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lemoov | Quem Somos</title>
+  <meta name="description" content="Conheça a Lemoov, marca premium de moda fitness feminina que une tecnologia, elegância, conforto e poder pessoal." />
+  <meta property="og:title" content="Lemoov | Quem Somos" />
+  <meta property="og:description" content="Moda fitness premium feminina criada para movimento, leveza e confiança." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Lemoov Fitness" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:image" content="image/modelo_fundo.jpeg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --ink: #101d24;
+      --muted: #667682;
+      --green: #009C3B;
+      --navy: #002776;
+      --gold: #FFDF00;
+      --line: rgba(16, 29, 36, 0.1);
+      --surface: rgba(255, 255, 255, 0.88);
+      --shadow: 0 24px 70px rgba(7, 24, 32, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 12%, rgba(0, 156, 59, 0.1), transparent 32%),
+        radial-gradient(circle at 82% 18%, rgba(0, 39, 118, 0.12), transparent 30%),
+        #f6f8f7;
+    }
+    img { display: block; max-width: 100%; }
+    .container { width: min(100% - 32px, 1180px); margin: 0 auto; }
+    .about-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: linear-gradient(110deg, rgba(4,33,29,.98), rgba(8,66,45,.97) 50%, rgba(7,39,86,.97));
+      border-bottom: 1px solid rgba(255, 223, 0, 0.28);
+      box-shadow: 0 10px 28px rgba(4,31,43,.16);
+    }
+    .about-header__wrap {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .about-header__back,
+    .about-header__shop {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255, 223, 0, 0.82);
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .about-header__brand {
+      margin: 0;
+      font-family: Montserrat, Inter, sans-serif;
+      font-size: clamp(1rem, 2.2vw, 1.35rem);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold);
+      text-align: center;
+    }
+    .about-header__brand span { color: rgba(255,255,255,0.86); }
+    .about-hero {
+      position: relative;
+      min-height: min(650px, calc(100dvh - 58px));
+      display: grid;
+      align-items: end;
+      overflow: hidden;
+      isolation: isolate;
+      background: #071914;
+    }
+    .about-hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background: url("image/modelo_fundo.jpeg") center 28% / cover no-repeat;
+      filter: saturate(1.02) contrast(1.04);
+    }
+    .about-hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background:
+        linear-gradient(90deg, rgba(2, 19, 15, 0.84), rgba(2, 19, 15, 0.48) 48%, rgba(2, 19, 15, 0.18)),
+        linear-gradient(0deg, rgba(2, 19, 15, 0.8), transparent 46%);
+    }
+    .about-hero__content {
+      max-width: 760px;
+      padding: clamp(72px, 12vw, 140px) 0 clamp(44px, 8vw, 86px);
+      color: #fff;
+    }
+    .about-kicker {
+      margin: 0 0 16px;
+      color: var(--gold);
+      font-weight: 800;
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .about-hero h1 {
+      margin: 0;
+      font-family: Montserrat, Inter, sans-serif;
+      font-size: clamp(2.35rem, 7vw, 5.7rem);
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      max-width: 9ch;
+    }
+    .about-hero__lead {
+      max-width: 620px;
+      margin: 24px 0 0;
+      color: rgba(255,255,255,0.78);
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      line-height: 1.65;
+    }
+    .about-section {
+      padding: clamp(56px, 8vw, 96px) 0;
+    }
+    .about-split {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: clamp(22px, 4vw, 40px);
+      align-items: stretch;
+    }
+    .about-story,
+    .about-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+    .about-story {
+      padding: clamp(28px, 5vw, 48px);
+    }
+    .about-story h2,
+    .about-card h2,
+    .values-head h2 {
+      margin: 0;
+      font-family: Montserrat, Inter, sans-serif;
+      font-size: clamp(1.45rem, 3vw, 2.25rem);
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+    .about-story p {
+      margin: 18px 0 0;
+      color: var(--muted);
+      line-height: 1.78;
+      font-size: 1rem;
+    }
+    .about-card {
+      padding: clamp(24px, 4vw, 38px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 22px;
+    }
+    .about-card__icon {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--green), var(--navy));
+      color: var(--gold);
+      box-shadow: 0 14px 28px rgba(0, 39, 118, 0.16);
+    }
+    .about-card p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+    .values-section {
+      padding: clamp(22px, 4vw, 40px) 0 clamp(72px, 9vw, 110px);
+    }
+    .values-head {
+      max-width: 740px;
+      margin-bottom: clamp(24px, 4vw, 36px);
+    }
+    .values-head p {
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 14px 0 0;
+    }
+    .values-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .value-card {
+      position: relative;
+      min-height: 270px;
+      padding: 24px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 48px rgba(7, 24, 32, 0.09);
+      overflow: hidden;
+    }
+    .value-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(145deg, rgba(0,156,59,0.08), transparent 46%, rgba(0,39,118,0.08));
+      pointer-events: none;
+    }
+    .value-card__number {
+      position: relative;
+      color: var(--green);
+      font-weight: 800;
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+    }
+    .value-card h3 {
+      position: relative;
+      margin: 32px 0 14px;
+      font-family: Montserrat, Inter, sans-serif;
+      font-size: 1.05rem;
+      line-height: 1.25;
+      color: var(--ink);
+    }
+    .value-card p {
+      position: relative;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 0.94rem;
+    }
+    @media (max-width: 980px) {
+      .about-split { grid-template-columns: 1fr; }
+      .values-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .value-card { min-height: 230px; }
+    }
+    @media (max-width: 620px) {
+      .container { width: min(100% - 24px, 1180px); }
+      .about-header__back span,
+      .about-header__shop span { display: none; }
+      .about-header__brand { font-size: 0.92rem; letter-spacing: 0.1em; }
+      .about-hero { min-height: 560px; }
+      .about-hero::before { background-position: 58% 20%; }
+      .about-hero::after {
+        background:
+          linear-gradient(0deg, rgba(2,19,15,0.9), rgba(2,19,15,0.45) 62%, rgba(2,19,15,0.2));
+      }
+      .about-hero h1 { max-width: 8ch; }
+      .values-grid { grid-template-columns: 1fr; }
+      .value-card { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="about-header">
+    <div class="container about-header__wrap">
+      <a href="index.html" class="about-header__back" aria-label="Voltar para início">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+        <span>Início</span>
+      </a>
+      <p class="about-header__brand">Lemoov <span>Fitness</span></p>
+      <a href="catalogo-produtos.html" class="about-header__shop">
+        <span>Comprar</span>
+        <i class="fas fa-bag-shopping" aria-hidden="true"></i>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <section class="about-hero" aria-labelledby="aboutTitle">
+      <div class="container">
+        <div class="about-hero__content">
+          <p class="about-kicker">Quem Somos</p>
+          <h1 id="aboutTitle">Movimento com presença.</h1>
+          <p class="about-hero__lead">
+            A Lemoov cria moda fitness premium para mulheres que vivem o movimento como autocuidado, força e expressão pessoal.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="about-section" aria-label="Missão e visão da Lemoov">
+      <div class="container about-split">
+        <article class="about-story">
+          <p class="about-kicker">Nossa essência</p>
+          <h2>Moda fitness pensada para confiança, leveza e autenticidade.</h2>
+          <p>
+            Mais do que vestir o treino, a Lemoov veste momentos de escolha, disciplina e autoestima. Cada peça nasce para unir toque premium, caimento seguro e uma estética elegante para acompanhar a rotina dentro e fora da academia.
+          </p>
+        </article>
+
+        <div class="about-card">
+          <article>
+            <span class="about-card__icon"><i class="fas fa-bullseye" aria-hidden="true"></i></span>
+            <h2>Missão</h2>
+            <p>
+              Inspirar mulheres a se movimentarem com confiança, conforto e autenticidade, oferecendo moda fitness premium que une tecnologia, elegância e bem-estar em cada detalhe. A Lemoov acredita que vestir-se bem também faz parte do autocuidado e da autoestima.
+            </p>
+          </article>
+          <article>
+            <span class="about-card__icon"><i class="fas fa-chart-line" aria-hidden="true"></i></span>
+            <h2>Visão</h2>
+            <p>
+              Ser referência em moda fitness premium feminina no Brasil, reconhecida pela qualidade impecável, design sofisticado e pela conexão verdadeira com mulheres que valorizam movimento, leveza e poder pessoal.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="values-section" aria-labelledby="valuesTitle">
+      <div class="container">
+        <div class="values-head">
+          <p class="about-kicker">Valores</p>
+          <h2 id="valuesTitle">Princípios que guiam cada detalhe.</h2>
+          <p>
+            Da escolha dos tecidos ao acabamento final, cada decisão é orientada por performance, elegância e respeito à experiência de quem veste.
+          </p>
+        </div>
+
+        <div class="values-grid">
+          <article class="value-card">
+            <span class="value-card__number">01</span>
+            <h3>Qualidade Premium</h3>
+            <p>Peças desenvolvidas com poliamida premium, alta compressão, zero transparência e acabamento impecável.</p>
+          </article>
+          <article class="value-card">
+            <span class="value-card__number">02</span>
+            <h3>Conforto com Performance</h3>
+            <p>Criamos roupas que acompanham cada movimento com segurança, leveza e liberdade.</p>
+          </article>
+          <article class="value-card">
+            <span class="value-card__number">03</span>
+            <h3>Autoestima Feminina</h3>
+            <p>Acreditamos que uma mulher confiante transforma sua rotina, seus treinos e sua vida.</p>
+          </article>
+          <article class="value-card">
+            <span class="value-card__number">04</span>
+            <h3>Elegância no Fitness</h3>
+            <p>Unimos funcionalidade e sofisticação para mulheres que desejam se sentir bonitas em qualquer momento do dia.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

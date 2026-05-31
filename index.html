@@ -113,12 +113,19 @@
 <body class="home-page">
 
   <header class="header">
-    <div class="container header__wrap" style="display:flex;align-items:center;justify-content:space-between;min-height:58px;padding:0 24px;position:relative;">
-      <a href="catalogo-produtos.html" style="color:rgba(255,223,0,.7);font-size:.82rem;font-weight:700;text-decoration:none;display:flex;align-items:center;gap:5px;">⚡ Catálogo</a>
-      <h1 class="logo" style="position:absolute;left:50%;transform:translateX(-50%);margin:0;">
+    <div class="container header__wrap">
+      <a href="catalogo-produtos.html" class="header__link header__link--catalog">
+        <i class="fas fa-table-cells-large" aria-hidden="true"></i>
+        <span>Catálogo</span>
+      </a>
+      <h1 class="logo">
         <a href="index.html">Lemoov <span>Fitness</span></a>
       </h1>
-      <nav class="nav" style="width:80px;display:flex;justify-content:flex-end;">
+      <nav class="nav" aria-label="Ações principais">
+        <a href="cliente-login.html" class="header__link header__link--account" aria-label="Minha conta">
+          <i class="fas fa-user" aria-hidden="true"></i>
+          <span>Conta</span>
+        </a>
         <button id="openCart" class="btn-icon" aria-label="Abrir carrinho">
           <i id="cartIcon" class="fas fa-shopping-cart"></i>
           <span id="cartCount" class="badge">0</span>
@@ -132,42 +139,49 @@
       <div class="hero__carousel" id="heroCarousel">
         <div class="hero__slides">
           <figure class="hero__slide is-active" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_01.jpeg" alt="Coleção Copa Brasil Lemoov" loading="eager" decoding="async" fetchpriority="high">
+            <img src="image/copa_brasil/copa_brasil_01.jpeg" alt="Look Lemoov Copa Brasil em conjunto fitness verde e amarelo" width="1065" height="1600" loading="eager" decoding="async" fetchpriority="high">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_02.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_02.jpeg" alt="Look Lemoov Copa Brasil em detalhe de moda fitness" width="1065" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_03.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_03.jpeg" alt="Coleção Copa Brasil Lemoov em peça fitness premium" width="1064" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_04.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_04.jpeg" alt="Modelo usando coleção Copa Brasil Lemoov" width="1064" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_05.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_05.jpeg" alt="Look fitness Lemoov Copa Brasil em movimento" width="1065" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_06.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_06.jpeg" alt="Coleção fitness Lemoov Copa Brasil" width="1064" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_07.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_07.jpeg" alt="Detalhe de conjunto Lemoov Copa Brasil" width="1065" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_08.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_08.jpeg" alt="Modelo com look Lemoov Copa Brasil" width="1065" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_09.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_09.jpeg" alt="Peça fitness Lemoov Copa Brasil" width="1064" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_10.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_10.jpeg" alt="Campanha Lemoov Copa Brasil moda fitness" width="1065" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_11.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_11.jpeg" alt="Conjunto fitness Lemoov Copa Brasil" width="1065" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="hero__slide" data-color="Copa Brasil">
-            <img src="image/copa_brasil/copa_brasil_12.jpeg" alt="Coleção Copa Brasil Lemoov" loading="lazy" decoding="async">
+            <img src="image/copa_brasil/copa_brasil_12.jpeg" alt="Coleção Lemoov Copa Brasil em destaque" width="1065" height="1600" loading="lazy" decoding="async">
           </figure>
         </div>
+        <button class="hero__control hero__control--prev" type="button" data-hero-prev aria-label="Foto anterior">
+          <i class="fas fa-chevron-left" aria-hidden="true"></i>
+        </button>
+        <button class="hero__control hero__control--next" type="button" data-hero-next aria-label="Próxima foto">
+          <i class="fas fa-chevron-right" aria-hidden="true"></i>
+        </button>
+        <div class="hero__dots" data-hero-dots aria-label="Selecionar foto do carrossel"></div>
       </div>
       <div class="hero__badge is-hidden" aria-hidden="true">Nova coleção • High Performance</div>
     </div>
@@ -222,7 +236,7 @@
       <article>
         <span class="benefits__icon"><i class="fas fa-map-marker-alt"></i></span>
         <h4>Entrega local</h4>
-        <p>Grátis até 2 km · R$ 12 Fortaleza/Caucaia · R$ 14 Maracanaú · Demais cidades via WhatsApp.</p>
+        <p>Grátis até 2 km · R$ 12 Fortaleza/Caucaia · R$ 15 Maracanaú · SEDEX para demais cidades.</p>
       </article>
       <article>
         <span class="benefits__icon"><i class="fas fa-lock"></i></span>
@@ -419,6 +433,7 @@
         <div class="footer__block">
           <h4 class="footer__title">Políticas</h4>
           <ul class="footer__list">
+            <li><a href="quem-somos.html">Quem somos</a></li>
             <li><a href="privacidade.html">Termos de privacidade</a></li>
             <li><a href="trocas.html">Trocas e devoluções</a></li>
           </ul>
