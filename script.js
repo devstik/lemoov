@@ -17,6 +17,7 @@ let cepAtual = "";
 let entregaDisponivel = false;
 let retiradaNaLoja = false;
 let freteModo = null;           // 'uber'
+let freteOpcoesCache = [];      // opções retornadas pelo Melhor Envio
 let enderecoAutofill = null;
 let selectedDeliveryAddress = null;
 let currentClientSession = null;
@@ -2852,9 +2853,11 @@ async function calcularFreteBackend(addr) {
     cepAtual = String(addr.cep).replace(/\D/g, '');
 
     if (d.tipo === 'opcoes' && Array.isArray(d.opcoes) && d.opcoes.length) {
+      freteOpcoesCache = d.opcoes;
       mostrarOpcoesTransportadora(d.opcoes);
       return true;
     }
+    freteOpcoesCache = [];
 
     esconderOpcoesTransportadora();
     freteAtual = d.valor;
@@ -4284,6 +4287,11 @@ function openCheckoutModal(){
             <button type="button" class="checkout__addr-banner-btn" id="btnChangeAddr">Alterar</button>
           </div>
 
+          <div id="ckFreteOpcoes" style="display:none;margin-bottom:12px;">
+            <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#556b7d;margin-bottom:6px;">Transportadora</div>
+            <div id="ckFreteOpcoesLista" class="frete__opcoes"></div>
+          </div>
+
           <div class="checkout__grid">
             <div class="checkout__step">
               <div class="full">
@@ -4413,6 +4421,41 @@ function openCheckoutModal(){
     } else {
       addrBanner.style.display = 'none';
     }
+  }
+
+  // Carrier selection inside checkout
+  const ckFreteOpcoes = el("#ckFreteOpcoes");
+  const ckFreteOpcoesLista = el("#ckFreteOpcoesLista");
+  if (ckFreteOpcoes && ckFreteOpcoesLista && freteOpcoesCache.length > 1 && !retiradaNaLoja) {
+    ckFreteOpcoesLista.innerHTML = freteOpcoesCache.map((op, i) => {
+      const sel = op.modo === freteModo || (i === 0 && !freteOpcoesCache.find(o => o.modo === freteModo));
+      return `<label class="frete__opcao${sel ? ' selected' : ''}" data-modo="${op.modo}" data-valor="${op.valor}">
+        <input type="radio" name="ckFreteOpcao" value="${i}" ${sel ? 'checked' : ''}>
+        <div class="frete__opcao-info">
+          <span class="frete__opcao-nome">${op.servico} — R$ ${op.valor.toFixed(2).replace('.', ',')}</span>
+          ${op.prazo ? `<span class="frete__opcao-prazo">${op.prazo}</span>` : ''}
+        </div>
+      </label>`;
+    }).join('');
+    ckFreteOpcoes.style.display = '';
+    ckFreteOpcoesLista.querySelectorAll('.frete__opcao').forEach((lbl) => {
+      lbl.addEventListener('click', () => {
+        ckFreteOpcoesLista.querySelectorAll('.frete__opcao').forEach(l => l.classList.remove('selected'));
+        lbl.classList.add('selected');
+        freteAtual = parseFloat(lbl.dataset.valor);
+        freteModo  = lbl.dataset.modo;
+        // também sincroniza no widget do catálogo
+        const catalogLista = el('#freteOpcoes');
+        if (catalogLista) catalogLista.querySelectorAll('.frete__opcao').forEach((cl) => {
+          cl.classList.toggle('selected', cl.dataset.modo === freteModo);
+          const r = cl.querySelector('input[type="radio"]');
+          if (r) r.checked = cl.dataset.modo === freteModo;
+        });
+        atualizarCart();
+      });
+    });
+  } else if (ckFreteOpcoes) {
+    ckFreteOpcoes.style.display = 'none';
   }
 
   // Pre-fill client data from session
