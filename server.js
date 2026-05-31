@@ -791,17 +791,22 @@ app.post('/api/client/forgot-password', async (req, res) => {
   const email = String(req.body?.email || '').toLowerCase().trim();
   if (!email) return res.status(400).json({ ok: false, error: 'E-mail obrigatório.' });
   try {
-    if (MYSQL_ENABLED) {
-      await initDatabase();
-      const [rows] = await mysqlPool.execute('SELECT id, nome FROM lemoov_clients WHERE email = ?', [email]);
-      if (rows.length) {
-        const { id, nome } = rows[0];
-        const token = crypto.randomBytes(32).toString('hex');
-        resetTokens.set(token, { clientId: id, email, expiresAt: Date.now() + RESET_TOKEN_TTL_MS });
-        const resetUrl = `${getPublicBaseUrl(req)}/cliente-login.html?token=${token}`;
-        await sendResetEmail(email, nome, resetUrl).catch((e) => console.error('[reset-email]', e.message));
-      }
+    if (!MYSQL_ENABLED) {
+      console.warn('[forgot-password] MySQL desabilitado — não é possível buscar cliente.');
+      return res.json({ ok: true });
     }
+    await initDatabase();
+    const [rows] = await mysqlPool.execute('SELECT id, nome FROM lemoov_clients WHERE email = ?', [email]);
+    if (!rows.length) {
+      console.log(`[forgot-password] email não encontrado no banco: ${email}`);
+      return res.json({ ok: true });
+    }
+    const { id, nome } = rows[0];
+    const token = crypto.randomBytes(32).toString('hex');
+    resetTokens.set(token, { clientId: id, email, expiresAt: Date.now() + RESET_TOKEN_TTL_MS });
+    const resetUrl = `${getPublicBaseUrl(req)}/cliente-login.html?token=${token}`;
+    console.log(`[forgot-password] token gerado para ${email}, enviando email…`);
+    await sendResetEmail(email, nome, resetUrl).catch((e) => console.error('[reset-email]', e.message));
     return res.json({ ok: true });
   } catch (e) {
     console.error('[forgot-password]', e.message);
@@ -877,6 +882,25 @@ app.post('/api/client/addresses', clientAuthRequired, async (req, res) => {
   } catch (e) {
     console.error('[client/addresses POST]', e.message);
     return res.status(500).json({ ok: false, error: 'Erro ao salvar endereço.' });
+  }
+});
+
+app.put('/api/client/addresses/:id', clientAuthRequired, async (req, res) => {
+  if (!MYSQL_ENABLED) return res.status(503).json({ ok: false, error: 'Banco de dados não disponível.' });
+  const { cep, logradouro, numero, complemento, bairro, cidade, uf } = req.body || {};
+  if (!cep || !logradouro || !numero || !cidade || !uf)
+    return res.status(400).json({ ok: false, error: 'CEP, logradouro, número, cidade e UF são obrigatórios.' });
+  try {
+    await initDatabase();
+    const [result] = await mysqlPool.execute(
+      'UPDATE lemoov_client_addresses SET cep=?, logradouro=?, numero=?, complemento=?, bairro=?, cidade=?, uf=? WHERE id=? AND client_id=?',
+      [String(cep).replace(/\D/g,''), String(logradouro), String(numero), String(complemento||'')||null, String(bairro||'')||null, String(cidade), String(uf), Number(req.params.id), req.clientSession.clientId]
+    );
+    if (!result.affectedRows) return res.status(404).json({ ok: false, error: 'Endereço não encontrado.' });
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('[client/addresses PUT]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao atualizar endereço.' });
   }
 });
 

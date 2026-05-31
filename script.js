@@ -3141,13 +3141,52 @@ function formatAccountDate(value) {
 function renderAccountPanel({ client, addresses, orders }) {
   const safeClient = client || currentClientSession || {};
   const addressHtml = addresses.length ? addresses.map((addr) => `
-    <div class="account__card">
-      <strong>${escapeHTML(addr.logradouro || "")}, ${escapeHTML(addr.numero || "")}</strong>
-      <div class="account__order-meta">
-        ${addr.complemento ? `${escapeHTML(addr.complemento)}<br>` : ""}
-        ${addr.bairro ? `${escapeHTML(addr.bairro)} · ` : ""}${escapeHTML(addr.cidade || "")}/${escapeHTML(addr.uf || "")}<br>
-        CEP ${formatCEPForInput(addr.cep || "")}
+    <div class="account__card" data-addr-id="${addr.id}">
+      <div class="account__addr-view">
+        <div>
+          <strong>${escapeHTML(addr.logradouro || "")}, ${addr.numero ? escapeHTML(addr.numero) : '<span style="color:#e8445a">nº faltando</span>'}</strong>
+          <div class="account__order-meta">
+            ${addr.complemento ? `${escapeHTML(addr.complemento)}<br>` : ""}
+            ${addr.bairro ? `${escapeHTML(addr.bairro)} · ` : ""}${escapeHTML(addr.cidade || "")}/${escapeHTML(addr.uf || "")}<br>
+            CEP ${formatCEPForInput(addr.cep || "")}
+          </div>
+        </div>
+        <button type="button" class="account__profile-action btn-edit-addr" data-addr-id="${addr.id}">Editar</button>
       </div>
+      <form class="account__addr-edit-form" data-addr-id="${addr.id}" style="display:none;margin-top:12px;">
+        <input type="hidden" name="cep" value="${escapeHTML(addr.cep || "")}">
+        <div class="account__form-row">
+          <label>Número *</label>
+          <input class="account__input" name="numero" value="${escapeHTML(addr.numero || "")}" placeholder="123" required>
+        </div>
+        <div class="account__form-row">
+          <label>Complemento</label>
+          <input class="account__input" name="complemento" value="${escapeHTML(addr.complemento || "")}" placeholder="Apto 42">
+        </div>
+        <div class="account__form-row">
+          <label>Logradouro *</label>
+          <input class="account__input" name="logradouro" value="${escapeHTML(addr.logradouro || "")}" required>
+        </div>
+        <div class="account__form-row">
+          <label>Bairro</label>
+          <input class="account__input" name="bairro" value="${escapeHTML(addr.bairro || "")}">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 80px;gap:8px">
+          <div class="account__form-row">
+            <label>Cidade *</label>
+            <input class="account__input" name="cidade" value="${escapeHTML(addr.cidade || "")}" required>
+          </div>
+          <div class="account__form-row">
+            <label>UF *</label>
+            <input class="account__input" name="uf" value="${escapeHTML(addr.uf || "")}" maxlength="2" required style="text-transform:uppercase">
+          </div>
+        </div>
+        <div class="account__status addr-edit-status" style="margin:6px 0;font-size:13px;color:#e8445a;"></div>
+        <div class="account__form-actions">
+          <button type="button" class="account__cancel btn-cancel-addr-edit" data-addr-id="${addr.id}">Cancelar</button>
+          <button type="submit" class="account__save">Salvar</button>
+        </div>
+      </form>
     </div>
   `).join("") : `<div class="account__empty">Nenhum endereço cadastrado.</div>`;
 
@@ -3267,6 +3306,78 @@ function bindAccountModal(dlg) {
       phoneInput.value = formatPhoneForInput(phoneInput.value);
     });
   }
+  dlg.querySelectorAll(".btn-edit-addr").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.addrId;
+      const card = dlg.querySelector(`.account__card[data-addr-id="${id}"]`);
+      if (!card) return;
+      const editForm = card.querySelector(".account__addr-edit-form");
+      const view     = card.querySelector(".account__addr-view");
+      if (!editForm) return;
+      const showing = editForm.style.display !== "none";
+      editForm.style.display = showing ? "none" : "block";
+      if (view) view.querySelector(".btn-edit-addr").textContent = showing ? "Editar" : "Cancelar";
+      if (!showing) editForm.querySelector('[name="numero"]')?.focus();
+    });
+  });
+
+  dlg.querySelectorAll(".btn-cancel-addr-edit").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.addrId;
+      const card = dlg.querySelector(`.account__card[data-addr-id="${id}"]`);
+      if (!card) return;
+      card.querySelector(".account__addr-edit-form").style.display = "none";
+      card.querySelector(".btn-edit-addr").textContent = "Editar";
+    });
+  });
+
+  dlg.querySelectorAll(".account__addr-edit-form").forEach((editForm) => {
+    if (editForm._lemoovBound) return;
+    editForm._lemoovBound = true;
+    editForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = editForm.dataset.addrId;
+      const statusEl = editForm.querySelector(".addr-edit-status");
+      const saveBtn = editForm.querySelector('[type="submit"]');
+      const payload = {
+        cep:        editForm.querySelector('[name="cep"]')?.value || "",
+        logradouro: editForm.querySelector('[name="logradouro"]')?.value.trim() || "",
+        numero:     editForm.querySelector('[name="numero"]')?.value.trim() || "",
+        complemento:editForm.querySelector('[name="complemento"]')?.value.trim() || "",
+        bairro:     editForm.querySelector('[name="bairro"]')?.value.trim() || "",
+        cidade:     editForm.querySelector('[name="cidade"]')?.value.trim() || "",
+        uf:         editForm.querySelector('[name="uf"]')?.value.trim().toUpperCase() || "",
+      };
+      if (!payload.logradouro || !payload.numero || !payload.cidade || !payload.uf) {
+        if (statusEl) statusEl.textContent = "Preencha os campos obrigatórios.";
+        return;
+      }
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Salvando..."; }
+      if (statusEl) statusEl.textContent = "";
+      try {
+        const res = await fetch(`/api/client/addresses/${id}`, {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          if (statusEl) statusEl.textContent = data.error || "Erro ao salvar.";
+          return;
+        }
+        const [addresses, orders] = await Promise.all([fetchClientAddresses(), fetchClientOrders()]);
+        const body = dlg.querySelector(".account__body");
+        if (body) body.innerHTML = renderAccountPanel({ client: currentClientSession, addresses, orders });
+        bindAccountModal(dlg);
+      } catch (_) {
+        if (statusEl) statusEl.textContent = "Erro de conexão.";
+      } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Salvar"; }
+      }
+    });
+  });
+
   if (form && !form._lemoovBound) {
     form._lemoovBound = true;
     form.addEventListener("submit", async (event) => {
