@@ -726,9 +726,15 @@
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 
-  <div class="cookie-banner" id="cookieBanner" role="region" aria-label="Aviso de cookies">
-    <p>Usamos cookies e registramos IP/cidade para personalizar frete e ofertas. Veja nossa <a href="privacidade.html" target="_blank" rel="noopener">Política de privacidade</a>.</p>
-    <button class="btn btn--primary" id="btnAcceptCookies">Aceitar e continuar</button>
+  <div class="cookie-banner" id="cookieBanner" role="region" aria-label="Aviso de cookies" style="display:none;">
+    <p style="margin:0;font-size:13px;line-height:1.5;flex:1">
+      Usamos cookies para melhorar sua experiência, calcular frete e, com sua permissão, personalizar ofertas.
+      Veja nossa <a href="privacidade.html" target="_blank" rel="noopener">Política de privacidade</a>.
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
+      <button class="btn" id="btnRejectCookies" style="background:transparent;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.6);font-size:12px;padding:6px 14px">Recusar</button>
+      <button class="btn btn--primary" id="btnAcceptCookies" style="font-size:13px;padding:7px 18px">Aceitar cookies</button>
+    </div>
   </div>
 
   <script src="script.js"></script>

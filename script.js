@@ -33,7 +33,7 @@ function getCrmSessionId() {
 }
 
 function crmTrack(type, extra = {}) {
-  if (typeof getCookieConsent === 'function' && getCookieConsent() !== 'yes') return;
+  if (getCookieConsent() !== 'accepted') return;
   const region = getVisitorRegion();
   const payload = {
     sessionId: getCrmSessionId(),
@@ -531,18 +531,31 @@ function initCookieBanner(){
   const banner = document.getElementById("cookieBanner");
   if (!banner) return;
   const consent = getCookieConsent();
-  if (consent === "accepted") {
+  if (consent === "accepted" || consent === "rejected") {
     banner.remove();
     return;
   }
-  const btn = document.getElementById("btnAcceptCookies");
-  if (btn) {
-    btn.addEventListener("click", ()=>{
+  // mostra o banner (pode estar com display:none no HTML)
+  banner.style.display = '';
+
+  const btnAccept = document.getElementById("btnAcceptCookies");
+  const btnReject = document.getElementById("btnRejectCookies");
+
+  if (btnAccept) {
+    btnAccept.addEventListener("click", () => {
       setCookieConsent("accepted");
       banner.classList.add("cookie-banner--hide");
-      setTimeout(()=> banner.remove(), 400);
+      setTimeout(() => banner.remove(), 400);
       initTracking();
       fetchVisitorRegion();
+    });
+  }
+
+  if (btnReject) {
+    btnReject.addEventListener("click", () => {
+      setCookieConsent("rejected");
+      banner.classList.add("cookie-banner--hide");
+      setTimeout(() => banner.remove(), 400);
     });
   }
 }
