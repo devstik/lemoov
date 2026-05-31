@@ -1227,16 +1227,24 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
     }
 
     if (endereco?.cep) {
+      const _num  = String(endereco.numero || '');
+      const _comp = String(endereco.complemento || '') || undefined;
       payload.address = {
         cep:         String(endereco.cep).replace(/\D/g, ''),
         logradouro:  String(endereco.rua || endereco.logradouro || ''),
-        numero:      String(endereco.numero || ''),
-        complemento: String(endereco.complemento || '') || undefined,
+        street:      String(endereco.rua || endereco.logradouro || ''),
+        numero:      _num,
+        number:      _num,
+        complemento: _comp,
+        complement:  _comp,
         bairro:      String(endereco.bairro || ''),
+        neighborhood: String(endereco.bairro || ''),
         cidade:      String(endereco.cidade || ''),
+        city:        String(endereco.cidade || ''),
         uf:          String(endereco.uf || ''),
+        state:       String(endereco.uf || ''),
       };
-      if (!payload.address.complemento) delete payload.address.complemento;
+      if (!payload.address.complemento) { delete payload.address.complemento; delete payload.address.complement; }
     }
     const response = await fetch(INFINITEPAY_API_URL, {
       method: 'POST',
