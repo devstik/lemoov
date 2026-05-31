@@ -164,6 +164,7 @@
     <button class="tab-btn" data-tab="estoque">Estoque</button>
     <button class="tab-btn" data-tab="pedidos">Pedidos</button>
     <button class="tab-btn" data-tab="relatorio">Relatório</button>
+    <button class="tab-btn" data-tab="crm">CRM</button>
   </nav>
   <div class="adm-header-right">
     <button class="btn btn--header" id="btnSync">↑ Sync JSON</button>
@@ -1250,6 +1251,211 @@ async function loadRelatorio(){
 // ── Init ─────────────────────────────────────────────────────
 renderToneOptions();
 loadProdutos();
+
+// ── CRM ──────────────────────────────────────────────────────
+let crmDays = 30;
+let crmSessions = [];
+
+const CRM_EVENT_LABELS = {
+  page_view: 'Visitou', product_view: 'Viu produto', add_to_cart: 'Adicionou ao carrinho',
+  checkout_start: 'Iniciou checkout', purchase: 'Comprou', heartbeat: '—'
+};
+const CRM_STATUS = (s) => {
+  if (s.purchased) return { label: '✅ Comprou', color: '#16a34a' };
+  if (s.checkout)  return { label: '💳 Checkout', color: '#2563eb' };
+  if (s.carted)    return { label: '🛒 Carrinho', color: '#d97706' };
+  if (s.viewed)    return { label: '👁 Viu produto', color: '#7c3aed' };
+  return             { label: '🔵 Visitou', color: '#6b7280' };
+};
+function fmtTime(s){ if(!s)return '—'; if(s<60)return s+'s'; if(s<3600)return Math.floor(s/60)+'min'; return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'min'; }
+function fmtDt(iso){ if(!iso)return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+
+async function loadCRM(){
+  const panel = document.getElementById('tab-crm');
+  if(!panel) return;
+  panel.innerHTML = `<div style="color:#94a3b8;padding:32px;text-align:center">Carregando...</div>`;
+  try {
+    const [sesRes, funRes] = await Promise.all([
+      fetch(`/api/crm/sessions?days=${crmDays}`),
+      fetch(`/api/crm/funnel?days=${crmDays}`)
+    ]);
+    const [sesData, funData] = await Promise.all([sesRes.json(), funRes.json()]);
+    crmSessions = sesData.sessions || [];
+    renderCRM(crmSessions, funData);
+  } catch(e){ panel.innerHTML = `<p style="color:#f87171">Erro ao carregar CRM: ${e.message}</p>`; }
+}
+
+function renderCRM(sessions, funnel){
+  const f = funnel || {};
+  const conv = f.total > 0 ? ((f.purchased||0)/f.total*100).toFixed(1) : '0.0';
+  const abandon = f.carted > 0 ? (((f.carted-(f.purchased||0))/f.carted)*100).toFixed(1) : '0.0';
+  const panel = document.getElementById('tab-crm');
+  panel.innerHTML = `
+<style>
+.crm-bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.crm-stat{background:#1e293b;border-radius:10px;padding:14px 20px;min-width:130px;flex:1}
+.crm-stat__val{font-size:26px;font-weight:700;color:#f8fafc}
+.crm-stat__lbl{font-size:11px;color:#94a3b8;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
+.crm-funnel{background:#1e293b;border-radius:10px;padding:16px 20px;margin-bottom:20px}
+.crm-funnel h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin:0 0 12px}
+.crm-step{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.crm-step__label{width:180px;font-size:13px;color:#cbd5e1}
+.crm-step__bar{flex:1;height:12px;background:#0f172a;border-radius:6px;overflow:hidden}
+.crm-step__fill{height:100%;border-radius:6px;transition:width .4s}
+.crm-step__count{font-size:13px;font-weight:600;color:#f8fafc;width:50px;text-align:right}
+.crm-step__pct{font-size:11px;color:#94a3b8;width:44px;text-align:right}
+.crm-table{width:100%;border-collapse:collapse;font-size:13px}
+.crm-table th{text-align:left;padding:8px 10px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;border-bottom:1px solid #334155}
+.crm-table td{padding:9px 10px;border-bottom:1px solid #1e293b;vertical-align:middle;color:#cbd5e1}
+.crm-table tr:hover td{background:#1e293b;cursor:pointer}
+.crm-badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#0f172a}
+.crm-filter{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.crm-filter select,.crm-filter input{background:#1e293b;border:1px solid #334155;color:#f8fafc;border-radius:6px;padding:5px 10px;font-size:13px}
+.crm-note{font-size:11px;color:#64748b;margin-bottom:12px;line-height:1.5}
+</style>
+
+<div class="crm-note">⚖️ <strong>LGPD:</strong> Dados coletados somente com consentimento do usuário (cookie). IP anonimizado. Use apenas para análise interna e segmentação de anúncios. Exclua sessões sob solicitação.</div>
+
+<div class="crm-bar">
+  <div class="crm-stat"><div class="crm-stat__val">${f.total||0}</div><div class="crm-stat__lbl">Sessões (${crmDays}d)</div></div>
+  <div class="crm-stat"><div class="crm-stat__val">${sessions.filter(s=>s.clientId).length}</div><div class="crm-stat__lbl">Identificados</div></div>
+  <div class="crm-stat"><div class="crm-stat__val">${conv}%</div><div class="crm-stat__lbl">Conversão</div></div>
+  <div class="crm-stat"><div class="crm-stat__val">${abandon}%</div><div class="crm-stat__lbl">Abandono carrinho</div></div>
+  <div class="crm-stat"><div class="crm-stat__val">${f.purchased||0}</div><div class="crm-stat__lbl">Compras</div></div>
+</div>
+
+<div class="crm-funnel">
+  <h3>Funil de conversão</h3>
+  ${[
+    {label:'Visitantes',val:f.total,color:'#3b82f6'},
+    {label:'Viram produto',val:f.viewed,color:'#8b5cf6'},
+    {label:'Adicionaram ao carrinho',val:f.carted,color:'#f59e0b'},
+    {label:'Iniciaram checkout',val:f.checkout,color:'#06b6d4'},
+    {label:'Compraram',val:f.purchased,color:'#22c55e'},
+  ].map(step=>{
+    const pct = f.total > 0 ? Math.round((step.val||0)/f.total*100) : 0;
+    return `<div class="crm-step">
+      <span class="crm-step__label">${step.label}</span>
+      <div class="crm-step__bar"><div class="crm-step__fill" style="width:${pct}%;background:${step.color}"></div></div>
+      <span class="crm-step__count">${step.val||0}</span>
+      <span class="crm-step__pct">${pct}%</span>
+    </div>`;
+  }).join('')}
+</div>
+
+<div class="crm-filter">
+  <select id="crmDaysFilter">
+    <option value="7" ${crmDays===7?'selected':''}>Últimos 7 dias</option>
+    <option value="30" ${crmDays===30?'selected':''}>Últimos 30 dias</option>
+    <option value="90" ${crmDays===90?'selected':''}>Últimos 90 dias</option>
+  </select>
+  <input type="text" id="crmSearch" placeholder="Buscar por cliente ou cidade..." style="flex:1;min-width:180px">
+  <select id="crmStatusFilter">
+    <option value="">Todos os status</option>
+    <option value="purchased">Compraram</option>
+    <option value="carted">Carrinho abandonado</option>
+    <option value="viewed">Só visualizaram</option>
+  </select>
+</div>
+
+<div style="overflow-x:auto">
+<table class="crm-table" id="crmTable">
+  <thead><tr>
+    <th>Data/Hora</th><th>Cliente</th><th>Cidade</th><th>Status</th><th>Eventos</th><th>Tempo</th><th></th>
+  </tr></thead>
+  <tbody id="crmTbody">${renderCrmRows(sessions)}</tbody>
+</table>
+</div>`;
+
+  document.getElementById('crmDaysFilter')?.addEventListener('change', (e)=>{ crmDays=Number(e.target.value); loadCRM(); });
+  document.getElementById('crmSearch')?.addEventListener('input', (e)=>{
+    const q = e.target.value.toLowerCase();
+    const filtered = crmSessions.filter(s=> (s.clienteNome||'').toLowerCase().includes(q)||(s.cidade||'').toLowerCase().includes(q)||(s.clientId||'').toString().includes(q));
+    document.getElementById('crmTbody').innerHTML = renderCrmRows(filtered);
+    bindCrmRows();
+  });
+  document.getElementById('crmStatusFilter')?.addEventListener('change', (e)=>{
+    const v = e.target.value;
+    const filtered = !v ? crmSessions : crmSessions.filter(s=>s[v]);
+    document.getElementById('crmTbody').innerHTML = renderCrmRows(filtered);
+    bindCrmRows();
+  });
+  bindCrmRows();
+}
+
+function renderCrmRows(sessions){
+  if(!sessions.length) return `<tr><td colspan="7" style="text-align:center;color:#475569;padding:24px">Nenhuma sessão registrada.</td></tr>`;
+  return sessions.map(s=>{
+    const st = CRM_STATUS(s);
+    const eventIcons = [s.viewed?'👁':'', s.carted?'🛒':'', s.checkout?'💳':'', s.purchased?'✅':''].filter(Boolean).join(' ');
+    return `<tr data-sid="${s.sessionId}">
+      <td style="white-space:nowrap">${fmtDt(s.firstSeen)}</td>
+      <td>${s.clienteNome ? `<strong>${s.clienteNome}</strong><br><span style="font-size:11px;color:#64748b">#${s.clientId}</span>` : `<span style="color:#64748b">Anônimo</span>`}</td>
+      <td>${s.cidade||'—'}${s.regiao?` / ${s.regiao}`:''}</td>
+      <td><span class="crm-badge" style="color:${st.color}">${st.label}</span></td>
+      <td style="text-align:center">${eventIcons||'—'} <span style="font-size:11px;color:#64748b">(${s.eventCount})</span></td>
+      <td style="white-space:nowrap">${fmtTime(s.timeOnSite)}</td>
+      <td><button class="btn" style="padding:3px 10px;font-size:11px" data-sid="${s.sessionId}">Ver</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function bindCrmRows(){
+  document.querySelectorAll('#crmTbody button[data-sid]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openCrmSession(btn.dataset.sid));
+  });
+}
+
+async function openCrmSession(sid){
+  const res = await fetch(`/api/crm/sessions/${sid}`);
+  const data = await res.json();
+  if(!data.ok) return;
+  const s = data.session;
+  const st = CRM_STATUS({ purchased: s.events.some(e=>e.type==='purchase'), carted: s.events.some(e=>e.type==='add_to_cart'), checkout: s.events.some(e=>e.type==='checkout_start'), viewed: s.events.some(e=>e.type==='product_view') });
+  const evHtml = s.events.filter(e=>e.type!=='heartbeat').map(e=>`
+    <div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #1e293b;font-size:12px">
+      <span style="color:#64748b;white-space:nowrap">${fmtDt(e.ts)}</span>
+      <span style="color:#cbd5e1">${CRM_EVENT_LABELS[e.type]||e.type}${e.productName?` — <strong>${e.productName}</strong>`:''} ${e.orderId?`— Pedido #${e.orderId}`:''}${e.total?` (R$ ${Number(e.total).toFixed(2).replace('.',',')})`:''}</span>
+    </div>`).join('') || '<p style="color:#64748b">Nenhum evento registrado.</p>';
+
+  const dlg = document.createElement('dialog');
+  dlg.style.cssText = 'background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:12px;padding:24px;max-width:540px;width:90%;max-height:80vh;overflow-y:auto';
+  dlg.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <strong>Sessão — ${s.clienteNome||'Anônimo'}</strong>
+      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px">
+      <div><span style="color:#64748b">Cidade:</span> ${s.cidade||'—'}${s.regiao?' / '+s.regiao:''}</div>
+      <div><span style="color:#64748b">Status:</span> <span style="color:${st.color}">${st.label}</span></div>
+      <div><span style="color:#64748b">Primeira visita:</span> ${fmtDt(s.firstSeen)}</div>
+      <div><span style="color:#64748b">Última atividade:</span> ${fmtDt(s.lastSeen)}</div>
+      <div><span style="color:#64748b">Tempo no site:</span> ${fmtTime(s.timeOnSite)}</div>
+      <div><span style="color:#64748b">IP anonimizado:</span> ${s.ip||'—'}</div>
+    </div>
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin-bottom:8px">Linha do tempo</div>
+    ${evHtml}
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <button id="btnCrmDel" style="background:#7f1d1d;border:none;color:#fca5a5;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">🗑 Excluir (LGPD)</button>
+      <button onclick="this.closest('dialog').close()" style="background:#1e293b;border:none;color:#f8fafc;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Fechar</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  dlg.querySelector('#btnCrmDel').addEventListener('click', async()=>{
+    if(!confirm('Excluir esta sessão permanentemente?')) return;
+    await fetch(`/api/crm/sessions/${sid}`, {method:'DELETE'});
+    dlg.close(); loadCRM();
+  });
+  dlg.addEventListener('close', ()=> dlg.remove());
+}
+
+document.querySelectorAll('.tab-btn[data-tab="crm"]').forEach(btn=>{
+  btn.addEventListener('click', loadCRM);
+});
 </script>
+
+<!-- ── CRM ── -->
+<div id="tab-crm" class="tab-panel"></div>
+
 </body>
 </html>

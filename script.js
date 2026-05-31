@@ -18,6 +18,45 @@ let entregaDisponivel = false;
 let retiradaNaLoja = false;
 let freteModo = null;           // 'uber'
 let freteOpcoesCache = [];      // opções retornadas pelo Melhor Envio
+
+// ── CRM ──────────────────────────────────────────────────────────────────
+const CRM_SESSION_KEY = 'lemoov_crm_sid';
+let _crmSessionId = null;
+let _crmStartTime = Date.now();
+
+function getCrmSessionId() {
+  if (_crmSessionId) return _crmSessionId;
+  let sid = localStorage.getItem(CRM_SESSION_KEY);
+  if (!sid) { sid = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2); localStorage.setItem(CRM_SESSION_KEY, sid); }
+  _crmSessionId = sid;
+  return sid;
+}
+
+function crmTrack(type, extra = {}) {
+  if (typeof getCookieConsent === 'function' && getCookieConsent() !== 'yes') return;
+  const region = getVisitorRegion();
+  const payload = {
+    sessionId: getCrmSessionId(),
+    type,
+    cidade: region?.city || '',
+    regiao: region?.region || '',
+    pais:   region?.country || '',
+    clientId:    currentClientSession?.id   || null,
+    clienteNome: currentClientSession?.nome || '',
+    ...extra
+  };
+  navigator.sendBeacon
+    ? navigator.sendBeacon('/api/crm/event', JSON.stringify(payload))
+    : fetch('/api/crm/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true }).catch(() => {});
+}
+
+// heartbeat de tempo no site
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    crmTrack('heartbeat', { timeOnSite: Math.round((Date.now() - _crmStartTime) / 1000) });
+  }
+});
+// ─────────────────────────────────────────────────────────────────────────
 let enderecoAutofill = null;
 let selectedDeliveryAddress = null;
 let currentClientSession = null;
@@ -2380,6 +2419,7 @@ function abrirModal(prodOrIndex){
   if (!prod) return;
   produtoAtual = prod;
   corIndexAtual = 0;
+  crmTrack('product_view', { productId: prod.id, productName: prod.nome });
 
   let allSizes = getAllSizesForColor(produtoAtual, 0);
   tamanhoAtual = null;
@@ -2679,6 +2719,7 @@ function addCarrinho(prod, animateSource = null){
     item_category: item.categoria,
     quantity: getItemQty(item)
   });
+  crmTrack('add_to_cart', { productId: item.productId, productName: item.nome });
 }
 function removerCarrinho(index){
   carrinho.splice(index,1);
@@ -4573,6 +4614,7 @@ function openCheckoutModal(){
     items: checkoutItemsPayload,
     item_count: getCartCount()
   });
+  crmTrack('checkout_start');
   rememberCheckoutScroll();
   _reopenCheckoutModalDisplay();
   dlg.showModal();

@@ -117,7 +117,13 @@
   <script>
     const params = new URLSearchParams(window.location.search);
     const pedido = params.get('pedido') || '';
-    if (pedido) { try { localStorage.removeItem('lemoov_cart_v1'); } catch(_) {} }
+    if (pedido) {
+      try { localStorage.removeItem('lemoov_cart_v1'); } catch(_) {}
+      try {
+        const sid = localStorage.getItem('lemoov_crm_sid');
+        if (sid) navigator.sendBeacon('/api/crm/event', JSON.stringify({ sessionId: sid, type: 'purchase', orderId: pedido }));
+      } catch(_) {}
+    }
     const voltar = params.get('voltar') || 'catalogo-produtos.html';
     document.getElementById('pedido').textContent = pedido || 'em análise';
     document.getElementById('voltarCatalogo').href = voltar.startsWith('/') ? voltar : 'catalogo-produtos.html';
