@@ -533,7 +533,10 @@
     el.className = `alert alert-${type}`;
     el.style.display = 'block';
     el.style.animation = 'none';
-    requestAnimationFrame(() => { el.style.animation = ''; });
+    requestAnimationFrame(() => {
+      el.style.animation = '';
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
   }
   function hideAlert(id) {
     const el = document.getElementById(id);
