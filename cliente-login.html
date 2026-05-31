@@ -407,6 +407,9 @@
         </div>
         <button type="submit" class="btn-submit" id="btnLogin">Entrar</button>
         <div class="alert alert-err" id="loginAlert"></div>
+        <p style="text-align:center;margin-top:14px;font-size:13px;">
+          <a href="#" id="linkForgot" style="color:var(--muted);text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--navy)'" onmouseout="this.style.color='var(--muted)'">Esqueci minha senha</a>
+        </p>
       </form>
     </div>
 
@@ -496,6 +499,62 @@
 
         <button type="submit" class="btn-submit" id="btnCadastro">Criar conta</button>
         <div class="alert alert-err" id="cadastroAlert"></div>
+      </form>
+    </div>
+
+    <!-- ─── ESQUECI SENHA ─── -->
+    <div class="panel" id="panelForgot">
+      <h1 class="panel-title">Esqueci minha senha</h1>
+      <p class="panel-sub">Digite seu e-mail de cadastro e enviaremos um link para criar uma nova senha.</p>
+      <form id="formForgot" novalidate>
+        <div class="field">
+          <label>E-mail <span class="req">*</span></label>
+          <input type="email" id="forgotEmail" placeholder="seu@email.com" autocomplete="email" inputmode="email" required>
+        </div>
+        <button type="submit" class="btn-submit" id="btnForgot">Enviar link</button>
+        <div class="alert alert-err" id="forgotAlert"></div>
+      </form>
+      <p style="text-align:center;margin-top:14px;font-size:13px;">
+        <a href="#" onclick="switchTab('login');return false;" style="color:var(--muted);text-decoration:none">← Voltar ao login</a>
+      </p>
+    </div>
+
+    <!-- ─── VERIFICAR EMAIL (pós-cadastro) ─── -->
+    <div class="panel" id="panelVerify">
+      <h1 class="panel-title">Confirme seu e-mail</h1>
+      <p class="panel-sub" id="verifySubtitle">Digite o código de 6 dígitos que enviamos para o seu e-mail.</p>
+      <form id="formVerify" novalidate>
+        <div class="field">
+          <label>Código de verificação <span class="req">*</span></label>
+          <input type="text" id="verifyCode" placeholder="000000" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required
+            style="font-size:22px;letter-spacing:8px;text-align:center;">
+        </div>
+        <button type="submit" class="btn-submit" id="btnVerify">Confirmar</button>
+        <div class="alert alert-err" id="verifyAlert"></div>
+      </form>
+    </div>
+
+    <!-- ─── REDEFINIR SENHA (via link no email) ─── -->
+    <div class="panel" id="panelReset">
+      <h1 class="panel-title">Nova senha</h1>
+      <p class="panel-sub">Escolha uma nova senha para sua conta.</p>
+      <form id="formReset" novalidate>
+        <div class="field">
+          <label>Nova senha <span class="req">*</span></label>
+          <div class="pwd-wrap">
+            <input type="password" id="resetSenha" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required minlength="8">
+            <button type="button" class="pwd-eye" onclick="togglePwd('resetSenha',this)" aria-label="Ver senha">👁</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Confirmar senha <span class="req">*</span></label>
+          <div class="pwd-wrap">
+            <input type="password" id="resetSenhaConf" placeholder="Repita a senha" autocomplete="new-password" required minlength="8">
+            <button type="button" class="pwd-eye" onclick="togglePwd('resetSenhaConf',this)" aria-label="Ver senha">👁</button>
+          </div>
+        </div>
+        <button type="submit" class="btn-submit" id="btnReset">Salvar nova senha</button>
+        <div class="alert alert-err" id="resetAlert"></div>
       </form>
     </div>
   </div>
@@ -758,6 +817,13 @@
         btn.disabled = false; btn.textContent = 'Criar conta';
         return;
       }
+      if (data.needsVerification) {
+        _verifyToken = data.verifyToken;
+        document.getElementById('verifySubtitle').textContent =
+          `Digite o código de 6 dígitos que enviamos para ${email}.`;
+        showPanel('panelVerify');
+        return;
+      }
       btn.classList.add('ok'); btn.textContent = '✓ Conta criada!';
       showAlert('cadastroAlert', 'Conta criada com sucesso! Redirecionando…', 'ok');
       const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
@@ -768,8 +834,122 @@
     }
   });
 
+  // ─── Painéis extras (forgot / verify / reset) ──────────────
+  const EXTRA_PANELS = ['panelForgot','panelVerify','panelReset'];
+  let _verifyToken = null;
+  let _resetToken  = null;
+
+  function showPanel(id) {
+    const all = ['panelLogin','panelCadastro',...EXTRA_PANELS];
+    all.forEach(p => {
+      const el = document.getElementById(p);
+      if (el) el.classList.toggle('active', p === id);
+    });
+    const hideTabs = EXTRA_PANELS.includes(id);
+    document.querySelector('.tabs').style.visibility = hideTabs ? 'hidden' : '';
+  }
+
+  document.getElementById('linkForgot').addEventListener('click', (e) => {
+    e.preventDefault();
+    hideAlert('forgotAlert');
+    document.getElementById('forgotEmail').value = document.getElementById('loginEmail').value;
+    showPanel('panelForgot');
+  });
+
+  // ─── Esqueci senha ──────────────────────────────────────────
+  document.getElementById('formForgot').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideAlert('forgotAlert');
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn = document.getElementById('btnForgot');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      markErr('forgotEmail');
+      showAlert('forgotAlert', 'Digite um e-mail válido.');
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    try {
+      await fetch('/api/client/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      btn.classList.add('ok'); btn.textContent = '✓ Enviado';
+      showAlert('forgotAlert', 'Se esse e-mail estiver cadastrado, você receberá as instruções em instantes.', 'ok');
+    } catch {
+      btn.disabled = false; btn.textContent = 'Enviar link';
+      showAlert('forgotAlert', 'Erro de conexão. Tente novamente.');
+    }
+  });
+
+  // ─── Verificar email (pós-cadastro) ────────────────────────
+  document.getElementById('formVerify').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideAlert('verifyAlert');
+    const code = document.getElementById('verifyCode').value.trim();
+    const btn = document.getElementById('btnVerify');
+    if (code.length !== 6) { showAlert('verifyAlert', 'Digite o código de 6 dígitos.'); return; }
+    btn.disabled = true; btn.textContent = 'Verificando…';
+    try {
+      const res = await fetch('/api/client/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ verifyToken: _verifyToken, code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showAlert('verifyAlert', data.error || 'Código inválido.');
+        btn.disabled = false; btn.textContent = 'Confirmar';
+        return;
+      }
+      btn.classList.add('ok'); btn.textContent = '✓ E-mail confirmado!';
+      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
+      setTimeout(() => { location.href = redirect; }, 900);
+    } catch {
+      showAlert('verifyAlert', 'Erro de conexão. Tente novamente.');
+      btn.disabled = false; btn.textContent = 'Confirmar';
+    }
+  });
+
+  // ─── Redefinir senha (via token no link) ───────────────────
+  document.getElementById('formReset').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideAlert('resetAlert');
+    const novaSenha = document.getElementById('resetSenha').value;
+    const conf      = document.getElementById('resetSenhaConf').value;
+    const btn       = document.getElementById('btnReset');
+    if (novaSenha.length < 8) { showAlert('resetAlert', 'Senha deve ter pelo menos 8 caracteres.'); return; }
+    if (novaSenha !== conf)   { showAlert('resetAlert', 'As senhas não coincidem.'); return; }
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    try {
+      const res = await fetch('/api/client/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ token: _resetToken, novaSenha }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showAlert('resetAlert', data.error || 'Erro ao redefinir senha.');
+        btn.disabled = false; btn.textContent = 'Salvar nova senha';
+        return;
+      }
+      btn.classList.add('ok'); btn.textContent = '✓ Senha alterada!';
+      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
+      setTimeout(() => { location.href = redirect; }, 900);
+    } catch {
+      showAlert('resetAlert', 'Erro de conexão. Tente novamente.');
+      btn.disabled = false; btn.textContent = 'Salvar nova senha';
+    }
+  });
+
   // ─── Auto-tab via query string ──────────────────────────────
-  if (new URLSearchParams(location.search).get('tab') === 'cadastro') {
+  const _qs = new URLSearchParams(location.search);
+  if (_qs.get('token')) {
+    _resetToken = _qs.get('token');
+    showPanel('panelReset');
+  } else if (_qs.get('tab') === 'cadastro') {
     switchTab('cadastro');
   }
 

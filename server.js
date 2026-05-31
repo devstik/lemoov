@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const mysql = require('mysql2/promise');
+const nodemailer = require('nodemailer');
 const app = express();
 
 app.set('trust proxy', 1);
@@ -53,6 +54,10 @@ const sessions = new Map();
 const SESSION_TTL_MS = 60 * 60 * 1000;
 const clientSessions = new Map();
 const CLIENT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const resetTokens = new Map();
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+const verificationCodes = new Map();
+const VERIFY_CODE_TTL_MS = 15 * 60 * 1000;
 
 // garante arquivo
 if (!fs.existsSync(DB_PATH)) fs.writeFileSync(DB_PATH, '[]', 'utf-8');
@@ -623,12 +628,25 @@ app.post('/api/client/register', async (req, res) => {
         [clientId, String(endereco.cep).replace(/\D/g, ''), String(endereco.logradouro || ''), String(endereco.numero), String(endereco.complemento || '') || null, String(endereco.bairro || '') || null, String(endereco.cidade || ''), String(endereco.uf || '')]
       );
     }
+    if (process.env.RESEND_API_KEY) {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const verifyToken = crypto.randomBytes(24).toString('hex');
+      verificationCodes.set(verifyToken, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), code, expiresAt: Date.now() + VERIFY_CODE_TTL_MS });
+      await sendVerificationEmail(emailNorm, String(nome).trim(), code).catch((e) => console.error('[verify-email]', e.message));
+      return res.status(201).json({ ok: true, needsVerification: true, verifyToken });
+    }
     const token = crypto.randomBytes(24).toString('hex');
     clientSessions.set(token, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), createdAt: Date.now() });
     res.setHeader('Set-Cookie', clientSessionCookie(token, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
     return res.status(201).json({ ok: true, client: { id: clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, '') } });
   } catch (e) {
     console.error('[client/register]', e.message);
+    if (e.code === 'ER_DUP_ENTRY') {
+      const field = /for key '([^']+)'/.exec(e.message)?.[1] || '';
+      if (field.includes('email')) return res.status(409).json({ ok: false, error: 'E-mail já cadastrado.' });
+      if (field.includes('cpf'))   return res.status(409).json({ ok: false, error: 'CPF já cadastrado.' });
+      return res.status(409).json({ ok: false, error: 'Dados já cadastrados.' });
+    }
     return res.status(500).json({ ok: false, error: 'Erro ao criar conta.' });
   }
 });
@@ -639,6 +657,179 @@ app.post('/api/client/logout', (req, res) => {
   if (token) clientSessions.delete(token);
   res.setHeader('Set-Cookie', clientSessionCookie('', 0));
   res.json({ ok: true });
+});
+
+let _smtpTransport = null;
+function getSmtpTransport() {
+  if (_smtpTransport) return _smtpTransport;
+  const host = process.env.SMTP_HOST;
+  if (!host) return null;
+  _smtpTransport = nodemailer.createTransport({
+    host,
+    port: Number(process.env.SMTP_PORT || 465),
+    secure: Number(process.env.SMTP_PORT || 465) === 465,
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+  return _smtpTransport;
+}
+
+async function sendEmail(to, subject, html) {
+  const from = process.env.FROM_EMAIL || process.env.SMTP_USER || `noreply@${(process.env.SITE_URL || 'lemoov.com.br').replace(/https?:\/\//, '')}`;
+
+  const smtp = getSmtpTransport();
+  if (smtp) {
+    await smtp.sendMail({ from, to, subject, html });
+    return;
+  }
+
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return;
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    body: JSON.stringify({ from, to, subject, html }),
+  });
+  if (!r.ok) throw new Error(`Resend ${r.status}`);
+}
+
+async function sendVerificationEmail(toEmail, toNome, code) {
+  await sendEmail(toEmail, 'Confirme seu cadastro – Lemoov',
+    `<p>Olá, ${toNome}!</p><p>Use o código abaixo para confirmar seu e-mail. Válido por 15 minutos.</p><h2 style="letter-spacing:6px">${code}</h2>`
+  );
+}
+
+function formatBRL(value) {
+  return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+async function sendWhatsApp(phone, message) {
+  const instance = process.env.ZAPI_INSTANCE;
+  const token    = process.env.ZAPI_TOKEN;
+  if (!instance || !token) return;
+  const digits = String(phone).replace(/\D/g, '');
+  const phoneE164 = digits.startsWith('55') ? digits : `55${digits}`;
+  const r = await fetch(`https://api.z-api.io/instances/${instance}/token/${token}/send-text`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: phoneE164, message }),
+  });
+  if (!r.ok) throw new Error(`Z-API ${r.status}`);
+}
+
+async function notifyOrderConfirmed(pedido) {
+  const cliente   = pedido.cliente || pedido.pedidoPayload?.cliente || {};
+  const nome      = (cliente.nome || pedido.cliente_nome || '').split(' ')[0] || 'Cliente';
+  const email     = cliente.email || pedido.cliente_email || '';
+  const telefone  = cliente.telefone || pedido.cliente_telefone || '';
+  const numero    = pedido.pedido || pedido.order_nsu || '';
+  const total     = formatBRL(pedido.total || pedido.payment_paid_amount);
+  const retirada  = Boolean(pedido.retirada);
+  const entrega   = retirada ? 'Retirada na loja' : [pedido.rua, pedido.numero, pedido.cidade, pedido.uf].filter(Boolean).join(', ');
+
+  const itensTexto = (pedido.itens || []).map((i) =>
+    `• ${i.nome || i.description || 'Item'}${i.cor ? ` – ${i.cor}` : ''}${i.tamanho ? ` (${i.tamanho})` : ''} x${i.quantidade || i.qty || 1}`
+  ).join('\n') || '–';
+
+  const itensHtml = (pedido.itens || []).map((i) =>
+    `<tr><td style="padding:6px 0;border-bottom:1px solid #eee">${i.nome || i.description || 'Item'}${i.cor ? ` – ${i.cor}` : ''}${i.tamanho ? ` (${i.tamanho})` : ''}</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">x${i.quantidade || i.qty || 1}</td></tr>`
+  ).join('');
+
+  if (email) {
+    await sendEmail(
+      email,
+      `✅ Pedido #${numero} confirmado – Lemoov`,
+      `<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;color:#1a2a35">
+        <h2 style="color:#1ec28b">Pagamento aprovado! 🎉</h2>
+        <p>Olá, <strong>${nome}</strong>! Seu pedido foi confirmado e já estamos separando tudo com carinho.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0">${itensHtml}</table>
+        <p><strong>Total:</strong> ${total}</p>
+        <p><strong>${retirada ? 'Retirada' : 'Entrega'}:</strong> ${entrega || '–'}</p>
+        <p style="margin-top:24px;color:#7f8ba4;font-size:13px">Em breve entraremos em contato para combinar ${retirada ? 'a retirada' : 'a entrega'}. Qualquer dúvida, fale com a gente pelo WhatsApp!</p>
+        <p style="color:#7f8ba4;font-size:12px">Lemoov Fitness</p>
+      </div>`
+    ).catch((e) => console.error('[notify email]', e.message));
+  }
+
+  if (telefone) {
+    const wppMsg = `✅ *Pedido #${numero} confirmado!*\n\nOlá, ${nome}! Seu pagamento foi aprovado. 🎉\n\n${itensTexto}\n\n💰 *Total:* ${total}\n📦 *${retirada ? 'Retirada na loja' : `Entrega: ${entrega || '–'}`}*\n\nEm breve entraremos em contato para combinar ${retirada ? 'a retirada' : 'a entrega'}. Obrigada pela compra! 💚\n\n_Lemoov Fitness_`;
+    await sendWhatsApp(telefone, wppMsg).catch((e) => console.error('[notify whatsapp]', e.message));
+  }
+}
+
+async function sendResetEmail(toEmail, toNome, resetUrl) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[reset-password] link para ${toEmail}: ${resetUrl}`);
+    return;
+  }
+  await sendEmail(toEmail, 'Redefinir senha – Lemoov',
+    `<p>Olá, ${toNome}!</p><p>Clique no link abaixo para criar uma nova senha. Válido por 1 hora.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Se não foi você, ignore este e-mail.</p>`
+  );
+}
+
+app.post('/api/client/verify-email', async (req, res) => {
+  const { verifyToken, code } = req.body || {};
+  if (!verifyToken || !code) return res.status(400).json({ ok: false, error: 'Dados inválidos.' });
+  const entry = verificationCodes.get(String(verifyToken));
+  if (!entry || Date.now() > entry.expiresAt) {
+    verificationCodes.delete(String(verifyToken));
+    return res.status(400).json({ ok: false, error: 'Código expirado. Faça o cadastro novamente.' });
+  }
+  if (String(code).trim() !== entry.code)
+    return res.status(400).json({ ok: false, error: 'Código incorreto.' });
+  verificationCodes.delete(String(verifyToken));
+  const sessionToken = crypto.randomBytes(24).toString('hex');
+  clientSessions.set(sessionToken, { clientId: entry.clientId, nome: entry.nome, email: entry.email, telefone: entry.telefone, createdAt: Date.now() });
+  res.setHeader('Set-Cookie', clientSessionCookie(sessionToken, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
+  return res.json({ ok: true, client: { id: entry.clientId, nome: entry.nome, email: entry.email } });
+});
+
+app.post('/api/client/forgot-password', async (req, res) => {
+  const email = String(req.body?.email || '').toLowerCase().trim();
+  if (!email) return res.status(400).json({ ok: false, error: 'E-mail obrigatório.' });
+  try {
+    if (MYSQL_ENABLED) {
+      await initDatabase();
+      const [rows] = await mysqlPool.execute('SELECT id, nome FROM lemoov_clients WHERE email = ?', [email]);
+      if (rows.length) {
+        const { id, nome } = rows[0];
+        const token = crypto.randomBytes(32).toString('hex');
+        resetTokens.set(token, { clientId: id, email, expiresAt: Date.now() + RESET_TOKEN_TTL_MS });
+        const resetUrl = `${getPublicBaseUrl(req)}/cliente-login.html?token=${token}`;
+        await sendResetEmail(email, nome, resetUrl).catch((e) => console.error('[reset-email]', e.message));
+      }
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('[forgot-password]', e.message);
+    return res.json({ ok: true });
+  }
+});
+
+app.post('/api/client/reset-password', async (req, res) => {
+  const { token, novaSenha } = req.body || {};
+  if (!token || !novaSenha || String(novaSenha).length < 8)
+    return res.status(400).json({ ok: false, error: 'Token e senha (mínimo 8 caracteres) são obrigatórios.' });
+  const entry = resetTokens.get(String(token));
+  if (!entry || Date.now() > entry.expiresAt) {
+    resetTokens.delete(String(token));
+    return res.status(400).json({ ok: false, error: 'Link expirado ou inválido. Solicite um novo.' });
+  }
+  try {
+    if (!MYSQL_ENABLED) return res.status(503).json({ ok: false, error: 'Banco de dados não disponível.' });
+    await initDatabase();
+    const senhaHash = hashClientPwd(String(novaSenha));
+    await mysqlPool.execute('UPDATE lemoov_clients SET senha_hash = ? WHERE id = ?', [senhaHash, entry.clientId]);
+    resetTokens.delete(String(token));
+    const sessionToken = crypto.randomBytes(24).toString('hex');
+    const [rows] = await mysqlPool.execute('SELECT nome, email, telefone FROM lemoov_clients WHERE id = ?', [entry.clientId]);
+    const client = rows[0] || {};
+    clientSessions.set(sessionToken, { clientId: entry.clientId, nome: client.nome || '', email: entry.email, telefone: client.telefone || '', createdAt: Date.now() });
+    res.setHeader('Set-Cookie', clientSessionCookie(sessionToken, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('[reset-password]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao redefinir senha.' });
+  }
 });
 
 app.get('/api/client/addresses', clientAuthRequired, async (req, res) => {
@@ -1008,7 +1199,16 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
     }
 
     if (endereco?.cep) {
-      payload.address = { cep: String(endereco.cep).replace(/\D/g, '') };
+      payload.address = {
+        cep:         String(endereco.cep).replace(/\D/g, ''),
+        logradouro:  String(endereco.rua || endereco.logradouro || ''),
+        numero:      String(endereco.numero || ''),
+        complemento: String(endereco.complemento || '') || undefined,
+        bairro:      String(endereco.bairro || ''),
+        cidade:      String(endereco.cidade || ''),
+        uf:          String(endereco.uf || ''),
+      };
+      if (!payload.address.complemento) delete payload.address.complemento;
     }
     const response = await fetch(INFINITEPAY_API_URL, {
       method: 'POST',
@@ -1118,14 +1318,18 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
         };
         await appendPedidoStore(pedido, conn);
         await deletePendingPaymentStore(orderNsu, conn);
+        notifyOrderConfirmed(pedido).catch((e) => console.error('[notify]', e.message));
       }
       if (conn) await conn.commit();
       return res.json({ ok: true });
     }
 
+    const pedidoExistente = await readPedidoStore(orderNsu, conn);
     await updatePedidoStore(orderNsu, paymentUpdates);
     if (conn) await conn.commit();
-
+    if (pedidoExistente) {
+      notifyOrderConfirmed({ ...pedidoExistente, ...paymentUpdates }).catch((e) => console.error('[notify]', e.message));
+    }
     res.json({ ok: true });
   } catch (e) {
     if (conn) {
