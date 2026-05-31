@@ -1776,6 +1776,43 @@ app.use((req, res, next) => {
 const CRM_MAX_SESSIONS = 10000;
 const CRM_RETENTION_DAYS = 90;
 
+let _crmTablesReady = false;
+async function ensureCrmTables() {
+  if (_crmTablesReady) return;
+  await mysqlPool.execute(`
+    CREATE TABLE IF NOT EXISTS lemoov_crm_sessions (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      session_id VARCHAR(64) NOT NULL UNIQUE,
+      ip VARCHAR(45),
+      cidade VARCHAR(100),
+      regiao VARCHAR(100),
+      pais VARCHAR(100),
+      client_id INT NULL,
+      cliente_nome VARCHAR(200),
+      first_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      time_on_site INT NOT NULL DEFAULT 0
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+  await mysqlPool.execute(`
+    CREATE TABLE IF NOT EXISTS lemoov_crm_events (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      session_id VARCHAR(64) NOT NULL,
+      type VARCHAR(50) NOT NULL,
+      product_id VARCHAR(50),
+      product_name VARCHAR(200),
+      order_id VARCHAR(50),
+      total DECIMAL(10,2),
+      page VARCHAR(500),
+      ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+  try { await mysqlPool.execute('CREATE INDEX idx_crm_session ON lemoov_crm_events (session_id)'); } catch (_) {}
+  try { await mysqlPool.execute('CREATE INDEX idx_crm_ts ON lemoov_crm_events (ts)'); } catch (_) {}
+  _crmTablesReady = true;
+  console.log('[crm] tabelas prontas');
+}
+
 function readCrmJson() { try { return JSON.parse(fs.readFileSync(CRM_PATH, 'utf-8')); } catch (_) { return []; } }
 function writeCrmJson(list) {
   const cutoff = Date.now() - CRM_RETENTION_DAYS * 86400000;
@@ -1790,19 +1827,28 @@ function anonIp(ip) {
 
 app.post('/api/crm/event', async (req, res) => {
   try {
+    const body = req.body || {};
     const { sessionId, type, cidade, regiao, pais, clientId, clienteNome,
-            productId, productName, orderId, total, timeOnSite, page } = req.body || {};
-    if (!sessionId || !type) return res.json({ ok: false });
+            productId, productName, orderId, total, timeOnSite, page } = body;
+
+    if (!sessionId || !type) {
+      console.warn('[crm/event] body inválido — sessionId ou type ausente. body:', JSON.stringify(body).slice(0, 200));
+      return res.json({ ok: false, error: 'sessionId e type obrigatórios' });
+    }
+
     const ip = anonIp(req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '');
 
     if (MYSQL_ENABLED) {
-      await initDatabase();
-      const [existing] = await mysqlPool.execute('SELECT id, client_id FROM lemoov_crm_sessions WHERE session_id = ?', [sessionId]);
+      await ensureCrmTables();
+      const [existing] = await mysqlPool.execute(
+        'SELECT id, client_id FROM lemoov_crm_sessions WHERE session_id = ?', [sessionId]
+      );
       if (!existing.length) {
         await mysqlPool.execute(
           'INSERT INTO lemoov_crm_sessions (session_id, ip, cidade, regiao, pais, client_id, cliente_nome) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [sessionId, ip, cidade||'', regiao||'', pais||'', clientId||null, clienteNome||'']
         );
+        console.log(`[crm] nova sessão: ${sessionId} | ${cidade||'?'} | tipo: ${type}`);
       } else {
         const updates = ['last_seen = NOW()'];
         const params = [];

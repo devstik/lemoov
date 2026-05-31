@@ -45,13 +45,12 @@ function crmTrack(type, extra = {}) {
     clienteNome: currentClientSession?.nome || '',
     ...extra
   };
-  const json = JSON.stringify(payload);
-  // sendBeacon precisa de Blob com Content-Type para Express parsear como JSON
-  if (navigator.sendBeacon) {
-    navigator.sendBeacon('/api/crm/event', new Blob([json], { type: 'application/json' }));
-  } else {
-    fetch('/api/crm/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: json, keepalive: true }).catch(() => {});
-  }
+  fetch('/api/crm/event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true
+  }).catch(() => {});
 }
 
 // heartbeat de tempo no site
