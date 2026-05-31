@@ -4804,6 +4804,7 @@ async function handleSubmitCheckout(ev){
       itens: purchaseItems,
       itensEstoque,
       frete_modo: retiradaNaLoja ? "retirada" : (freteModo || ""),
+      frete_prazo_dias: (() => { const op = freteOpcoesCache.find(o => o.modo === freteModo); return op?.prazoDias || null; })(),
       retirada: retiradaNaLoja,
       cep: endereco.cep || "",
       cidade: endereco.cidade || "",

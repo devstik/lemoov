@@ -721,11 +721,22 @@ async function sendWhatsApp(phone, message) {
 
 const CIDADES_LOCAIS = ['fortaleza','caucaia','maracanaú','maracanau','eusébio','eusebio','maranguape'];
 
-function calcDeliveryEstimate(cidade, freteModo, confirmedAt) {
+function _addWorkingDays(base, days) {
+  let d = new Date(base);
+  let added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+  }
+  return d;
+}
+
+function calcDeliveryEstimate(cidade, freteModo, confirmedAt, prazoDias) {
   const cidadeNorm = String(cidade || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const isLocal = CIDADES_LOCAIS.some((c) => cidadeNorm.includes(c.normalize('NFD').replace(/[̀-ͯ]/g, '')));
   const base = confirmedAt ? new Date(confirmedAt) : new Date();
-  const dow = base.getDay(); // 0=dom,1=seg,...,6=sab
+  const dow = base.getDay();
+  const fmt = (d) => d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   if (isLocal) {
     let delivery;
@@ -735,13 +746,22 @@ function calcDeliveryEstimate(cidade, freteModo, confirmedAt) {
       const daysUntilMon = (8 - dow) % 7 || 7;
       delivery = new Date(base); delivery.setDate(base.getDate() + daysUntilMon);
     }
-    return delivery.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return fmt(delivery);
+  }
+
+  if (prazoDias && Number(prazoDias) > 0) {
+    const delivery = _addWorkingDays(base, Number(prazoDias));
+    const carrier = String(freteModo || '').includes('sedex') ? 'SEDEX'
+      : String(freteModo || '').includes('total') ? 'Total Express'
+      : String(freteModo || '').includes('pac') ? 'PAC'
+      : 'transportadora';
+    return `até ${fmt(delivery)} (${prazoDias} dias úteis via ${carrier})`;
   }
 
   const modoLabel = String(freteModo || '').toLowerCase();
-  if (modoLabel.includes('sedex')) return 'conforme prazo SEDEX (geralmente 1–3 dias úteis)';
-  if (modoLabel.includes('total') || modoLabel.includes('express')) return 'conforme prazo Total Express (verificar rastreamento)';
-  if (modoLabel.includes('pac')) return 'conforme prazo PAC (geralmente 5–10 dias úteis)';
+  if (modoLabel.includes('sedex'))                              return 'conforme prazo SEDEX (geralmente 1–3 dias úteis)';
+  if (modoLabel.includes('total') || modoLabel.includes('express')) return 'conforme prazo Total Express';
+  if (modoLabel.includes('pac'))                                return 'conforme prazo PAC (geralmente 5–10 dias úteis)';
   return 'conforme prazo da transportadora escolhida';
 }
 
@@ -756,7 +776,7 @@ async function notifyOrderConfirmed(pedido) {
   const retirada  = Boolean(pedido.retirada);
   const cidade    = pedido.cidade || pedido.endereco?.cidade || '';
   const entrega   = retirada ? 'Retirada na loja' : [pedido.rua, pedido.numero, cidade, pedido.uf].filter(Boolean).join(', ');
-  const prazo     = retirada ? '' : calcDeliveryEstimate(cidade, pedido.frete_modo, pedido.confirmedAt);
+  const prazo     = retirada ? '' : calcDeliveryEstimate(cidade, pedido.frete_modo, pedido.confirmedAt, pedido.frete_prazo_dias);
 
   const itensTexto = (pedido.itens || []).map((i) =>
     `• ${i.nome || i.description || 'Item'}${i.cor ? ` – ${i.cor}` : ''}${i.tamanho ? ` (${i.tamanho})` : ''} x${i.quantidade || i.qty || 1}`
@@ -1063,13 +1083,14 @@ async function _consultarMelhorEnvioOpcoes(cepDestino) {
   const opcoes = services
     .filter(s => s.price && !s.error && _permitida(s))
     .map(s => ({
-      modo:    _modoTransportadora(s.name),
-      servico: s.name || 'Transportadora',
-      empresa: s.company?.name || '',
-      logo:    s.company?.picture || '',
-      valor:   parseFloat(s.price),
-      prazo:   s.delivery_time ? `${s.delivery_time} dia${s.delivery_time > 1 ? 's úteis' : ' útil'}` : '',
-      label:   `${s.name} – R$ ${parseFloat(s.price).toFixed(2).replace('.', ',')}${s.delivery_time ? ` (${s.delivery_time} dias úteis)` : ''}`
+      modo:      _modoTransportadora(s.name),
+      servico:   s.name || 'Transportadora',
+      empresa:   s.company?.name || '',
+      logo:      s.company?.picture || '',
+      valor:     parseFloat(s.price),
+      prazoDias: s.delivery_time || null,
+      prazo:     s.delivery_time ? `${s.delivery_time} dia${s.delivery_time > 1 ? 's úteis' : ' útil'}` : '',
+      label:     `${s.name} – R$ ${parseFloat(s.price).toFixed(2).replace('.', ',')}${s.delivery_time ? ` (${s.delivery_time} dias úteis)` : ''}`
     }))
     .sort((a, b) => a.valor - b.valor);
 
