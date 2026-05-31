@@ -169,6 +169,9 @@ async function initDatabase() {
     for (const colDef of ['nome VARCHAR(200) NOT NULL DEFAULT \'\'', 'cpf VARCHAR(14) NULL', 'telefone VARCHAR(20) NULL']) {
       try { await mysqlPool.execute(`ALTER TABLE lemoov_clients ADD COLUMN ${colDef}`); } catch (_) {}
     }
+    for (const colDef of ['complemento VARCHAR(100) NULL', 'bairro VARCHAR(100) NULL', 'uf VARCHAR(2) NOT NULL DEFAULT \'\'']) {
+      try { await mysqlPool.execute(`ALTER TABLE lemoov_client_addresses ADD COLUMN ${colDef}`); } catch (_) {}
+    }
     const [rows] = await mysqlPool.execute('SELECT COUNT(*) AS total FROM lemoov_products');
     if (Number(rows?.[0]?.total || 0) === 0) {
       const localProducts = ensureProductIds(readProdutos());
