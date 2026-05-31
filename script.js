@@ -1162,13 +1162,16 @@ function computeColorPrice(prod, colorObj){
   .frete__row{ display:flex; gap:8px; align-items:center; flex-wrap:nowrap; }
   .frete__msg{ font-size:0.78rem; color:#5d6b76; margin-top:6px; text-align:left; }
   .frete__opcoes{ margin-top:8px; display:flex; flex-direction:column; gap:6px; }
-  .frete__opcao{ display:flex; align-items:center; gap:10px; padding:9px 12px; border:1.5px solid #dde3ea; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:border-color .15s,background .15s; }
+  .frete__opcao{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1.5px solid #dde3ea; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:border-color .15s,background .15s; }
   .frete__opcao:hover{ border-color:#009C3B; background:#f5fff8; }
   .frete__opcao input[type="radio"]{ accent-color:#009C3B; width:16px; height:16px; flex-shrink:0; cursor:pointer; }
   .frete__opcao.selected{ border-color:#009C3B; background:#f0fdf4; }
-  .frete__opcao-info{ display:flex; flex-direction:column; gap:1px; }
+  .frete__opcao-logo{ width:52px; height:32px; object-fit:contain; flex-shrink:0; }
+  .frete__opcao-info{ display:flex; flex-direction:column; gap:1px; flex:1; }
   .frete__opcao-nome{ font-weight:600; color:#1a2a35; }
+  .frete__opcao-empresa{ font-size:0.7rem; color:#6b7a85; }
   .frete__opcao-prazo{ font-size:0.72rem; color:#6b7a85; }
+  .frete__opcao-preco{ font-weight:700; color:#1a2a35; white-space:nowrap; }
   .frete__ui input{
     flex: 1 1 0; min-width: 0;
     padding: 11px 14px !important;
@@ -2807,11 +2810,13 @@ function mostrarOpcoesTransportadora(opcoes) {
   container.innerHTML = opcoes.map((op, i) => `
     <label class="frete__opcao${i === 0 ? ' selected' : ''}" data-modo="${op.modo}" data-valor="${op.valor}">
       <input type="radio" name="freteOpcao" value="${i}" ${i === 0 ? 'checked' : ''}>
+      ${op.logo ? `<img class="frete__opcao-logo" src="${op.logo}" alt="${op.empresa || op.servico}">` : ''}
       <div class="frete__opcao-info">
-        <span class="frete__opcao-nome">${op.servico} — R$ ${op.valor.toFixed(2).replace('.', ',')}</span>
-        ${op.prazo ? `<span class="frete__opcao-prazo">${op.prazo}</span>` : ''}
-        ${op.contingencia ? `<span class="frete__opcao-prazo" style="color:#e8445a">(estimativa)</span>` : ''}
+        <span class="frete__opcao-nome">${op.servico}</span>
+        ${op.empresa ? `<span class="frete__opcao-empresa">${op.empresa}</span>` : ''}
+        ${op.prazo ? `<span class="frete__opcao-prazo">${op.prazo}${op.contingencia ? ' (estimativa)' : ''}</span>` : ''}
       </div>
+      <span class="frete__opcao-preco">R$ ${op.valor.toFixed(2).replace('.', ',')}</span>
     </label>
   `).join('');
 
@@ -4431,10 +4436,13 @@ function openCheckoutModal(){
       const sel = op.modo === freteModo || (i === 0 && !freteOpcoesCache.find(o => o.modo === freteModo));
       return `<label class="frete__opcao${sel ? ' selected' : ''}" data-modo="${op.modo}" data-valor="${op.valor}">
         <input type="radio" name="ckFreteOpcao" value="${i}" ${sel ? 'checked' : ''}>
+        ${op.logo ? `<img class="frete__opcao-logo" src="${op.logo}" alt="${op.empresa || op.servico}">` : ''}
         <div class="frete__opcao-info">
-          <span class="frete__opcao-nome">${op.servico} — R$ ${op.valor.toFixed(2).replace('.', ',')}</span>
+          <span class="frete__opcao-nome">${op.servico}</span>
+          ${op.empresa ? `<span class="frete__opcao-empresa">${op.empresa}</span>` : ''}
           ${op.prazo ? `<span class="frete__opcao-prazo">${op.prazo}</span>` : ''}
         </div>
+        <span class="frete__opcao-preco">R$ ${op.valor.toFixed(2).replace('.', ',')}</span>
       </label>`;
     }).join('');
     ckFreteOpcoes.style.display = '';

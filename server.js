@@ -1052,13 +1052,23 @@ async function _consultarMelhorEnvioOpcoes(cepDestino) {
   const data = await resp.json();
 
   const services = Array.isArray(data) ? data : [data];
+
+  const _permitida = (s) => {
+    const nome    = (s.name || '').toLowerCase();
+    const empresa = (s.company?.name || '').toLowerCase();
+    return nome === 'pac' || nome === 'sedex' ||
+           empresa.includes('total express') || nome.includes('total express');
+  };
+
   const opcoes = services
-    .filter(s => s.price && !s.error)
+    .filter(s => s.price && !s.error && _permitida(s))
     .map(s => ({
       modo:    _modoTransportadora(s.name),
       servico: s.name || 'Transportadora',
+      empresa: s.company?.name || '',
+      logo:    s.company?.picture || '',
       valor:   parseFloat(s.price),
-      prazo:   s.delivery_time ? `${s.delivery_time} dia${s.delivery_time > 1 ? 's' : ''} útil` : '',
+      prazo:   s.delivery_time ? `${s.delivery_time} dia${s.delivery_time > 1 ? 's úteis' : ' útil'}` : '',
       label:   `${s.name} – R$ ${parseFloat(s.price).toFixed(2).replace('.', ',')}${s.delivery_time ? ` (${s.delivery_time} dias úteis)` : ''}`
     }))
     .sort((a, b) => a.valor - b.valor);
