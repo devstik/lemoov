@@ -719,15 +719,44 @@ async function sendWhatsApp(phone, message) {
   if (!r.ok) throw new Error(`Z-API ${r.status}`);
 }
 
+const CIDADES_LOCAIS = ['fortaleza','caucaia','maracanaú','maracanau','eusébio','eusebio','maranguape'];
+
+function calcDeliveryEstimate(cidade, freteModo, confirmedAt) {
+  const cidadeNorm = String(cidade || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const isLocal = CIDADES_LOCAIS.some((c) => cidadeNorm.includes(c.normalize('NFD').replace(/[̀-ͯ]/g, '')));
+  const base = confirmedAt ? new Date(confirmedAt) : new Date();
+  const dow = base.getDay(); // 0=dom,1=seg,...,6=sab
+
+  if (isLocal) {
+    let delivery;
+    if (dow >= 1 && dow <= 4) {
+      delivery = new Date(base); delivery.setDate(base.getDate() + 1);
+    } else {
+      const daysUntilMon = (8 - dow) % 7 || 7;
+      delivery = new Date(base); delivery.setDate(base.getDate() + daysUntilMon);
+    }
+    return delivery.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+
+  const modoLabel = String(freteModo || '').toLowerCase();
+  if (modoLabel.includes('sedex')) return 'conforme prazo SEDEX (geralmente 1–3 dias úteis)';
+  if (modoLabel.includes('total') || modoLabel.includes('express')) return 'conforme prazo Total Express (verificar rastreamento)';
+  if (modoLabel.includes('pac')) return 'conforme prazo PAC (geralmente 5–10 dias úteis)';
+  return 'conforme prazo da transportadora escolhida';
+}
+
 async function notifyOrderConfirmed(pedido) {
   const cliente   = pedido.cliente || pedido.pedidoPayload?.cliente || {};
-  const nome      = (cliente.nome || pedido.cliente_nome || '').split(' ')[0] || 'Cliente';
+  const nomeCliente = cliente.nome || pedido.cliente_nome || 'Cliente';
+  const nome      = nomeCliente.split(' ')[0];
   const email     = cliente.email || pedido.cliente_email || '';
   const telefone  = cliente.telefone || pedido.cliente_telefone || '';
   const numero    = pedido.pedido || pedido.order_nsu || '';
   const total     = formatBRL(pedido.total || pedido.payment_paid_amount);
   const retirada  = Boolean(pedido.retirada);
-  const entrega   = retirada ? 'Retirada na loja' : [pedido.rua, pedido.numero, pedido.cidade, pedido.uf].filter(Boolean).join(', ');
+  const cidade    = pedido.cidade || pedido.endereco?.cidade || '';
+  const entrega   = retirada ? 'Retirada na loja' : [pedido.rua, pedido.numero, cidade, pedido.uf].filter(Boolean).join(', ');
+  const prazo     = retirada ? '' : calcDeliveryEstimate(cidade, pedido.frete_modo, pedido.confirmedAt);
 
   const itensTexto = (pedido.itens || []).map((i) =>
     `• ${i.nome || i.description || 'Item'}${i.cor ? ` – ${i.cor}` : ''}${i.tamanho ? ` (${i.tamanho})` : ''} x${i.quantidade || i.qty || 1}`
@@ -736,6 +765,9 @@ async function notifyOrderConfirmed(pedido) {
   const itensHtml = (pedido.itens || []).map((i) =>
     `<tr><td style="padding:6px 0;border-bottom:1px solid #eee">${i.nome || i.description || 'Item'}${i.cor ? ` – ${i.cor}` : ''}${i.tamanho ? ` (${i.tamanho})` : ''}</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">x${i.quantidade || i.qty || 1}</td></tr>`
   ).join('');
+
+  const prazoHtml = prazo ? `<p><strong>Previsão de entrega:</strong> ${prazo}</p>` : '';
+  const prazoWpp  = prazo ? `\n📅 *Previsão:* ${prazo}` : '';
 
   if (email) {
     await sendEmail(
@@ -747,15 +779,22 @@ async function notifyOrderConfirmed(pedido) {
         <table style="width:100%;border-collapse:collapse;margin:16px 0">${itensHtml}</table>
         <p><strong>Total:</strong> ${total}</p>
         <p><strong>${retirada ? 'Retirada' : 'Entrega'}:</strong> ${entrega || '–'}</p>
-        <p style="margin-top:24px;color:#7f8ba4;font-size:13px">Em breve entraremos em contato para combinar ${retirada ? 'a retirada' : 'a entrega'}. Qualquer dúvida, fale com a gente pelo WhatsApp!</p>
+        ${prazoHtml}
+        <p style="margin-top:24px;color:#7f8ba4;font-size:13px">Qualquer dúvida, fale com a gente pelo WhatsApp!</p>
         <p style="color:#7f8ba4;font-size:12px">Lemoov Fitness</p>
       </div>`
     ).catch((e) => console.error('[notify email]', e.message));
   }
 
   if (telefone) {
-    const wppMsg = `✅ *Pedido #${numero} confirmado!*\n\nOlá, ${nome}! Seu pagamento foi aprovado. 🎉\n\n${itensTexto}\n\n💰 *Total:* ${total}\n📦 *${retirada ? 'Retirada na loja' : `Entrega: ${entrega || '–'}`}*\n\nEm breve entraremos em contato para combinar ${retirada ? 'a retirada' : 'a entrega'}. Obrigada pela compra! 💚\n\n_Lemoov Fitness_`;
+    const wppMsg = `✅ *Pedido #${numero} confirmado!*\n\nOlá, ${nome}! Seu pagamento foi aprovado. 🎉\n\n${itensTexto}\n\n💰 *Total:* ${total}\n📦 *${retirada ? 'Retirada na loja' : `Entrega: ${entrega || '–'}`}*${prazoWpp}\n\nQualquer dúvida, fale com a gente pelo WhatsApp! 💚\n\n_Lemoov Fitness_`;
     await sendWhatsApp(telefone, wppMsg).catch((e) => console.error('[notify whatsapp]', e.message));
+  }
+
+  const storePhone = process.env.LEMOOV_WHATSAPP;
+  if (storePhone) {
+    const storeMsg = `🛍️ *Novo pedido recebido!*\n\n📦 *Pedido:* #${numero}\n👤 *Cliente:* ${nomeCliente}\n📱 *Telefone:* ${telefone || '–'}\n📧 *Email:* ${email || '–'}\n\n${itensTexto}\n\n💰 *Total:* ${total}\n🏠 *Endereço:* ${entrega || 'Retirada'}${prazoWpp}`;
+    await sendWhatsApp(storePhone, storeMsg).catch((e) => console.error('[notify loja]', e.message));
   }
 }
 
@@ -972,14 +1011,24 @@ function _normalizarCidade(cidade) {
   return (cidade || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-async function _consultarMelhorEnvioSedex(cepDestino) {
+function _modoTransportadora(nome) {
+  const n = (nome || '').toLowerCase();
+  if (n.includes('sedex'))                              return 'sedex';
+  if (n.includes('total express') || n.includes('totalexpress')) return 'total_express';
+  if (n.includes('pac'))                                return 'pac';
+  if (n.includes('jadlog'))                             return 'jadlog';
+  if (n.includes('loggi'))                              return 'loggi';
+  if (n.includes('azul'))                               return 'azul_cargo';
+  return 'outro';
+}
+
+async function _consultarMelhorEnvioOpcoes(cepDestino) {
   const token = process.env.MELHOR_ENVIO_TOKEN;
   if (!token) throw new Error('MELHOR_ENVIO_TOKEN não configurado');
 
   const cepOrigem = (process.env.CEP_ORIGEM || '60360760').replace(/\D/g, '');
   const cepDest   = String(cepDestino).replace(/\D/g, '');
-
-  const baseUrl = process.env.NODE_ENV === 'production'
+  const baseUrl   = process.env.NODE_ENV === 'production'
     ? 'https://www.melhorenvio.com.br'
     : 'https://sandbox.melhorenvio.com.br';
 
@@ -995,21 +1044,27 @@ async function _consultarMelhorEnvioSedex(cepDestino) {
       from: { postal_code: cepOrigem },
       to:   { postal_code: cepDest },
       package: { height: 5, width: 20, length: 25, weight: 0.5 },
-      options: { insurance_value: 50, receipt: false, own_hand: false },
-      services: '4'   // 4 = SEDEX na Melhor Envio
+      options: { insurance_value: 50, receipt: false, own_hand: false }
     })
   });
 
   if (!resp.ok) throw new Error(`Melhor Envio HTTP ${resp.status}`);
   const data = await resp.json();
 
-  // Retorna o primeiro serviço com preço válido (sem campo error)
-  const option = Array.isArray(data)
-    ? data.find(s => s.price && !s.error)
-    : (data.price && !data.error ? data : null);
-  if (!option) throw new Error('Nenhuma opção SEDEX disponível para esta rota');
+  const services = Array.isArray(data) ? data : [data];
+  const opcoes = services
+    .filter(s => s.price && !s.error)
+    .map(s => ({
+      modo:    _modoTransportadora(s.name),
+      servico: s.name || 'Transportadora',
+      valor:   parseFloat(s.price),
+      prazo:   s.delivery_time ? `${s.delivery_time} dia${s.delivery_time > 1 ? 's' : ''} útil` : '',
+      label:   `${s.name} – R$ ${parseFloat(s.price).toFixed(2).replace('.', ',')}${s.delivery_time ? ` (${s.delivery_time} dias úteis)` : ''}`
+    }))
+    .sort((a, b) => a.valor - b.valor);
 
-  return parseFloat(option.price);
+  if (!opcoes.length) throw new Error('Nenhuma opção de frete disponível para esta rota');
+  return opcoes;
 }
 
 async function calcularFreteDoPedido(cidade, cepDestino) {
@@ -1026,13 +1081,13 @@ async function calcularFreteDoPedido(cidade, cepDestino) {
     return { tipo: 'Entrega Local', valor: 25.00, label: 'Entrega Local – R$ 25,00' };
   }
 
-  // Demais localidades — SEDEX via Melhor Envio (com contingência)
+  // Demais localidades — múltiplas opções via Melhor Envio
   try {
-    const valorSedex = await _consultarMelhorEnvioSedex(cepDestino);
-    return { tipo: 'SEDEX', valor: valorSedex, label: `SEDEX – R$ ${valorSedex.toFixed(2).replace('.', ',')}` };
+    const opcoes = await _consultarMelhorEnvioOpcoes(cepDestino);
+    return { tipo: 'opcoes', opcoes };
   } catch (err) {
-    console.error('[frete] Falha na API SEDEX, aplicando contingência:', err.message);
-    return { tipo: 'SEDEX', valor: 30.00, label: 'SEDEX – R$ 30,00 (estimativa)', contingencia: true };
+    console.error('[frete] Falha no Melhor Envio, aplicando contingência:', err.message);
+    return { tipo: 'opcoes', opcoes: [{ modo: 'sedex', servico: 'SEDEX', valor: 30.00, prazo: '1–3 dias úteis', label: 'SEDEX – R$ 30,00 (estimativa)', contingencia: true }] };
   }
 }
 

@@ -289,16 +289,17 @@ function getLocalDeliveryPrice(city, uf) {
   }
   return null;
 }
+const CARRIER_LABELS = { sedex: 'SEDEX', total_express: 'Total Express', pac: 'PAC', jadlog: 'Jadlog', loggi: 'Loggi', azul_cargo: 'Azul Cargo', outro: 'Transportadora' };
 function getDeliveryModeLabel(mode) {
   if (mode === "uber_free")  return `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
   if (mode === "local_12")   return `Entrega Local – R$ 12,00`;
   if (mode === "local_15")   return `Entrega Local – R$ 15,00`;
   if (mode === "local_25")   return `Entrega Local – R$ 25,00`;
-  if (mode === "sedex")      return `SEDEX – R$ ${freteAtual > 0 ? freteAtual.toFixed(2).replace(".", ",") : "--"}`;
+  if (CARRIER_LABELS[mode])  return `${CARRIER_LABELS[mode]} – R$ ${freteAtual > 0 ? freteAtual.toFixed(2).replace(".", ",") : "--"}`;
   return "Consultar via WhatsApp";
 }
 function isFixedFreteMode(mode = freteModo) {
-  return ["uber_free","local_12","local_15","local_25","sedex"].includes(mode);
+  return ["uber_free","local_12","local_15","local_25","sedex","total_express","pac","jadlog","loggi","azul_cargo","outro"].includes(mode);
 }
 function getFreteResumoLabel({ includeCep = false } = {}) {
   const cepInfo = includeCep && cepAtual ? ` (CEP ${formatCEPForInput(cepAtual)})` : "";
@@ -1159,6 +1160,14 @@ function computeColorPrice(prod, colorObj){
   .pickup-toggle__text span{display:block;color:#5d6b76;font-size:.72rem;line-height:1.25;margin-top:2px}
   .frete__row{ display:flex; gap:8px; align-items:center; flex-wrap:nowrap; }
   .frete__msg{ font-size:0.78rem; color:#5d6b76; margin-top:6px; text-align:left; }
+  .frete__opcoes{ margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+  .frete__opcao{ display:flex; align-items:center; gap:10px; padding:9px 12px; border:1.5px solid #dde3ea; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:border-color .15s,background .15s; }
+  .frete__opcao:hover{ border-color:#009C3B; background:#f5fff8; }
+  .frete__opcao input[type="radio"]{ accent-color:#009C3B; width:16px; height:16px; flex-shrink:0; cursor:pointer; }
+  .frete__opcao.selected{ border-color:#009C3B; background:#f0fdf4; }
+  .frete__opcao-info{ display:flex; flex-direction:column; gap:1px; }
+  .frete__opcao-nome{ font-weight:600; color:#1a2a35; }
+  .frete__opcao-prazo{ font-size:0.72rem; color:#6b7a85; }
   .frete__ui input{
     flex: 1 1 0; min-width: 0;
     padding: 11px 14px !important;
@@ -2780,6 +2789,7 @@ function ensureFreteUI() {
       <div id="freteMsg" class="frete__msg">
         ${DELIVERY_MODE_LABEL}. Informe o CEP para continuar.
       </div>
+      <div id="freteOpcoes" class="frete__opcoes" style="display:none;"></div>
       <div class="checkout__link">
         Não sabe o CEP? <a href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noopener">Consultar nos Correios</a>
       </div>
@@ -2787,6 +2797,45 @@ function ensureFreteUI() {
     footer.insertBefore(wrap, footer.firstChild);
   }
   hideLegacyFreteUI();
+}
+
+function mostrarOpcoesTransportadora(opcoes) {
+  const container = el('#freteOpcoes');
+  if (!container) return;
+  container.style.display = 'flex';
+  container.innerHTML = opcoes.map((op, i) => `
+    <label class="frete__opcao${i === 0 ? ' selected' : ''}" data-modo="${op.modo}" data-valor="${op.valor}">
+      <input type="radio" name="freteOpcao" value="${i}" ${i === 0 ? 'checked' : ''}>
+      <div class="frete__opcao-info">
+        <span class="frete__opcao-nome">${op.servico} — R$ ${op.valor.toFixed(2).replace('.', ',')}</span>
+        ${op.prazo ? `<span class="frete__opcao-prazo">${op.prazo}</span>` : ''}
+        ${op.contingencia ? `<span class="frete__opcao-prazo" style="color:#e8445a">(estimativa)</span>` : ''}
+      </div>
+    </label>
+  `).join('');
+
+  // selecionar a primeira opção
+  const primeira = opcoes[0];
+  freteAtual = primeira.valor;
+  freteModo  = primeira.modo;
+  entregaDisponivel = true;
+  atualizarCart();
+
+  container.querySelectorAll('.frete__opcao').forEach((lbl) => {
+    lbl.addEventListener('click', () => {
+      container.querySelectorAll('.frete__opcao').forEach(l => l.classList.remove('selected'));
+      lbl.classList.add('selected');
+      freteAtual = parseFloat(lbl.dataset.valor);
+      freteModo  = lbl.dataset.modo;
+      entregaDisponivel = true;
+      atualizarCart();
+    });
+  });
+}
+
+function esconderOpcoesTransportadora() {
+  const container = el('#freteOpcoes');
+  if (container) { container.style.display = 'none'; container.innerHTML = ''; }
 }
 
 async function calcularFreteBackend(addr) {
@@ -2800,8 +2849,15 @@ async function calcularFreteBackend(addr) {
     if (!r.ok) return false;
     const d = await r.json();
     if (!d.ok) return false;
+    cepAtual = String(addr.cep).replace(/\D/g, '');
+
+    if (d.tipo === 'opcoes' && Array.isArray(d.opcoes) && d.opcoes.length) {
+      mostrarOpcoesTransportadora(d.opcoes);
+      return true;
+    }
+
+    esconderOpcoesTransportadora();
     freteAtual = d.valor;
-    cepAtual   = String(addr.cep).replace(/\D/g, '');
     entregaDisponivel = true;
     if (d.tipo === 'Entrega Local') {
       if (d.valor <= 12)      freteModo = 'local_12';
@@ -3998,6 +4054,7 @@ function resetFreteUI(message = "Informe o CEP para calcular a entrega.") {
   entregaDisponivel = false;
   enderecoAutofill = null;
   freteModo = null;
+  esconderOpcoesTransportadora();
   const freteMsg = el("#freteMsg");
   if (freteMsg) freteMsg.textContent = message;
   atualizarCart();
@@ -4076,17 +4133,17 @@ async function calcularEntregaPorCEP(cepRaw) {
     return;
   }
 
-  // Fora da RMF → consulta SEDEX no backend
-  if (freteMsg) freteMsg.textContent = "Consultando frete SEDEX…";
-  const sedexOk = await calcularFreteBackend({ cidade: city || '', cep });
-  if (!sedexOk) {
+  // Fora da RMF → múltiplas opções via Melhor Envio
+  if (freteMsg) freteMsg.textContent = "Consultando opções de frete…";
+  esconderOpcoesTransportadora();
+  const freteOk = await calcularFreteBackend({ cidade: city || '', cep });
+  if (!freteOk) {
     freteModo = "whatsapp";
     freteAtual = 0;
     if (freteMsg) freteMsg.textContent = "Não foi possível calcular o frete. Consulte via WhatsApp.";
     atualizarCart();
-  } else if (freteMsg) {
-    const contingencia = freteModo === "sedex" ? " (estimativa)" : "";
-    freteMsg.textContent = `SEDEX – R$ ${freteAtual.toFixed(2).replace(".", ",")}${contingencia}.`;
+  } else {
+    if (freteMsg) freteMsg.textContent = "Escolha a transportadora:";
   }
 }
 
@@ -4745,8 +4802,6 @@ async function handleSubmitCheckout(ev){
     if (pedidoEl) pedidoEl.textContent = numeroPedido;
     if (pagamentoOnline.checkoutUrl) {
       rememberPaymentOrigin();
-      carrinho = [];
-      atualizarCart();
       closeCheckoutModal();
       closeCart();
       showPaymentTransition();
