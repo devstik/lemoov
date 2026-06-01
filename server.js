@@ -1496,6 +1496,83 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
   }
 });
 
+app.get('/api/catalog-feed.xml', async (req, res) => {
+  try {
+    const produtos = ensureProductIds(await readProdutosStore());
+    const base = PUBLIC_SITE_URL || `https://${req.headers.host}`;
+
+    const esc = (s) => String(s || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+    const price = (val) => `${Number(val || 0).toFixed(2)} BRL`;
+
+    const CAT_MAP = {
+      'Macacão':'Apparel & Accessories > Clothing > One-Pieces > Jumpsuits & Rompers',
+      'Top':'Apparel & Accessories > Clothing > Activewear > Sports Bras & Tops',
+      'Calça':'Apparel & Accessories > Clothing > Pants',
+      'Conjunto':'Apparel & Accessories > Clothing > Activewear',
+      'Short':'Apparel & Accessories > Clothing > Shorts',
+      'Legging':'Apparel & Accessories > Clothing > Pants > Leggings',
+    };
+    const defaultCat = 'Apparel & Accessories > Clothing > Activewear';
+
+    const items = [];
+    for (const prod of produtos) {
+      const cores = Array.isArray(prod.cores) && prod.cores.length ? prod.cores : [{ nome: 'Único', imagem: '' }];
+      const descRaw = Array.isArray(prod.desc) ? prod.desc.map(d => (typeof d === 'string' ? d : (d.texto || d.text || ''))).filter(Boolean).join(' ') : String(prod.desc || prod.nome);
+      const descText = esc(descRaw || `${prod.nome} - Lemoov Fitness`).slice(0, 5000);
+      const cat = esc(CAT_MAP[prod.categoria] || defaultCat);
+      const prodUrl = `${base}/catalogo-produtos.html?p=${prod.id}`;
+
+      for (const cor of cores) {
+        const img = cor.imagem ? `${base}/${cor.imagem}` : '';
+        if (!img) continue;
+
+        const corPreco = cor.preco || prod.preco || 0;
+        const corPromo = cor.precoPromo || prod.precoPromo || null;
+        const inStock  = !cor.soldOut && Array.isArray(cor.tamanhos) ? cor.tamanhos.length > 0 : !cor.soldOut;
+        const varId    = esc(`${prod.id}-${(cor.nome||'').replace(/\s+/g,'-').toLowerCase()}`);
+
+        items.push(`    <item>
+      <g:id>${varId}</g:id>
+      <g:item_group_id>${prod.id}</g:item_group_id>
+      <g:title>${esc(`${prod.nome} – ${cor.nome}`)}</g:title>
+      <g:description>${descText}</g:description>
+      <g:link>${esc(prodUrl)}</g:link>
+      <g:image_link>${esc(img)}</g:image_link>
+      <g:price>${price(corPreco)}</g:price>
+      ${corPromo ? `<g:sale_price>${price(corPromo)}</g:sale_price>` : ''}
+      <g:availability>${inStock ? 'in stock' : 'out of stock'}</g:availability>
+      <g:condition>new</g:condition>
+      <g:brand>Lemoov</g:brand>
+      <g:color>${esc(cor.nome)}</g:color>
+      <g:gender>female</g:gender>
+      <g:age_group>adult</g:age_group>
+      <g:google_product_category>${cat}</g:google_product_category>
+    </item>`);
+      }
+    }
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:g="http://base.google.com/ns/1.0" version="2.0">
+  <channel>
+    <title>Lemoov Fitness</title>
+    <link>${esc(base)}</link>
+    <description>Catálogo Lemoov Fitness – moda fitness premium</description>
+${items.join('\n')}
+  </channel>
+</rss>`;
+
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(xml);
+  } catch (e) {
+    console.error('[catalog-feed]', e.message);
+    res.status(500).send('Erro ao gerar feed');
+  }
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
@@ -1859,6 +1936,47 @@ function anonIp(ip) {
   const p = ip.split('.'); p[3] = '0'; return p.join('.');
 }
 
+const _geoCache = new Map();
+async function geolocateIp(rawIp) {
+  const ip = (rawIp || '').replace(/^::ffff:/, ''); // desembrulha IPv4-mapped
+  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168') || ip.startsWith('10.')) return {};
+  if (_geoCache.has(ip)) return _geoCache.get(ip);
+  try {
+    const r = await fetch(
+      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,city,regionName,country,zip,lat,lon,district&lang=pt-BR`,
+      { signal: AbortSignal.timeout(4000) }
+    );
+    if (!r.ok) return {};
+    const d = await r.json();
+    if (d.status !== 'success') return {};
+    const result = {
+      cidade: d.city        || '',
+      bairro: d.district    || '',
+      regiao: d.regionName  || '',
+      pais:   d.country     || '',
+      cep:    d.zip         || '',
+    };
+    // tenta bairro via Nominatim se ip-api não retornou
+    if (!result.bairro && d.lat && d.lon) {
+      try {
+        const nom = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${d.lat}&lon=${d.lon}&format=json`,
+          { headers: { 'User-Agent': 'Lemoov/1.0 (contato@lemoov.com.br)' }, signal: AbortSignal.timeout(4000) }
+        );
+        if (nom.ok) {
+          const nd = await nom.json();
+          result.bairro = nd.address?.suburb || nd.address?.neighbourhood || nd.address?.district || '';
+        }
+      } catch (_) {}
+    }
+    _geoCache.set(ip, result);
+    setTimeout(() => _geoCache.delete(ip), 3_600_000); // 1h TTL
+    return result;
+  } catch (_) {
+    return {};
+  }
+}
+
 app.post('/api/crm/event', async (req, res) => {
   try {
     const body = req.body || {};
@@ -1871,7 +1989,8 @@ app.post('/api/crm/event', async (req, res) => {
       return res.json({ ok: false, error: 'sessionId e type obrigatórios' });
     }
 
-    const ip = anonIp(req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '');
+    const rawIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '';
+    const ip = anonIp(rawIp);
     const ua = parseUserAgent(req.headers['user-agent'] || '');
 
     if (MYSQL_ENABLED) {
@@ -1880,12 +1999,19 @@ app.post('/api/crm/event', async (req, res) => {
         'SELECT id, client_id FROM lemoov_crm_sessions WHERE session_id = ?', [sessionId]
       );
       if (!existing.length) {
+        // geolocalização server-side — mais confiável que a do browser
+        const geo = await geolocateIp(rawIp);
+        const finalCidade = geo.cidade || cidade || '';
+        const finalBairro = geo.bairro || bairro || '';
+        const finalRegiao = geo.regiao || regiao || '';
+        const finalPais   = geo.pais   || pais   || '';
+        const finalCep    = geo.cep    || cep    || '';
         await mysqlPool.execute(
           `INSERT INTO lemoov_crm_sessions
             (session_id, ip, cidade, bairro, regiao, pais, cep, client_id, cliente_nome,
              dispositivo, browser, so, origem, utm_source, utm_medium, utm_campaign)
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [sessionId, ip, cidade||'', bairro||'', regiao||'', pais||'', cep||'',
+          [sessionId, ip, finalCidade, finalBairro, finalRegiao, finalPais, finalCep,
            clientId||null, clienteNome||'',
            ua.dispositivo, ua.browser, ua.so,
            origem||'', utm_source||'', utm_medium||'', utm_campaign||'']
@@ -1942,7 +2068,9 @@ app.get('/api/crm/sessions', authRequired, async (req, res) => {
     if (MYSQL_ENABLED) {
       await initDatabase();
       const [rows] = await mysqlPool.execute(`
-        SELECT s.session_id AS sessionId, s.cidade, s.regiao, s.client_id AS clientId, s.cliente_nome AS clienteNome,
+        SELECT s.session_id AS sessionId, s.cidade, s.bairro, s.regiao, s.pais, s.cep,
+               s.client_id AS clientId, s.cliente_nome AS clienteNome,
+               s.dispositivo, s.browser, s.so, s.origem, s.utm_source, s.utm_medium, s.utm_campaign,
                s.first_seen AS firstSeen, s.last_seen AS lastSeen, s.time_on_site AS timeOnSite,
                COUNT(e.id) AS eventCount,
                MAX(CASE WHEN e.type='product_view'   THEN 1 ELSE 0 END) AS viewed,
@@ -1976,7 +2104,28 @@ app.get('/api/crm/sessions/:id', authRequired, async (req, res) => {
       const [[session]] = await mysqlPool.execute('SELECT * FROM lemoov_crm_sessions WHERE session_id = ?', [sid]);
       if (!session) return res.status(404).json({ ok: false });
       const [events] = await mysqlPool.execute('SELECT * FROM lemoov_crm_events WHERE session_id = ? ORDER BY ts ASC', [sid]);
-      return res.json({ ok: true, session: { sessionId: session.session_id, ip: session.ip, cidade: session.cidade, regiao: session.regiao, pais: session.pais, clientId: session.client_id, clienteNome: session.cliente_nome, firstSeen: session.first_seen, lastSeen: session.last_seen, timeOnSite: session.time_on_site, events: events.map(e => ({ type: e.type, productId: e.product_id, productName: e.product_name, orderId: e.order_id, total: e.total, page: e.page, ts: e.ts })) } });
+      return res.json({ ok: true, session: {
+        sessionId:    session.session_id,
+        ip:           session.ip,
+        cidade:       session.cidade,
+        bairro:       session.bairro,
+        regiao:       session.regiao,
+        pais:         session.pais,
+        cep:          session.cep,
+        clientId:     session.client_id,
+        clienteNome:  session.cliente_nome,
+        dispositivo:  session.dispositivo,
+        browser:      session.browser,
+        so:           session.so,
+        origem:       session.origem,
+        utm_source:   session.utm_source,
+        utm_medium:   session.utm_medium,
+        utm_campaign: session.utm_campaign,
+        firstSeen:    session.first_seen,
+        lastSeen:     session.last_seen,
+        timeOnSite:   session.time_on_site,
+        events: events.map(e => ({ type: e.type, productId: e.product_id, productName: e.product_name, orderId: e.order_id, total: e.total, page: e.page, ts: e.ts }))
+      } });
     }
     const session = readCrmJson().find(s => s.sessionId === sid);
     if (!session) return res.status(404).json({ ok: false });

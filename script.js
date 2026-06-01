@@ -3852,9 +3852,15 @@ async function initCatalog(){
 ------------------------------------------------------------ */
 if (!restorePaymentOriginIfNeeded()) {
   initCatalog().then(() => {
-    if (new URLSearchParams(location.search).get('initiateCheckout') === '1') {
+    const _qs = new URLSearchParams(location.search);
+    if (_qs.get('initiateCheckout') === '1') {
       history.replaceState(null, '', location.pathname);
       initiateCheckout();
+    } else if (_qs.get('p')) {
+      // link direto do Instagram Shopping / Meta Catalog
+      const prodId = _qs.get('p');
+      history.replaceState(null, '', location.pathname);
+      abrirModal(String(prodId));
     }
   });
 }
