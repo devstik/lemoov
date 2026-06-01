@@ -1960,10 +1960,20 @@ function computeColorPrice(prod, colorObj){
   .account__card span{ display:block; color:#6b7b88; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.07em; }
   .account__card strong{ display:block; margin-top:3px; color:#0d1f2a; font-size:.92rem; }
   .account__list{ display:grid; gap:10px; }
-  .account__order-head{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; font-weight:800; }
-  .account__order-meta{ margin-top:5px; color:#607080; font-size:.82rem; line-height:1.4; }
-  .account__items{ margin:8px 0 0; padding-left:18px; color:#344454; font-size:.82rem; }
-  .account__empty{ color:#607080; padding:18px; border:1px dashed #d4dde5; border-radius:14px; background:#fbfcfd; }
+	  .account__order-head{ display:flex; justify-content:space-between; gap:10px; align-items:flex-start; font-weight:800; }
+	  .account__order-meta{ margin-top:5px; color:#607080; font-size:.82rem; line-height:1.4; }
+	  .account__items{ margin:8px 0 0; padding-left:18px; color:#344454; font-size:.82rem; }
+	  .account__order-actions{ margin-top:10px; display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+	  .account__order-cancel{
+	    border:1px solid #ffd1d1; border-radius:10px; background:#fff5f5; color:#b42323;
+	    padding:9px 12px; font-weight:800; font-size:.76rem; cursor:pointer;
+	  }
+	  .account__order-cancel:disabled{ opacity:.6; cursor:not-allowed; }
+	  .account__order-note{
+	    margin-top:8px; border:1px solid #fde68a; border-radius:10px; background:#fffbeb;
+	    color:#92400e; padding:8px 10px; font-size:.78rem; font-weight:700; line-height:1.35;
+	  }
+	  .account__empty{ color:#607080; padding:18px; border:1px dashed #d4dde5; border-radius:14px; background:#fbfcfd; }
   .account__actions{ margin-top:auto; padding-top:16px; display:flex; justify-content:flex-end; }
   .account__logout{
     border:1px solid #ffd1d1; border-radius:10px; background:#fff5f5; color:#b42323;
@@ -3342,25 +3352,34 @@ function renderAccountPanel({ client, addresses, orders }) {
     </div>
   `).join("") : `<div class="account__empty">Nenhum endereço cadastrado.</div>`;
 
-  const ordersHtml = orders.length ? orders.map((order) => {
-    const items = Array.isArray(order.itens) ? order.itens.slice(0, 4) : [];
-    const itemsHtml = items.length ? `<ul class="account__items">${items.map((item) => `
-      <li>${Number(item.quantity || 1)}x ${escapeHTML(item.item_name || "Item")} ${item.price ? `· ${formatBRL(Number(item.price))}` : ""}</li>
-    `).join("")}</ul>` : "";
-    return `
-      <div class="account__order">
-        <div class="account__order-head">
-          <span>Pedido ${escapeHTML(order.pedido || "—")}</span>
-          <span>${formatBRL(Number(order.total || 0))}</span>
+	  const ordersHtml = orders.length ? orders.map((order) => {
+	    const items = Array.isArray(order.itens) ? order.itens.slice(0, 4) : [];
+	    const itemsHtml = items.length ? `<ul class="account__items">${items.map((item) => `
+	      <li>${Number(item.quantity || 1)}x ${escapeHTML(item.item_name || "Item")} ${item.price ? `· ${formatBRL(Number(item.price))}` : ""}</li>
+	    `).join("")}</ul>` : "";
+	    const status = String(order.status || "").toLowerCase();
+	    const cancelPending = order.cancellation_requested && String(order.cancellation_request_status || "pendente") !== "recusado";
+	    const canRequestCancel = order.pedido && !cancelPending && status !== "cancelado" && status !== "entregue";
+	    return `
+	      <div class="account__order">
+	        <div class="account__order-head">
+	          <span>Pedido ${escapeHTML(order.pedido || "—")}</span>
+	          <span>${formatBRL(Number(order.total || 0))}</span>
         </div>
         <div class="account__order-meta">
           Status: ${escapeHTML(order.status || "—")} · Data: ${formatAccountDate(order.createdAt)}
           ${order.frete_modo ? `<br>Frete: ${escapeHTML(getDeliveryModeLabel(order.frete_modo))}` : ""}
-        </div>
-        ${itemsHtml}
-      </div>
-    `;
-  }).join("") : `<div class="account__empty">Você ainda não tem pedidos confirmados.</div>`;
+	        </div>
+	        ${itemsHtml}
+	        ${cancelPending ? `<div class="account__order-note">Solicitação de cancelamento enviada. A equipe vai analisar e confirmar o estorno.</div>` : ""}
+	        ${canRequestCancel ? `
+	          <div class="account__order-actions">
+	            <button type="button" class="account__order-cancel" data-cancel-order="${escapeHTML(order.pedido)}">Solicitar cancelamento</button>
+	          </div>
+	        ` : ""}
+	      </div>
+	    `;
+	  }).join("") : `<div class="account__empty">Você ainda não tem pedidos confirmados.</div>`;
 
   return `
     <div class="account__panel is-active" data-account-panel="dados">
@@ -3473,17 +3492,53 @@ function bindAccountModal(dlg) {
     });
   });
 
-  dlg.querySelectorAll(".btn-cancel-addr-edit").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.addrId;
-      const card = dlg.querySelector(`.account__card[data-addr-id="${id}"]`);
-      if (!card) return;
+	  dlg.querySelectorAll(".btn-cancel-addr-edit").forEach((btn) => {
+	    btn.addEventListener("click", () => {
+	      const id = btn.dataset.addrId;
+	      const card = dlg.querySelector(`.account__card[data-addr-id="${id}"]`);
+	      if (!card) return;
       card.querySelector(".account__addr-edit-form").style.display = "none";
       card.querySelector(".btn-edit-addr").textContent = "Editar";
-    });
-  });
+	    });
+	  });
 
-  dlg.querySelectorAll(".account__addr-edit-form").forEach((editForm) => {
+	  dlg.querySelectorAll("[data-cancel-order]").forEach((btn) => {
+	    btn.addEventListener("click", async () => {
+	      const numero = btn.dataset.cancelOrder;
+	      if (!numero) return;
+	      const reason = window.prompt("Informe o motivo do cancelamento:");
+	      if (reason === null) return;
+	      btn.disabled = true;
+	      btn.textContent = "Enviando...";
+	      try {
+	        const res = await fetch(`/api/client/orders/${encodeURIComponent(numero)}/cancel-request`, {
+	          method: 'POST',
+	          credentials: 'same-origin',
+	          headers: { 'Content-Type': 'application/json' },
+	          body: JSON.stringify({ reason: reason.trim() })
+	        });
+	        const data = await res.json().catch(() => ({}));
+	        if (!res.ok || !data.ok) {
+	          alert(data.error || "Não foi possível solicitar o cancelamento.");
+	          return;
+	        }
+	        showAppMessage("Solicitação de cancelamento enviada.");
+	        const [addresses, orders] = await Promise.all([fetchClientAddresses(), fetchClientOrders()]);
+	        const body = dlg.querySelector(".account__body");
+	        if (body) body.innerHTML = renderAccountPanel({ client: currentClientSession, addresses, orders });
+	        bindAccountModal(dlg);
+	        dlg.querySelectorAll(".account__tab").forEach((tab) => tab.setAttribute("aria-selected", tab.dataset.accountTab === "pedidos" ? "true" : "false"));
+	        dlg.querySelectorAll(".account__panel").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.accountPanel === "pedidos"));
+	      } catch (_) {
+	        alert("Erro de conexão. Tente novamente.");
+	      } finally {
+	        btn.disabled = false;
+	        btn.textContent = "Solicitar cancelamento";
+	      }
+	    });
+	  });
+
+	  dlg.querySelectorAll(".account__addr-edit-form").forEach((editForm) => {
     if (editForm._lemoovBound) return;
     editForm._lemoovBound = true;
     editForm.addEventListener("submit", async (e) => {

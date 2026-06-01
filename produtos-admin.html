@@ -114,6 +114,10 @@
     .s-enviado{background:#ede9fe;color:#5b21b6}
     .s-entregue{background:#dcfce7;color:#166534}
     .s-cancelado{background:#f1f5f9;color:#64748b}
+    .cancel-alert{margin-top:10px;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.45}
+    .cancel-alert strong{display:block;color:#78350f;margin-bottom:3px}
+    .cancel-dot{display:inline-flex;align-items:center;gap:5px;margin-left:6px;color:#b42323;font-size:11px;font-weight:700}
+    .cancel-dot::before{content:'';width:6px;height:6px;border-radius:50%;background:#ef4444}
     /* Order detail */
     .order-detail{padding:14px;overflow-y:auto;max-height:calc(100vh - 160px)}
     /* Modal */
@@ -877,11 +881,12 @@ function renderOrdersTable(){
   $('ordersBody').innerHTML=rows.length===0
     ?`<tr><td colspan="5" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
     :rows.map(p=>{
-      const nome=p.cliente?.nome||p.nome||'—';
-      const itens=orderItems(p).length||'—';
-      return `<tr data-num="${esc(String(p.pedido))}" class="${String(p.pedido)===String(activePedNum)?'selected':''}">
-        <td><strong>#${esc(String(p.pedido))}</strong></td>
-        <td>${esc(nome)}</td>
+	      const nome=p.cliente?.nome||p.nome||'—';
+	      const itens=orderItems(p).length||'—';
+	      const cancelPending=p.cancellation_requested&&String(p.cancellation_request_status||'pendente')==='pendente';
+	      return `<tr data-num="${esc(String(p.pedido))}" class="${String(p.pedido)===String(activePedNum)?'selected':''}">
+	        <td><strong>#${esc(String(p.pedido))}</strong>${cancelPending?'<span class="cancel-dot">Cancelamento</span>':''}</td>
+	        <td>${esc(nome)}</td>
         <td>${sPill(p.status)}</td>
         <td>${itens}</td>
         <td style="white-space:nowrap;font-size:12px;color:#64748b">${fmtD(p.recebidoEm)}</td>
@@ -922,8 +927,18 @@ function renderOrderDetail(ped){
         ${['reservado','confirmado','enviado','entregue','cancelado'].map(s=>
           `<button class="filter-btn ${(ped.status||'reservado')===s?'active':''}" data-set="${esc(s)}">${sLabel(s)}</button>`
         ).join('')}
-      </div>
-      <div class="order-section-title">Cliente</div>
+	      </div>
+	      ${ped.cancellation_requested?`
+	        <div class="cancel-alert">
+	          <strong>Cliente solicitou cancelamento</strong>
+	          Status da solicitação: ${esc(ped.cancellation_request_status||'pendente')}<br>
+	          ${ped.cancellation_requestedAt?`Solicitado em: ${fmtD(ped.cancellation_requestedAt)}<br>`:''}
+	          Motivo: ${esc(ped.cancellation_reason||'Não informado')}<br>
+	          ${ped.refund_status?`Estorno InfinitePay: ${esc(ped.refund_status)}<br>`:''}
+	          Ao aprovar, marque o pedido como Cancelado. O estoque volta automaticamente e o estorno deve ser feito no app InfinitePay.
+	        </div>
+	      `:''}
+	      <div class="order-section-title">Cliente</div>
       <div class="order-info-box">
         <div style="font-weight:600">${esc(ped.cliente?.nome||ped.nome||'—')}</div>
         ${ped.cliente?.telefone||ped.telefone?`<div style="color:#64748b">${esc(ped.cliente?.telefone||ped.telefone)}</div>`:''}

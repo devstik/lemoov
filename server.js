@@ -432,6 +432,10 @@ function isPaidOrderStatus(order = {}) {
   const paymentStatus = String(order.pagamento_status || '').toLowerCase();
   return ['confirmado', 'enviado', 'entregue'].includes(status) || paymentStatus === 'pago';
 }
+function shouldHoldStock(order = {}) {
+  const status = String(order.status || '').toLowerCase();
+  return ['confirmado', 'enviado', 'entregue'].includes(status);
+}
 function generateOrderNumber(pedidos) {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -476,6 +480,31 @@ function reserveStock(produtos, itens = []) {
     const stock = getColorStock(cor);
     if (!stock) continue;
     stock[item.tamanho] = Math.max(0, Number(stock[item.tamanho]) - item.quantidade);
+    cor.tamanhos = Object.keys(stock).filter((size) => Number(stock[size]) > 0);
+    cor.soldOut = cor.tamanhos.length === 0;
+    prod.updatedAt = new Date().toISOString();
+  }
+
+  produtos.forEach((prod) => {
+    if (!Array.isArray(prod.cores) || !prod.cores.length) return;
+    const allManaged = prod.cores.every((cor) => Boolean(getColorStock(cor)));
+    if (!allManaged) return;
+    prod.soldOut = prod.cores.every((cor) => {
+      const stock = getColorStock(cor);
+      return !stock || Object.values(stock).every((qty) => Number(qty) <= 0);
+    });
+  });
+}
+
+function restoreStock(produtos, itens = []) {
+  const stockItems = normalizeStockItems(itens);
+
+  for (const item of stockItems) {
+    const prod = produtos.find((p) => Number(p.id) === item.productId);
+    const cor = Array.isArray(prod?.cores) ? prod.cores[item.colorIndex] : null;
+    const stock = getColorStock(cor);
+    if (!stock) continue;
+    stock[item.tamanho] = Math.max(0, Number(stock[item.tamanho]) || 0) + item.quantidade;
     cor.tamanhos = Object.keys(stock).filter((size) => Number(stock[size]) > 0);
     cor.soldOut = cor.tamanhos.length === 0;
     prod.updatedAt = new Date().toISOString();
@@ -736,6 +765,14 @@ async function sendVerificationEmail(toEmail, toNome, code) {
 function formatBRL(value) {
   return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 async function sendWhatsApp(phone, message) {
   const instance = process.env.ZAPI_INSTANCE;
@@ -847,6 +884,58 @@ async function notifyOrderConfirmed(pedido) {
   if (storePhone) {
     const storeMsg = `🛍️ *Novo pedido recebido!*\n\n📦 *Pedido:* #${numero}\n👤 *Cliente:* ${nomeCliente}\n📱 *Telefone:* ${telefone || '–'}\n📧 *Email:* ${email || '–'}\n\n${itensTexto}\n\n💰 *Total:* ${total}\n🏠 *Endereço:* ${entrega || 'Retirada'}${prazoWpp}`;
     await sendWhatsApp(storePhone, storeMsg).catch((e) => console.error('[notify loja]', e.message));
+  }
+}
+
+async function notifyCancellationRequested(pedido) {
+  const cliente = pedido.cliente || pedido.pedidoPayload?.cliente || {};
+  const nomeCliente = cliente.nome || pedido.cliente_nome || 'Cliente';
+  const email = cliente.email || pedido.cliente_email || '';
+  const telefone = cliente.telefone || pedido.cliente_telefone || '';
+  const numero = pedido.pedido || pedido.order_nsu || '';
+  const total = formatBRL(pedido.total || pedido.payment_paid_amount);
+  const reason = pedido.cancellation_reason || 'Cliente não informou motivo.';
+  const requestedAt = pedido.cancellation_requestedAt
+    ? new Date(pedido.cancellation_requestedAt).toLocaleString('pt-BR')
+    : new Date().toLocaleString('pt-BR');
+  const storeEmail = process.env.LEMOOV_STORE_EMAIL || process.env.ADMIN_EMAIL || process.env.FROM_EMAIL || process.env.SMTP_USER || '';
+
+  const itensHtml = (pedido.itens || []).map((i) =>
+    `<tr><td style="padding:6px 0;border-bottom:1px solid #eee">${escapeHtml(i.nome || i.description || i.item_name || 'Item')}${i.cor ? ` – ${escapeHtml(i.cor)}` : ''}${i.tamanho ? ` (${escapeHtml(i.tamanho)})` : ''}</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">x${escapeHtml(i.quantidade || i.qty || i.quantity || 1)}</td></tr>`
+  ).join('');
+
+  if (storeEmail) {
+    await sendEmail(
+      storeEmail,
+      `Solicitação de cancelamento #${numero} – Lemoov`,
+      `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;color:#1a2a35">
+        <h2 style="color:#b42323">Solicitação de cancelamento</h2>
+        <p>O cliente solicitou cancelamento do pedido <strong>#${escapeHtml(numero)}</strong>.</p>
+        <p><strong>Cliente:</strong> ${escapeHtml(nomeCliente)}<br>
+        <strong>E-mail:</strong> ${escapeHtml(email || '–')}<br>
+        <strong>Telefone:</strong> ${escapeHtml(telefone || '–')}<br>
+        <strong>Total:</strong> ${escapeHtml(total)}<br>
+        <strong>Solicitado em:</strong> ${escapeHtml(requestedAt)}</p>
+        <p><strong>Motivo:</strong><br>${escapeHtml(reason)}</p>
+        ${itensHtml ? `<table style="width:100%;border-collapse:collapse;margin:16px 0">${itensHtml}</table>` : ''}
+        <p style="margin-top:20px;color:#7f8ba4;font-size:13px">Acesse o admin, analise o pedido, marque como cancelado se aprovado e faça o estorno no app InfinitePay.</p>
+      </div>`
+    ).catch((e) => console.error('[cancel email loja]', e.message));
+  }
+
+  if (email) {
+    await sendEmail(
+      email,
+      `Recebemos sua solicitação de cancelamento #${numero} – Lemoov`,
+      `<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;color:#1a2a35">
+        <h2 style="color:#1ec28b">Solicitação recebida</h2>
+        <p>Olá, <strong>${escapeHtml(nomeCliente.split(' ')[0] || 'cliente')}</strong>! Recebemos sua solicitação de cancelamento do pedido <strong>#${escapeHtml(numero)}</strong>.</p>
+        <p><strong>Total:</strong> ${escapeHtml(total)}</p>
+        <p><strong>Motivo informado:</strong><br>${escapeHtml(reason)}</p>
+        <p style="margin-top:24px;color:#7f8ba4;font-size:13px">A equipe vai analisar o pedido e confirmar os próximos passos pelo atendimento. O estorno, quando aplicável, será processado pela InfinitePay.</p>
+        <p style="color:#7f8ba4;font-size:12px">Lemoov Fitness</p>
+      </div>`
+    ).catch((e) => console.error('[cancel email cliente]', e.message));
   }
 }
 
@@ -1029,6 +1118,10 @@ app.get('/api/client/orders', clientAuthRequired, async (req, res) => {
         createdAt: pedido.recebidoEm || pedido.confirmedAt || pedido.createdAt || '',
         frete_modo: pedido.frete_modo || '',
         retirada: Boolean(pedido.retirada),
+        cancellation_requested: Boolean(pedido.cancellation_requested),
+        cancellation_request_status: pedido.cancellation_request_status || '',
+        cancellation_reason: pedido.cancellation_reason || '',
+        cancellation_requestedAt: pedido.cancellation_requestedAt || '',
         itens: Array.isArray(pedido.itens) ? pedido.itens.map((item) => ({
           item_name: item.item_name || item.nome || item.name || '',
           quantity: Number(item.quantity || item.quantidade || 1),
@@ -1039,6 +1132,47 @@ app.get('/api/client/orders', clientAuthRequired, async (req, res) => {
   } catch (e) {
     console.error('[client/orders GET]', e.message);
     return res.status(500).json({ ok: false, error: 'Erro ao buscar pedidos.' });
+  }
+});
+
+app.post('/api/client/orders/:numero/cancel-request', clientAuthRequired, async (req, res) => {
+  try {
+    const numero = String(req.params.numero || '').trim();
+    const pedido = await readPedidoStore(numero);
+    if (!pedido) {
+      return res.status(404).json({ ok: false, error: 'Pedido não encontrado.' });
+    }
+
+    const clientId = String(req.clientSession.clientId || '');
+    const email = String(req.clientSession.email || '').toLowerCase();
+    const pedidoClientId = String(pedido.client_id || pedido.cliente?.id || '');
+    const pedidoEmail = String(pedido.cliente_email || pedido.cliente?.email || '').toLowerCase();
+    const isOwner = (clientId && pedidoClientId === clientId) || (email && pedidoEmail === email);
+    if (!isOwner) {
+      return res.status(403).json({ ok: false, error: 'Pedido não pertence a esta conta.' });
+    }
+
+    const status = String(pedido.status || '').toLowerCase();
+    if (status === 'cancelado') {
+      return res.status(409).json({ ok: false, error: 'Este pedido já está cancelado.' });
+    }
+    if (pedido.cancellation_requested && pedido.cancellation_request_status !== 'recusado') {
+      return res.status(409).json({ ok: false, error: 'Solicitação de cancelamento já enviada.' });
+    }
+
+    const reason = String(req.body?.reason || '').trim().slice(0, 500);
+    const updates = {
+      cancellation_requested: true,
+      cancellation_request_status: 'pendente',
+      cancellation_reason: reason,
+      cancellation_requestedAt: new Date().toISOString()
+    };
+    const item = await updatePedidoStore(numero, updates);
+    notifyCancellationRequested(item).catch((e) => console.error('[cancel notify]', e.message));
+    return res.json({ ok: true, item });
+  } catch (e) {
+    console.error('[client/orders cancel-request]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao solicitar cancelamento.' });
   }
 });
 
@@ -1771,7 +1905,8 @@ app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
     const existing = await readPedidoStore(req.params.numero, conn);
     if (!existing) throw new Error('Pedido não encontrado');
     const nextOrder = { ...existing, ...req.body, pedido: req.params.numero };
-    const shouldDebitStock = !existing.estoqueBaixado && !isPaidOrderStatus(existing) && isPaidOrderStatus(nextOrder);
+    const shouldDebitStock = !existing.estoqueBaixado && !shouldHoldStock(existing) && shouldHoldStock(nextOrder);
+    const shouldRestoreStock = Boolean(existing.estoqueBaixado) && !shouldHoldStock(nextOrder);
     const updates = { ...req.body };
     if (shouldDebitStock) {
       const produtos = ensureProductIds(await readProdutosStore(conn));
@@ -1781,6 +1916,21 @@ app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
       reserveStock(produtos, itensReserva);
       await writeProdutosStore(produtos, conn);
       updates.estoqueBaixado = true;
+    }
+    if (shouldRestoreStock) {
+      const produtos = ensureProductIds(await readProdutosStore(conn));
+      const itensReserva = Array.isArray(existing.itensEstoque)
+        ? existing.itensEstoque
+        : (Array.isArray(existing.itens) ? existing.itens : []);
+      restoreStock(produtos, itensReserva);
+      await writeProdutosStore(produtos, conn);
+      updates.estoqueBaixado = false;
+      if (String(nextOrder.status || '').toLowerCase() === 'cancelado') {
+        updates.cancelledAt = updates.cancelledAt || new Date().toISOString();
+        updates.cancellation_request_status = updates.cancellation_request_status || 'aprovado';
+        updates.cancellation_reviewedAt = updates.cancellation_reviewedAt || new Date().toISOString();
+        updates.refund_status = updates.refund_status || 'pendente_infinitepay';
+      }
     }
     const item = await updatePedidoStore(req.params.numero, updates, conn);
     if (conn) await conn.commit();
