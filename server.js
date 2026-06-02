@@ -245,17 +245,38 @@ async function readProdutosStore(conn = null) {
 }
 async function writeProdutosStore(list, conn = null) {
   const canonical = ensureProductIds(list);
-  // Always keep JSON in sync so Sync JSON doesn't lose MySQL-only additions
-  writeProdutos(canonical);
-  if (!MYSQL_ENABLED) return;
+  if (!MYSQL_ENABLED) {
+    writeProdutos(canonical);
+    return;
+  }
   await initDatabase();
-  const db = conn || mysqlPool;
-  await db.execute('DELETE FROM lemoov_products');
-  for (const item of canonical) {
-    await db.execute(
-      'INSERT INTO lemoov_products (id, data) VALUES (?, ?)',
-      [Number(item.id), JSON.stringify(item)]
-    );
+  if (conn) {
+    await conn.execute('DELETE FROM lemoov_products');
+    for (const item of canonical) {
+      await conn.execute(
+        'INSERT INTO lemoov_products (id, data) VALUES (?, ?)',
+        [Number(item.id), JSON.stringify(item)]
+      );
+    }
+    return;
+  }
+  // When no external transaction is provided, wrap in one to prevent partial writes
+  const localConn = await mysqlPool.getConnection();
+  try {
+    await localConn.beginTransaction();
+    await localConn.execute('DELETE FROM lemoov_products');
+    for (const item of canonical) {
+      await localConn.execute(
+        'INSERT INTO lemoov_products (id, data) VALUES (?, ?)',
+        [Number(item.id), JSON.stringify(item)]
+      );
+    }
+    await localConn.commit();
+  } catch (e) {
+    await localConn.rollback().catch(() => {});
+    throw e;
+  } finally {
+    localConn.release();
   }
 }
 async function readPedidosStore(conn = null) {
@@ -739,21 +760,25 @@ async function sendEmail(to, subject, html) {
 
   const smtp = getSmtpTransport();
   if (smtp) {
-    await smtp.sendMail({ from, to, subject, html });
-    return;
+    const info = await smtp.sendMail({ from, to, subject, html });
+    return { ok: true, provider: 'smtp', to, messageId: info?.messageId || '' };
   }
 
   const key = process.env.RESEND_API_KEY;
   if (!key) {
     console.warn(`[email] nenhum serviço configurado (SMTP_HOST ou RESEND_API_KEY). Email não enviado para: ${to}`);
-    return;
+    return { ok: false, provider: 'none', to, error: 'Nenhum serviço de e-mail configurado.' };
   }
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
     body: JSON.stringify({ from, to, subject, html }),
   });
-  if (!r.ok) throw new Error(`Resend ${r.status}`);
+  if (!r.ok) {
+    const text = await r.text().catch(() => '');
+    throw new Error(`Resend ${r.status}${text ? `: ${text.slice(0, 180)}` : ''}`);
+  }
+  return { ok: true, provider: 'resend', to };
 }
 
 async function sendVerificationEmail(toEmail, toNome, code) {
@@ -899,44 +924,61 @@ async function notifyCancellationRequested(pedido) {
     ? new Date(pedido.cancellation_requestedAt).toLocaleString('pt-BR')
     : new Date().toLocaleString('pt-BR');
   const storeEmail = process.env.LEMOOV_STORE_EMAIL || process.env.ADMIN_EMAIL || process.env.FROM_EMAIL || process.env.SMTP_USER || '';
+  const result = {
+    store: storeEmail ? { ok: false, to: storeEmail } : { ok: false, to: '', error: 'E-mail da loja não configurado.' },
+    client: email ? { ok: false, to: email } : { ok: false, to: '', error: 'E-mail do cliente não informado.' }
+  };
 
   const itensHtml = (pedido.itens || []).map((i) =>
     `<tr><td style="padding:6px 0;border-bottom:1px solid #eee">${escapeHtml(i.nome || i.description || i.item_name || 'Item')}${i.cor ? ` – ${escapeHtml(i.cor)}` : ''}${i.tamanho ? ` (${escapeHtml(i.tamanho)})` : ''}</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">x${escapeHtml(i.quantidade || i.qty || i.quantity || 1)}</td></tr>`
   ).join('');
 
   if (storeEmail) {
-    await sendEmail(
-      storeEmail,
-      `Solicitação de cancelamento #${numero} – Lemoov`,
-      `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;color:#1a2a35">
-        <h2 style="color:#b42323">Solicitação de cancelamento</h2>
-        <p>O cliente solicitou cancelamento do pedido <strong>#${escapeHtml(numero)}</strong>.</p>
-        <p><strong>Cliente:</strong> ${escapeHtml(nomeCliente)}<br>
-        <strong>E-mail:</strong> ${escapeHtml(email || '–')}<br>
-        <strong>Telefone:</strong> ${escapeHtml(telefone || '–')}<br>
-        <strong>Total:</strong> ${escapeHtml(total)}<br>
-        <strong>Solicitado em:</strong> ${escapeHtml(requestedAt)}</p>
-        <p><strong>Motivo:</strong><br>${escapeHtml(reason)}</p>
-        ${itensHtml ? `<table style="width:100%;border-collapse:collapse;margin:16px 0">${itensHtml}</table>` : ''}
-        <p style="margin-top:20px;color:#7f8ba4;font-size:13px">Acesse o admin, analise o pedido, marque como cancelado se aprovado e faça o estorno no app InfinitePay.</p>
-      </div>`
-    ).catch((e) => console.error('[cancel email loja]', e.message));
+    try {
+      result.store = await sendEmail(
+        storeEmail,
+        `Solicitação de cancelamento #${numero} – Lemoov`,
+        `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;color:#1a2a35">
+          <h2 style="color:#b42323">Solicitação de cancelamento</h2>
+          <p>O cliente solicitou cancelamento do pedido <strong>#${escapeHtml(numero)}</strong>.</p>
+          <p><strong>Cliente:</strong> ${escapeHtml(nomeCliente)}<br>
+          <strong>E-mail:</strong> ${escapeHtml(email || '–')}<br>
+          <strong>Telefone:</strong> ${escapeHtml(telefone || '–')}<br>
+          <strong>Total:</strong> ${escapeHtml(total)}<br>
+          <strong>Solicitado em:</strong> ${escapeHtml(requestedAt)}</p>
+          <p><strong>Motivo:</strong><br>${escapeHtml(reason)}</p>
+          ${itensHtml ? `<table style="width:100%;border-collapse:collapse;margin:16px 0">${itensHtml}</table>` : ''}
+          <p style="margin-top:20px;color:#7f8ba4;font-size:13px">Acesse o admin, analise o pedido, marque como cancelado se aprovado e faça o estorno no app InfinitePay.</p>
+        </div>`
+      );
+      console.log(`[cancel email loja] enviado para ${storeEmail}`);
+    } catch (e) {
+      console.error('[cancel email loja]', e.message);
+      result.store = { ok: false, to: storeEmail, error: e.message };
+    }
   }
 
   if (email) {
-    await sendEmail(
-      email,
-      `Recebemos sua solicitação de cancelamento #${numero} – Lemoov`,
-      `<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;color:#1a2a35">
-        <h2 style="color:#1ec28b">Solicitação recebida</h2>
-        <p>Olá, <strong>${escapeHtml(nomeCliente.split(' ')[0] || 'cliente')}</strong>! Recebemos sua solicitação de cancelamento do pedido <strong>#${escapeHtml(numero)}</strong>.</p>
-        <p><strong>Total:</strong> ${escapeHtml(total)}</p>
-        <p><strong>Motivo informado:</strong><br>${escapeHtml(reason)}</p>
-        <p style="margin-top:24px;color:#7f8ba4;font-size:13px">A equipe vai analisar o pedido e confirmar os próximos passos pelo atendimento. O estorno, quando aplicável, será processado pela InfinitePay.</p>
-        <p style="color:#7f8ba4;font-size:12px">Lemoov Fitness</p>
-      </div>`
-    ).catch((e) => console.error('[cancel email cliente]', e.message));
+    try {
+      result.client = await sendEmail(
+        email,
+        `Recebemos sua solicitação de cancelamento #${numero} – Lemoov`,
+        `<div style="font-family:Inter,sans-serif;max-width:520px;margin:0 auto;color:#1a2a35">
+          <h2 style="color:#1ec28b">Solicitação recebida</h2>
+          <p>Olá, <strong>${escapeHtml(nomeCliente.split(' ')[0] || 'cliente')}</strong>! Recebemos sua solicitação de cancelamento do pedido <strong>#${escapeHtml(numero)}</strong>.</p>
+          <p><strong>Total:</strong> ${escapeHtml(total)}</p>
+          <p><strong>Motivo informado:</strong><br>${escapeHtml(reason)}</p>
+          <p style="margin-top:24px;color:#7f8ba4;font-size:13px">A equipe vai analisar o pedido e confirmar os próximos passos pelo atendimento. O estorno, quando aplicável, será processado pela InfinitePay.</p>
+          <p style="color:#7f8ba4;font-size:12px">Lemoov Fitness</p>
+        </div>`
+      );
+      console.log(`[cancel email cliente] enviado para ${email}`);
+    } catch (e) {
+      console.error('[cancel email cliente]', e.message);
+      result.client = { ok: false, to: email, error: e.message };
+    }
   }
+  return result;
 }
 
 async function sendResetEmail(toEmail, toNome, resetUrl) {
@@ -1168,8 +1210,16 @@ app.post('/api/client/orders/:numero/cancel-request', clientAuthRequired, async 
       cancellation_requestedAt: new Date().toISOString()
     };
     const item = await updatePedidoStore(numero, updates);
-    notifyCancellationRequested(item).catch((e) => console.error('[cancel notify]', e.message));
-    return res.json({ ok: true, item });
+    const emailResult = await notifyCancellationRequested(item);
+    const emailOk = Boolean(emailResult?.store?.ok || emailResult?.client?.ok);
+    const emailUpdates = {
+      cancellation_email_status: emailOk ? 'enviado' : 'erro',
+      cancellation_email_result: emailResult,
+      cancellation_email_checkedAt: new Date().toISOString()
+    };
+    if (emailOk) emailUpdates.cancellation_email_sentAt = new Date().toISOString();
+    const updatedItem = await updatePedidoStore(numero, emailUpdates);
+    return res.json({ ok: true, item: updatedItem, email: emailResult });
   } catch (e) {
     console.error('[client/orders cancel-request]', e.message);
     return res.status(500).json({ ok: false, error: 'Erro ao solicitar cancelamento.' });

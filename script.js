@@ -1445,13 +1445,61 @@ function computeColorPrice(prod, colorObj){
     display:flex;justify-content:flex-end;gap:8px;
     padding:12px 16px 16px;background:#f8fbf2;
   }
-  .app-message__ok{
-    border:0;border-radius:12px;padding:11px 18px;
-    background:linear-gradient(120deg,#009C3B,#002776);
-    color:#FFDF00;font-weight:900;cursor:pointer;
-  }
+	  .app-message__ok{
+	    border:0;border-radius:12px;padding:11px 18px;
+	    background:linear-gradient(120deg,#009C3B,#002776);
+	    color:#FFDF00;font-weight:900;cursor:pointer;
+	  }
+	  dialog.cancel-request-dialog:not([open]){ display:none !important; }
+	  dialog.cancel-request-dialog{
+	    width:min(520px, calc(100vw - 28px));
+	    border:0;
+	    border-radius:20px;
+	    padding:0;
+	    background:#fff;
+	    color:#0d1f2a;
+	    box-shadow:0 28px 80px rgba(7,24,32,.3);
+	    overflow:hidden;
+	  }
+	  dialog.cancel-request-dialog::backdrop{
+	    background:rgba(6,18,28,.58);
+	    backdrop-filter:blur(8px);
+	  }
+	  .cancel-request__header{
+	    display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+	    padding:18px 20px 14px;
+	    border-bottom:1px solid #eef0f2;
+	    background:linear-gradient(120deg, rgba(0,156,59,.08), rgba(0,39,118,.06));
+	  }
+	  .cancel-request__title{font-size:1rem;font-weight:900;margin:0;color:#0d1f2a}
+	  .cancel-request__subtitle{margin:4px 0 0;color:#607080;font-size:.82rem;line-height:1.4}
+	  .cancel-request__close{
+	    width:36px;height:36px;border-radius:50%;border:1px solid #dbe3ea;
+	    background:#fff;color:#0d1f2a;cursor:pointer;font-weight:900;font-size:1.05rem;
+	  }
+	  .cancel-request__body{padding:18px 20px 4px}
+	  .cancel-request__label{
+	    display:block;margin-bottom:7px;color:#6b7b88;font-size:.72rem;font-weight:900;
+	    text-transform:uppercase;letter-spacing:.07em;
+	  }
+	  .cancel-request__textarea{
+	    width:100%;min-height:120px;resize:vertical;border:1px solid #dbe3ea;border-radius:12px;
+	    padding:12px;font:700 .9rem/1.45 Inter,system-ui,sans-serif;color:#0d1f2a;outline:none;
+	  }
+	  .cancel-request__textarea:focus{border-color:#009C3B;box-shadow:0 0 0 3px rgba(0,156,59,.1)}
+	  .cancel-request__status{min-height:18px;margin-top:8px;color:#b42323;font-size:.8rem;font-weight:800}
+	  .cancel-request__actions{
+	    display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;
+	    padding:12px 20px 18px;background:#f8fbf2;
+	  }
+	  .cancel-request__secondary,.cancel-request__primary{
+	    border-radius:10px;padding:10px 14px;font-weight:900;cursor:pointer;
+	  }
+	  .cancel-request__secondary{border:1px solid #dbe3ea;background:#fff;color:#425466}
+	  .cancel-request__primary{border:0;background:linear-gradient(120deg,#009C3B,#002776);color:#FFDF00}
+	  .cancel-request__primary:disabled{opacity:.6;cursor:not-allowed}
 
-  dialog.checkout-modal:not([open]){ display:none !important; }
+	  dialog.checkout-modal:not([open]){ display:none !important; }
   dialog.checkout-modal{
     border:none;
     border-radius:0;
@@ -3506,7 +3554,7 @@ function bindAccountModal(dlg) {
 	    btn.addEventListener("click", async () => {
 	      const numero = btn.dataset.cancelOrder;
 	      if (!numero) return;
-	      const reason = window.prompt("Informe o motivo do cancelamento:");
+	      const reason = await requestCancellationReason(numero);
 	      if (reason === null) return;
 	      btn.disabled = true;
 	      btn.textContent = "Enviando...";
@@ -3515,14 +3563,19 @@ function bindAccountModal(dlg) {
 	          method: 'POST',
 	          credentials: 'same-origin',
 	          headers: { 'Content-Type': 'application/json' },
-	          body: JSON.stringify({ reason: reason.trim() })
+	          body: JSON.stringify({ reason })
 	        });
 	        const data = await res.json().catch(() => ({}));
 	        if (!res.ok || !data.ok) {
 	          alert(data.error || "Não foi possível solicitar o cancelamento.");
 	          return;
 	        }
-	        showAppMessage("Solicitação de cancelamento enviada.");
+	        const emailOk = Boolean(data.email?.store?.ok || data.email?.client?.ok);
+	        showAppMessage(
+	          emailOk
+	            ? "Solicitação de cancelamento enviada."
+	            : "Solicitação registrada, mas o e-mail não foi enviado. A loja já verá o pedido no admin."
+	        );
 	        const [addresses, orders] = await Promise.all([fetchClientAddresses(), fetchClientOrders()]);
 	        const body = dlg.querySelector(".account__body");
 	        if (body) body.innerHTML = renderAccountPanel({ client: currentClientSession, addresses, orders });
@@ -4870,6 +4923,79 @@ function showAppMessage(message, options = {}) {
   } else {
     dlg.setAttribute("open", "");
   }
+}
+
+function requestCancellationReason(orderNumber) {
+  return new Promise((resolve) => {
+    let dlg = document.getElementById("cancelRequestDialog");
+    if (!dlg) {
+      dlg = document.createElement("dialog");
+      dlg.id = "cancelRequestDialog";
+      dlg.className = "cancel-request-dialog";
+      dlg.innerHTML = `
+        <div class="cancel-request__header">
+          <div>
+            <h3 class="cancel-request__title">Solicitar cancelamento</h3>
+            <p class="cancel-request__subtitle">Informe o motivo para a equipe analisar o pedido.</p>
+          </div>
+          <button type="button" class="cancel-request__close" aria-label="Fechar">×</button>
+        </div>
+        <div class="cancel-request__body">
+          <label class="cancel-request__label" for="cancelRequestReason">Motivo do cancelamento</label>
+          <textarea class="cancel-request__textarea" id="cancelRequestReason" maxlength="500" placeholder="Ex.: comprei por engano, quero trocar o tamanho, desisti da compra..."></textarea>
+          <div class="cancel-request__status" aria-live="polite"></div>
+        </div>
+        <div class="cancel-request__actions">
+          <button type="button" class="cancel-request__secondary">Fechar</button>
+          <button type="button" class="cancel-request__primary">Enviar solicitação</button>
+        </div>
+      `;
+      document.body.appendChild(dlg);
+      dlg.addEventListener("cancel", (event) => event.preventDefault());
+      dlg.addEventListener("click", (event) => {
+        if (event.target === dlg) event.preventDefault();
+      });
+    }
+
+    const textarea = dlg.querySelector("#cancelRequestReason");
+    const status = dlg.querySelector(".cancel-request__status");
+    const title = dlg.querySelector(".cancel-request__title");
+    const primary = dlg.querySelector(".cancel-request__primary");
+    const closeButtons = dlg.querySelectorAll(".cancel-request__close, .cancel-request__secondary");
+
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      closeButtons.forEach((btn) => btn.removeEventListener("click", onClose));
+      primary.removeEventListener("click", onSubmit);
+      dlg.close();
+      resolve(value);
+    };
+    const onClose = () => finish(null);
+    const onSubmit = () => {
+      const reason = textarea.value.trim();
+      if (!reason) {
+        status.textContent = "Informe o motivo do cancelamento.";
+        textarea.focus();
+        return;
+      }
+      finish(reason);
+    };
+
+    if (title) title.textContent = orderNumber ? `Cancelar pedido ${orderNumber}` : "Solicitar cancelamento";
+    if (textarea) textarea.value = "";
+    if (status) status.textContent = "";
+    closeButtons.forEach((btn) => btn.addEventListener("click", onClose));
+    primary.addEventListener("click", onSubmit);
+
+    if (typeof dlg.showModal === "function") {
+      if (!dlg.open) dlg.showModal();
+    } else {
+      dlg.setAttribute("open", "");
+    }
+    setTimeout(() => textarea?.focus(), 30);
+  });
 }
 
 async function createInfinityPayment(payload){
