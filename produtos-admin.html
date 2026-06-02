@@ -171,7 +171,6 @@
     <button class="tab-btn" data-tab="crm">CRM</button>
   </nav>
   <div class="adm-header-right">
-    <button class="btn btn--header" id="btnSync">↑ Sync JSON</button>
     <button class="btn btn--header" id="btnLogout">Sair</button>
   </div>
 </header>
@@ -386,20 +385,7 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   if(tab==='relatorio') loadRelatorio();
 }));
 
-// ── Sync / Logout ────────────────────────────────────────────
-$('btnSync').addEventListener('click',async()=>{
-  if(!confirm('Importar produtos.json para o banco? Isso substitui os dados atuais.')) return;
-  const btn=$('btnSync'); btn.disabled=true;
-  try{
-    const r=await fetch('/api/admin/sync-produtos',{method:'POST'});
-    if(r.status===401){redirect401();return}
-    const d=await r.json();
-    if(!d.ok) throw new Error(d.error);
-    await loadProdutos();
-    alert(`✓ ${d.total} produtos importados.`);
-  }catch(e){alert('Erro: '+e.message)}
-  finally{btn.disabled=false}
-});
+// ── Logout ───────────────────────────────────────────────────
 $('btnLogout').addEventListener('click',async()=>{
   await fetch('/api/logout',{method:'POST'}); location.href='/login';
 });

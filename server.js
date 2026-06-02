@@ -1878,16 +1878,6 @@ app.delete('/api/admin/produtos/:id', authRequired, async (req, res) => {
   }
 });
 
-app.post('/api/admin/sync-produtos', authRequired, async (req, res) => {
-  try {
-    const local = ensureProductIds(readProdutos());
-    await writeProdutosStore(local);
-    res.json({ ok: true, total: local.length });
-  } catch (e) {
-    console.error('[sync-produtos]', e.message);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
 
 app.patch('/api/admin/produtos/ordem', authRequired, async (req, res) => {
   try {
