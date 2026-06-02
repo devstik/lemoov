@@ -910,6 +910,52 @@ async function notifyOrderConfirmed(pedido) {
     const storeMsg = `🛍️ *Novo pedido recebido!*\n\n📦 *Pedido:* #${numero}\n👤 *Cliente:* ${nomeCliente}\n📱 *Telefone:* ${telefone || '–'}\n📧 *Email:* ${email || '–'}\n\n${itensTexto}\n\n💰 *Total:* ${total}\n🏠 *Endereço:* ${entrega || 'Retirada'}${prazoWpp}`;
     await sendWhatsApp(storePhone, storeMsg).catch((e) => console.error('[notify loja]', e.message));
   }
+
+  const storeEmail = process.env.LEMOOV_STORE_EMAIL || process.env.ADMIN_EMAIL || process.env.FROM_EMAIL || '';
+  if (storeEmail) {
+    const confirmedAt = pedido.confirmedAt ? new Date(pedido.confirmedAt).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
+    const pagamento = pedido.payment_method || pedido.method || 'Pix';
+    const itensLojaHtml = (pedido.itens || []).map((i) => {
+      const preco = Number(i.price || i.preco || i.valor || 0);
+      const qty = Number(i.quantidade || i.qty || 1);
+      return `<tr>
+        <td style="padding:8px 0;border-bottom:1px solid #eee">${escapeHtml(i.nome || i.description || 'Item')}${i.cor ? ` – ${escapeHtml(i.cor)}` : ''}${i.tamanho ? ` (${escapeHtml(i.tamanho)})` : ''}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:center">${qty}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right">${preco ? formatBRL(preco) : '–'}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right">${preco ? formatBRL(preco * qty) : '–'}</td>
+      </tr>`;
+    }).join('');
+    await sendEmail(
+      storeEmail,
+      `🛍️ Novo pedido #${numero} – ${nomeCliente}`,
+      `<div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;color:#1a2a35">
+        <h2 style="color:#009C3B;margin-bottom:4px">Novo pedido confirmado!</h2>
+        <p style="color:#607080;margin-top:0">Pagamento aprovado em ${confirmedAt}</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0">
+          <tr style="background:#f8fafc">
+            <th style="padding:8px 0;text-align:left;font-size:12px;color:#607080;border-bottom:2px solid #e2e8f0">Produto</th>
+            <th style="padding:8px 0;text-align:center;font-size:12px;color:#607080;border-bottom:2px solid #e2e8f0">Qtd</th>
+            <th style="padding:8px 0;text-align:right;font-size:12px;color:#607080;border-bottom:2px solid #e2e8f0">Unit.</th>
+            <th style="padding:8px 0;text-align:right;font-size:12px;color:#607080;border-bottom:2px solid #e2e8f0">Linha</th>
+          </tr>
+          ${itensLojaHtml}
+          <tr>
+            <td colspan="3" style="padding:10px 0;text-align:right;font-weight:700">Total</td>
+            <td style="padding:10px 0;text-align:right;font-weight:700;color:#009C3B">${total}</td>
+          </tr>
+        </table>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
+          <tr><td style="padding:5px 0;color:#607080;width:120px">Pedido</td><td style="padding:5px 0;font-weight:600">#${escapeHtml(String(numero))}</td></tr>
+          <tr><td style="padding:5px 0;color:#607080">Pagamento</td><td style="padding:5px 0;font-weight:600">${escapeHtml(pagamento)}</td></tr>
+          <tr><td style="padding:5px 0;color:#607080">Cliente</td><td style="padding:5px 0">${escapeHtml(nomeCliente)}</td></tr>
+          <tr><td style="padding:5px 0;color:#607080">Telefone</td><td style="padding:5px 0">${escapeHtml(telefone || '–')}</td></tr>
+          <tr><td style="padding:5px 0;color:#607080">E-mail</td><td style="padding:5px 0">${escapeHtml(email || '–')}</td></tr>
+          <tr><td style="padding:5px 0;color:#607080">${retirada ? 'Retirada' : 'Entrega'}</td><td style="padding:5px 0">${escapeHtml(entrega || '–')}</td></tr>
+          ${prazo ? `<tr><td style="padding:5px 0;color:#607080">Previsão</td><td style="padding:5px 0">${escapeHtml(prazo)}</td></tr>` : ''}
+        </table>
+      </div>`
+    ).catch((e) => console.error('[notify loja email]', e.message));
+  }
 }
 
 async function notifyCancellationRequested(pedido) {
