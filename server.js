@@ -867,10 +867,16 @@ async function notifyOrderConfirmed(pedido) {
   const telefone  = cliente.telefone || pedido.cliente_telefone || '';
   const numero    = pedido.pedido || pedido.order_nsu || '';
   const total     = formatBRL(pedido.total || pedido.payment_paid_amount);
-  const retirada  = Boolean(pedido.retirada);
-  const cidade    = pedido.cidade || pedido.endereco?.cidade || '';
-  const entrega   = retirada ? 'Retirada na loja' : [pedido.rua, pedido.numero, cidade, pedido.uf].filter(Boolean).join(', ');
-  const prazo     = retirada ? '' : calcDeliveryEstimate(cidade, pedido.frete_modo, pedido.confirmedAt, pedido.frete_prazo_dias);
+  const retirada    = Boolean(pedido.retirada);
+  const cidade      = pedido.cidade || pedido.endereco?.cidade || '';
+  const cep         = pedido.cep || pedido.endereco?.cep || '';
+  const bairro      = pedido.bairro || pedido.endereco?.bairro || '';
+  const complemento = pedido.complemento || pedido.endereco?.complemento || '';
+  const uf          = pedido.uf || pedido.endereco?.uf || '';
+  const entrega     = retirada ? 'Retirada na loja' : [
+    pedido.rua, pedido.numero, complemento, bairro, cidade, uf, cep ? `CEP ${cep}` : ''
+  ].filter(Boolean).join(', ');
+  const prazo       = retirada ? '' : calcDeliveryEstimate(cidade, pedido.frete_modo, pedido.confirmedAt, pedido.frete_prazo_dias);
 
   const itensTexto = (pedido.itens || []).map((i) =>
     `• ${i.nome || i.description || 'Item'}${i.cor ? ` – ${i.cor}` : ''}${i.tamanho ? ` (${i.tamanho})` : ''} x${i.quantidade || i.qty || 1}`
