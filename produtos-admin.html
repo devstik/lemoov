@@ -145,8 +145,10 @@
     .size-slot .fl{text-transform:none;letter-spacing:0;font-size:12px;color:#374151}
     .size-current{font-size:11px;color:#64748b;margin-bottom:3px}
     /* Orders */
-    .orders-layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;align-items:start}
-    .orders-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .orders-shell{display:grid;grid-template-columns:minmax(0,1fr) 420px;grid-template-areas:"kpis detail" "list detail";gap:16px;align-items:start}
+    .orders-kpis{grid-area:kpis;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:0}
+    .orders-list{grid-area:list}
+    .orders-detail{grid-area:detail;min-height:196px}
     .orders-toolbar{padding:12px 14px;border-bottom:1px solid #eef2f7;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .filter-btn{padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;color:#374151}
     .filter-btn:hover{background:#f1f5f9}
@@ -218,11 +220,10 @@
     .mini-bar{display:grid;grid-template-columns:78px 1fr 88px;gap:10px;align-items:center;font-size:12px}
     .mini-bar__track{height:24px;background:#f1f5f9;border-radius:8px;overflow:hidden}
     .mini-bar__fill{height:100%;background:linear-gradient(90deg,#111827,#2f7d58);border-radius:8px}
-    @media(max-width:900px){.rel-grid{grid-template-columns:1fr}.orders-kpis{grid-template-columns:1fr}.chart-donut-wrap{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr 1fr}}
+    @media(max-width:900px){.rel-grid{grid-template-columns:1fr}.orders-shell{grid-template-columns:1fr;grid-template-areas:"kpis" "list" "detail"}.orders-kpis{grid-template-columns:1fr}.chart-donut-wrap{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr 1fr}}
     /* Items list in order form */
     .order-item-entry{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9}
     /* Orders layout wider side */
-    .orders-layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;align-items:start}
     .order-section-title{font-size:11px;font-weight:600;text-transform:uppercase;color:#64748b;letter-spacing:.04em;margin-bottom:8px}
     .order-info-box{background:#f8fafc;border-radius:8px;padding:10px;font-size:13px;margin-bottom:14px}
     .order-item-row{padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
@@ -242,8 +243,8 @@
     ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
     /* Responsive */
     @media(max-width:1100px){.stock-layout{grid-template-columns:1fr;grid-template-areas:"catalog" "detail" "entry" "movement"}}
-    @media(max-width:1000px){.prod-layout,.orders-layout{grid-template-columns:1fr}.quick-stats{grid-template-columns:1fr}.screen-hero{grid-template-columns:1fr}}
-    @media(max-width:900px){.prod-layout,.orders-layout{grid-template-columns:1fr}.tab-panel{padding:12px}}
+    @media(max-width:1000px){.prod-layout{grid-template-columns:1fr}.quick-stats{grid-template-columns:1fr}.screen-hero{grid-template-columns:1fr}}
+    @media(max-width:900px){.prod-layout{grid-template-columns:1fr}.tab-panel{padding:12px}}
     @media(max-width:700px){.quick-stat-group{grid-template-columns:1fr}.screen-title{font-size:21px}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}.chart-bar{grid-template-columns:1fr}.chart-bar__value{text-align:left}.pipeline{grid-template-columns:1fr}}
     @media(max-width:600px){.frow{grid-template-columns:1fr}.tab-btn{padding:5px 8px;font-size:12px}.adm-header{padding:0 12px;overflow-x:auto}.tab-nav{overflow-x:auto}.mini-bar{grid-template-columns:58px 1fr 76px}}
   </style>
@@ -354,9 +355,9 @@
       <button class="btn btn--primary" id="btnNovoPedidoHero" type="button">+ Pedido</button>
     </div>
   </div>
-  <div class="quick-stats orders-kpis" id="ordersKpis"></div>
-  <div class="orders-layout">
-    <div class="card">
+  <div class="orders-shell">
+    <div class="quick-stats orders-kpis" id="ordersKpis"></div>
+    <div class="card orders-list">
       <div class="orders-toolbar">
         <div class="toolbar-search">
           <input class="fc" id="orderSearch" placeholder="Buscar por pedido, cliente, telefone ou e-mail" />
@@ -378,7 +379,7 @@
         </table>
       </div>
     </div>
-    <div class="card" id="orderSide">
+    <div class="card orders-detail" id="orderSide">
       <div class="form-empty">Clique em um pedido para ver detalhes<br>ou crie um novo.</div>
     </div>
   </div>
