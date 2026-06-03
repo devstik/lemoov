@@ -146,6 +146,7 @@
     .size-current{font-size:11px;color:#64748b;margin-bottom:3px}
     /* Orders */
     .orders-layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;align-items:start}
+    .orders-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
     .orders-toolbar{padding:12px 14px;border-bottom:1px solid #eef2f7;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .filter-btn{padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;color:#374151}
     .filter-btn:hover{background:#f1f5f9}
@@ -187,11 +188,35 @@
     .kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:4px}
     .kpi-val{font-size:24px;font-weight:800;color:#0f172a}
     .rel-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .chart-card{min-height:280px}
+    .chart-donut-wrap{display:grid;grid-template-columns:170px 1fr;gap:18px;align-items:center}
+    .chart-donut{width:156px;height:156px;border-radius:50%;background:conic-gradient(var(--segments,#e2e8f0));position:relative;box-shadow:inset 0 0 0 1px #e2e8f0}
+    .chart-donut::after{content:'';position:absolute;inset:34px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #eef2f7}
+    .chart-donut__center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1;font-weight:800}
+    .chart-donut__center span{font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    .chart-legend{display:grid;gap:8px}
+    .chart-legend__row{display:flex;align-items:center;gap:8px;font-size:12px}
+    .chart-dot{width:10px;height:10px;border-radius:999px;background:var(--c)}
+    .chart-bars{display:grid;gap:11px}
+    .chart-bar{display:grid;grid-template-columns:minmax(110px,1fr) minmax(160px,2fr) 76px;gap:10px;align-items:center;font-size:12px}
+    .chart-bar__label{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .chart-bar__track{height:22px;border-radius:8px;background:#f1f5f9;overflow:hidden}
+    .chart-bar__fill{height:100%;width:var(--w);border-radius:8px;background:linear-gradient(90deg,#111827,#2f7d58)}
+    .chart-bar__value{text-align:right;font-weight:800}
+    .chart-columns{height:220px;display:flex;align-items:end;gap:6px;padding:10px 2px 0;border-bottom:1px solid #e2e8f0}
+    .chart-col{flex:1;min-width:8px;height:var(--h);background:linear-gradient(180deg,#2f7d58,#111827);border-radius:6px 6px 0 0;position:relative}
+    .chart-col:hover::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);background:#111827;color:#fff;border-radius:6px;padding:5px 7px;font-size:11px;white-space:nowrap;z-index:2}
+    .pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .pipeline-step{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px}
+    .pipeline-step__label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;font-weight:800}
+    .pipeline-step__value{font-size:22px;font-weight:900;margin-top:3px}
+    .pipeline-step__bar{height:6px;background:#e2e8f0;border-radius:99px;margin-top:10px;overflow:hidden}
+    .pipeline-step__bar span{display:block;height:100%;width:var(--w);background:#111827;border-radius:99px}
     .mini-bars{display:grid;gap:10px}
     .mini-bar{display:grid;grid-template-columns:78px 1fr 88px;gap:10px;align-items:center;font-size:12px}
     .mini-bar__track{height:24px;background:#f1f5f9;border-radius:8px;overflow:hidden}
     .mini-bar__fill{height:100%;background:linear-gradient(90deg,#111827,#2f7d58);border-radius:8px}
-    @media(max-width:900px){.rel-grid{grid-template-columns:1fr}}
+    @media(max-width:900px){.rel-grid{grid-template-columns:1fr}.orders-kpis{grid-template-columns:1fr}.chart-donut-wrap{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr 1fr}}
     /* Items list in order form */
     .order-item-entry{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9}
     /* Orders layout wider side */
@@ -217,7 +242,7 @@
     @media(max-width:1100px){.stock-layout{grid-template-columns:1fr;grid-template-areas:"catalog" "detail" "entry" "movement"}}
     @media(max-width:1000px){.prod-layout,.orders-layout{grid-template-columns:1fr}.quick-stats{grid-template-columns:1fr}.screen-hero{grid-template-columns:1fr}}
     @media(max-width:900px){.prod-layout,.orders-layout{grid-template-columns:1fr}.tab-panel{padding:12px}}
-    @media(max-width:700px){.quick-stat-group{grid-template-columns:1fr}.screen-title{font-size:21px}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}}
+    @media(max-width:700px){.quick-stat-group{grid-template-columns:1fr}.screen-title{font-size:21px}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}.chart-bar{grid-template-columns:1fr}.chart-bar__value{text-align:left}.pipeline{grid-template-columns:1fr}}
     @media(max-width:600px){.frow{grid-template-columns:1fr}.tab-btn{padding:5px 8px;font-size:12px}.adm-header{padding:0 12px;overflow-x:auto}.tab-nav{overflow-x:auto}.mini-bar{grid-template-columns:58px 1fr 76px}}
   </style>
 </head>
@@ -327,7 +352,7 @@
       <button class="btn btn--primary" id="btnNovoPedidoHero" type="button">+ Pedido</button>
     </div>
   </div>
-  <div class="quick-stats" id="ordersKpis"></div>
+  <div class="quick-stats orders-kpis" id="ordersKpis"></div>
   <div class="orders-layout">
     <div class="card">
       <div class="orders-toolbar">
@@ -363,7 +388,7 @@
     <div>
       <div class="screen-kicker">Relatórios</div>
       <h1 class="screen-title">Indicadores comerciais em tempo real</h1>
-      <p class="screen-copy">Receita, ticket médio, produtos mais vendidos e pedidos recentes consolidados a partir dos pedidos pagos.</p>
+      <p class="screen-copy">Receita, ticket médio, produtos mais vendidos e pedidos recentes consolidados a partir do status confirmado.</p>
     </div>
     <div class="hero-actions">
       <a class="btn btn--secondary" href="/api/relatorio" target="_blank">Abrir relatório completo</a>
@@ -371,13 +396,21 @@
   </div>
   <div class="kpi-grid" id="relKpis"></div>
   <div class="rel-grid">
-    <div class="card">
+    <div class="card chart-card">
       <div class="card-head"><h2>Pedidos por status</h2></div>
       <div class="card-body" id="relStatus"></div>
     </div>
-    <div class="card">
+    <div class="card chart-card">
       <div class="card-head"><h2>Produtos mais vendidos</h2></div>
       <div class="card-body" id="relProdutos"></div>
+    </div>
+    <div class="card chart-card">
+      <div class="card-head"><h2>Vendas por origem</h2></div>
+      <div class="card-body" id="relOrigem"></div>
+    </div>
+    <div class="card chart-card">
+      <div class="card-head"><h2>Pipeline operacional</h2></div>
+      <div class="card-body" id="relPipeline"></div>
     </div>
     <div class="card" style="grid-column:1/-1">
       <div class="card-head"><h2>Receita por dia (últimos 30 dias)</h2></div>
@@ -416,6 +449,16 @@ function sPill(s){ return `<span class="status-pill s-${s||'reservado'}">${sLabe
 function origemLabel(o){
   const key=String(o||'').trim().toLowerCase();
   return ({ecommerce:'Ecommerce',admin:'Admin',whatsapp:'WhatsApp',instagram:'Instagram','loja_fisica':'Loja física',telefone:'Telefone',outro:'Outro'})[key]||o||'—';
+}
+const SOLD_STATUSES=['confirmado','enviado','entregue'];
+function effectiveSales(list){
+  const map=new Map();
+  list.forEach(p=>{
+    if(!SOLD_STATUSES.includes(String(p.status||'').toLowerCase())) return;
+    const key=String(p.pedido||p.order_nsu||p.id||Math.random());
+    if(!map.has(key)) map.set(key,p);
+  });
+  return Array.from(map.values());
 }
 const COLOR_SWATCH_MAP={
   "preto":"#111111","branco":"#f7f7f2","azul":"#1a3d6b","azul marinho":"#1a3d6b","azul bic":"#0045c8","azul frozen":"#b0d0e8",
@@ -1201,12 +1244,12 @@ function renderOrdersTable(){
 function renderOrdersKpis(){
   const kpis=$('ordersKpis');
   if(!kpis) return;
-  const paid=pedidos.filter(p=>['confirmado','enviado','entregue'].includes(p.status));
+  const paid=effectiveSales(pedidos);
   const open=pedidos.filter(p=>['confirmado','enviado'].includes(p.status)).length;
   const cancel=pedidos.filter(p=>p.cancellation_requested&&String(p.cancellation_request_status||'pendente')==='pendente').length;
   const rec=paid.reduce((s,p)=>s+(Number(p.total)||0),0);
   kpis.innerHTML=[
-    ['Receita ativa',fmtR(rec),'confirmados, enviados e entregues'],
+    ['Receita ativa',fmtR(rec),'pedidos que chegaram em confirmado'],
     ['Pedidos em aberto',open+' pedidos','confirmados ou enviados'],
     ['Cancelamentos',cancel+' pendentes','solicitações de clientes'],
   ].map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
@@ -1509,29 +1552,41 @@ async function loadRelatorio(){
     if(r.status===401){redirect401();return}
     if(!r.ok) return;
     const peds=await r.json();
-    // Apenas pedidos pagos contam nas métricas financeiras
-    const PAID=['confirmado','enviado','entregue'];
-    const vendas=peds.filter(p=>PAID.includes(p.status));
+    // Venda efetiva: a partir de confirmado. Enviado/entregue são etapas posteriores do mesmo pedido.
+    const vendas=effectiveSales(peds);
     const totalRec=vendas.reduce((s,p)=>s+(Number(p.total)||0),0);
     const totalItens=vendas.reduce((s,p)=>s+orderItems(p).reduce((si,it)=>si+it.quantidade,0),0);
     const ticketMed=vendas.length?totalRec/vendas.length:0;
     const taxaTotal=vendas.reduce((s,p)=>s+(Number(p.taxa)||0),0);
 
     $('relKpis').innerHTML=[
-      ['Receita Total (pagas)',fmtR(totalRec)],
-      ['Vendas confirmadas',vendas.length+' pedidos'],
+      ['Receita Total',fmtR(totalRec)],
+      ['Vendas desde confirmado',vendas.length+' pedidos'],
       ['Itens Vendidos',totalItens+' un.'],
       ['Ticket Médio',fmtR(ticketMed)],
       ['Taxas / Frete',fmtR(taxaTotal)],
     ].map(([l,v])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-val">${v}</div></div>`).join('');
 
-    // By status
+    // Status operacional: cada pedido aparece em apenas um status atual.
     const byStatus={};
     peds.forEach(p=>{const s=p.status||'reservado';byStatus[s]=(byStatus[s]||0)+1});
-    $('relStatus').innerHTML=Object.entries(byStatus).map(([s,n])=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f8fafc">
-        ${sPill(s)}<span style="margin-left:auto;font-weight:700">${n} pedido${n!==1?'s':''}</span>
-      </div>`).join('')||'<div style="color:#94a3b8;font-size:13px">Sem pedidos.</div>';
+    const statusColors={confirmado:'#2563eb',enviado:'#7c3aed',entregue:'#16a34a',cancelado:'#64748b',reservado:'#d97706'};
+    const statusEntries=Object.entries(byStatus).sort((a,b)=>b[1]-a[1]);
+    const statusTotal=Math.max(statusEntries.reduce((s,[,n])=>s+n,0),1);
+    let acc=0;
+    const segments=statusEntries.map(([s,n])=>{
+      const start=acc/statusTotal*100; acc+=n; const end=acc/statusTotal*100;
+      return `${statusColors[s]||'#94a3b8'} ${start}% ${end}%`;
+    }).join(',');
+    $('relStatus').innerHTML=statusEntries.length?`
+      <div class="chart-donut-wrap">
+        <div class="chart-donut" style="--segments:${segments}">
+          <div class="chart-donut__center">${statusTotal}<span>pedidos</span></div>
+        </div>
+        <div class="chart-legend">
+          ${statusEntries.map(([s,n])=>`<div class="chart-legend__row"><span class="chart-dot" style="--c:${statusColors[s]||'#94a3b8'}"></span>${sPill(s)}<strong style="margin-left:auto">${n}</strong></div>`).join('')}
+        </div>
+      </div>`:'<div style="color:#94a3b8;font-size:13px">Sem pedidos.</div>';
 
     // Top products (only paid)
     const prodMap={};
@@ -1544,15 +1599,41 @@ async function loadRelatorio(){
       });
     });
     const topProds=Object.entries(prodMap).sort((a,b)=>b[1].rev-a[1].rev).slice(0,8);
-    $('relProdutos').innerHTML=topProds.length?topProds.map(([nome,d],i)=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f8fafc;font-size:13px">
-        <div>
-          <span style="font-size:10px;background:#f1f5f9;color:#64748b;border-radius:4px;padding:1px 5px;margin-right:6px">${i+1}</span>
-          <strong>${esc(nome)}</strong>
-          <span style="color:#64748b;font-size:11px;margin-left:6px">${d.qty} un.</span>
-        </div>
-        <span style="font-weight:700">${fmtR(d.rev)}</span>
-      </div>`).join(''):'<div style="color:#94a3b8;font-size:13px">Sem vendas registradas.</div>';
+    const maxProd=Math.max(...topProds.map(([,d])=>d.rev),1);
+    $('relProdutos').innerHTML=topProds.length?`<div class="chart-bars">${topProds.map(([nome,d],i)=>`
+      <div class="chart-bar">
+        <div class="chart-bar__label">${i+1}. ${esc(nome)} <span style="color:#64748b;font-weight:700">(${d.qty} un.)</span></div>
+        <div class="chart-bar__track"><div class="chart-bar__fill" style="--w:${Math.max(5,Math.round(d.rev/maxProd*100))}%"></div></div>
+        <div class="chart-bar__value">${fmtR(d.rev)}</div>
+      </div>`).join('')}</div>`:'<div style="color:#94a3b8;font-size:13px">Sem vendas registradas.</div>';
+
+    // Origem das vendas a partir de confirmado.
+    const byOrigem={};
+    vendas.forEach(p=>{const o=origemLabel(p.origem||'ecommerce');byOrigem[o]=(byOrigem[o]||0)+(Number(p.total)||0)});
+    const origemEntries=Object.entries(byOrigem).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxOrigem=Math.max(...origemEntries.map(([,v])=>v),1);
+    $('relOrigem').innerHTML=origemEntries.length?`<div class="chart-bars">${origemEntries.map(([o,val])=>`
+      <div class="chart-bar">
+        <div class="chart-bar__label">${esc(o)}</div>
+        <div class="chart-bar__track"><div class="chart-bar__fill" style="--w:${Math.max(5,Math.round(val/maxOrigem*100))}%"></div></div>
+        <div class="chart-bar__value">${fmtR(val)}</div>
+      </div>`).join('')}</div>`:'<div style="color:#94a3b8;font-size:13px">Sem origem registrada.</div>';
+
+    // Pipeline operacional: mostra a posição atual; a venda já conta desde confirmado.
+    const pipeline=[
+      ['Confirmado',byStatus.confirmado||0],
+      ['Enviado',byStatus.enviado||0],
+      ['Entregue',byStatus.entregue||0],
+      ['Cancelado',byStatus.cancelado||0],
+    ];
+    const maxPipe=Math.max(...pipeline.map(([,n])=>n),1);
+    $('relPipeline').innerHTML=`<div class="pipeline">${pipeline.map(([label,n])=>`
+      <div class="pipeline-step">
+        <div class="pipeline-step__label">${label}</div>
+        <div class="pipeline-step__value">${n}</div>
+        <div class="pipeline-step__bar"><span style="--w:${Math.max(4,Math.round(n/maxPipe*100))}%"></span></div>
+      </div>`).join('')}</div>
+      <div style="margin-top:14px;color:#64748b;font-size:12px">A venda conta quando chega em confirmado. Enviado e entregue são etapas posteriores do mesmo pedido.</div>`;
 
     // Revenue by day — only paid orders
     const byDay={};
@@ -1563,16 +1644,15 @@ async function loadRelatorio(){
       const key=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
       byDay[key]=(byDay[key]||0)+(Number(p.total)||0);
     });
-    const dayEntries=Object.entries(byDay);
+    const dayEntries=Object.entries(byDay).sort(([a],[b])=>{
+      const [da,ma]=a.split('/').map(Number), [db,mb]=b.split('/').map(Number);
+      return new Date(2026,ma-1,da)-new Date(2026,mb-1,db);
+    });
     const maxVal=Math.max(...dayEntries.map(([,v])=>v),1);
-    $('relPeriodo').innerHTML=dayEntries.length?dayEntries.map(([day,val])=>`
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12px">
-        <span style="width:50px;color:#64748b;flex-shrink:0;text-align:right">${day}</span>
-        <div style="flex:1;background:#f1f5f9;border-radius:4px;height:18px;overflow:hidden">
-          <div style="width:${Math.round(val/maxVal*100)}%;background:#2563eb;height:100%;border-radius:4px;transition:width .3s"></div>
-        </div>
-        <span style="width:90px;text-align:right;font-weight:600">${fmtR(val)}</span>
-      </div>`).join(''):'<div style="color:#94a3b8;font-size:13px">Sem dados nos últimos 30 dias.</div>';
+    $('relPeriodo').innerHTML=dayEntries.length?`
+      <div class="chart-columns">${dayEntries.map(([day,val])=>`<div class="chart-col" style="--h:${Math.max(6,Math.round(val/maxVal*100))}%" data-tip="${day} · ${fmtR(val)}"></div>`).join('')}</div>
+      <div style="display:flex;justify-content:space-between;color:#64748b;font-size:11px;margin-top:8px"><span>${esc(dayEntries[0][0])}</span><span>${esc(dayEntries[dayEntries.length-1][0])}</span></div>
+    `:'<div style="color:#94a3b8;font-size:13px">Sem dados nos últimos 30 dias.</div>';
 
     // Recent orders table (all, sorted newest first)
     const recent=[...peds].sort((a,b)=>new Date(b.recebidoEm||0)-new Date(a.recebidoEm||0)).slice(0,20);
