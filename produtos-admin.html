@@ -10,20 +10,20 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Inter',system-ui,sans-serif;background:#f1f5f9;color:#0f172a;font-size:14px;line-height:1.5;min-height:100vh}
+    body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(180deg,#eef2f7 0,#f8fafc 360px);color:#0f172a;font-size:14px;line-height:1.5;min-height:100vh}
     /* Header */
-    .adm-header{background:#0f172a;color:#fff;padding:0 20px;display:flex;align-items:center;gap:16px;height:52px;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+    .adm-header{background:rgba(15,23,42,.96);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);color:#fff;padding:0 20px;display:flex;align-items:center;gap:16px;height:58px;position:sticky;top:0;z-index:100;box-shadow:0 16px 40px rgba(15,23,42,.18)}
     .adm-brand{font-weight:700;font-size:15px;letter-spacing:-.02em;white-space:nowrap}
     .adm-brand span{color:#38bdf8}
     .tab-nav{display:flex;gap:2px;flex:1}
-    .tab-btn{padding:5px 14px;border:none;background:transparent;color:rgba(255,255,255,.5);font-size:13px;font-weight:500;cursor:pointer;border-radius:6px;transition:all .15s;font-family:inherit}
+    .tab-btn{padding:7px 14px;border:none;background:transparent;color:rgba(255,255,255,.62);font-size:13px;font-weight:600;cursor:pointer;border-radius:8px;transition:all .15s;font-family:inherit}
     .tab-btn:hover{background:rgba(255,255,255,.08);color:#fff}
-    .tab-btn.active{background:rgba(255,255,255,.12);color:#fff}
+    .tab-btn.active{background:#fff;color:#0f172a;box-shadow:0 8px 22px rgba(0,0,0,.18)}
     .adm-header-right{display:flex;gap:8px;align-items:center;margin-left:auto}
     /* Buttons */
     .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;border:1px solid transparent;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;text-decoration:none}
-    .btn--primary{background:#2563eb;color:#fff}
-    .btn--primary:hover{background:#1d4ed8}
+    .btn--primary{background:#111827;color:#fff;box-shadow:0 10px 20px rgba(15,23,42,.12)}
+    .btn--primary:hover{background:#020617;transform:translateY(-1px)}
     .btn--primary:disabled{background:#93c5fd;cursor:not-allowed}
     .btn--secondary{background:#f8fafc;color:#374151;border-color:#e2e8f0}
     .btn--secondary:hover{background:#f1f5f9}
@@ -35,17 +35,17 @@
     .btn--header{padding:4px 10px;font-size:12px;background:transparent;border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.8)}
     .btn--header:hover{background:rgba(255,255,255,.1);color:#fff}
     /* Panels */
-    .tab-panel{display:none;padding:18px 20px}
+    .tab-panel{display:none;padding:22px 24px}
     .tab-panel.active{display:block}
     /* Card */
-    .card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-    .card-head{padding:12px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px}
+    .card{background:rgba(255,255,255,.92);border-radius:12px;border:1px solid rgba(226,232,240,.9);box-shadow:0 18px 50px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04)}
+    .card-head{padding:14px 16px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;gap:10px}
     .card-head h2{font-size:14px;font-weight:600}
     .card-body{padding:16px}
     /* Form */
     .fg{margin-bottom:12px}
     .fl{display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
-    .fc{width:100%;padding:8px 11px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:inherit;color:#0f172a;background:#fff;transition:border-color .15s}
+    .fc{width:100%;padding:9px 11px;border:1px solid #dbe3ec;border-radius:8px;font-size:13px;font-family:inherit;color:#0f172a;background:#fff;transition:border-color .15s,box-shadow .15s}
     .fc:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
     textarea.fc{min-height:72px;resize:vertical}
     .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -92,21 +92,44 @@
     /* Notice (legado — oculto) */
     .notice{display:none!important}
     /* Stock */
-    .stock-wrap{max-width:580px}
+    .screen-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end;margin-bottom:18px;padding:20px;border:1px solid rgba(226,232,240,.9);border-radius:14px;background:linear-gradient(135deg,#ffffff 0,#f8fbff 64%,#eef6f1 100%);box-shadow:0 20px 60px rgba(15,23,42,.07)}
+    .screen-kicker{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:5px}
+    .screen-title{font-size:24px;line-height:1.1;font-weight:800;letter-spacing:0;color:#0f172a}
+    .screen-copy{margin-top:8px;color:#64748b;font-size:13px;max-width:640px}
+    .hero-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+    .quick-stats{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+    .quick-stat{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:13px 14px;box-shadow:0 12px 34px rgba(15,23,42,.05)}
+    .quick-stat__label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:800}
+    .quick-stat__value{font-size:22px;font-weight:800;margin-top:3px}
+    .quick-stat__hint{font-size:12px;color:#64748b;margin-top:2px}
+    .stock-wrap{max-width:none}
+    .stock-layout{display:grid;grid-template-columns:minmax(340px,580px) minmax(280px,1fr);gap:16px;align-items:start}
+    .stock-insights{display:grid;gap:12px}
+    .stock-pick{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;background:#f8fafc;border:1px solid #eef2f7}
+    .stock-pick__swatch{width:42px;height:42px;border-radius:9px;background:var(--tone,#e2e8f0);border:1px solid rgba(15,23,42,.12);flex-shrink:0}
+    .stock-pick__name{font-weight:700}
+    .stock-pick__meta{font-size:12px;color:#64748b}
+    .stock-list{display:grid;gap:8px}
+    .stock-list__row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+    .stock-list__row:last-child{border-bottom:0}
+    .stock-list__qty{margin-left:auto;font-weight:800;color:#0f172a}
     .size-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:10px}
     .size-slot .fl{text-transform:none;letter-spacing:0;font-size:12px;color:#374151}
     .size-current{font-size:11px;color:#64748b;margin-bottom:3px}
     /* Orders */
-    .orders-layout{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
-    .orders-toolbar{padding:10px 14px;border-bottom:1px solid #f1f5f9;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .orders-layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;align-items:start}
+    .orders-toolbar{padding:12px 14px;border-bottom:1px solid #eef2f7;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .filter-btn{padding:4px 10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;color:#374151}
     .filter-btn:hover{background:#f1f5f9}
-    .filter-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
+    .filter-btn.active{background:#111827;color:#fff;border-color:#111827}
+    .toolbar-search{position:relative;min-width:230px;flex:1;max-width:360px}
+    .toolbar-search input{padding-left:32px}
+    .toolbar-search::before{content:'⌕';position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-weight:800;z-index:1}
     .orders-tbl{width:100%;border-collapse:collapse}
     .orders-tbl th{text-align:left;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.04em;padding:8px 12px;border-bottom:1px solid #f1f5f9;background:#fafbfc;white-space:nowrap}
-    .orders-tbl td{padding:10px 12px;border-bottom:1px solid #f8fafc;font-size:13px}
+    .orders-tbl td{padding:12px;border-bottom:1px solid #f8fafc;font-size:13px}
     .orders-tbl tr[data-num]:hover td{background:#f8fafc;cursor:pointer}
-    .orders-tbl tr.selected td{background:#eff6ff}
+    .orders-tbl tr.selected td{background:#f0f9ff}
     .status-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600}
     .status-pill::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
     .s-reservado{background:#fef3c7;color:#92400e}
@@ -119,7 +142,11 @@
     .cancel-dot{display:inline-flex;align-items:center;gap:5px;margin-left:6px;color:#b42323;font-size:11px;font-weight:700}
     .cancel-dot::before{content:'';width:6px;height:6px;border-radius:50%;background:#ef4444}
     /* Order detail */
-    .order-detail{padding:14px;overflow-y:auto;max-height:calc(100vh - 160px)}
+    .order-detail{padding:16px;overflow-y:auto;max-height:calc(100vh - 174px)}
+    .order-total-box{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+    .order-total-box div{background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:10px}
+    .order-total-box span{display:block;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.04em;font-weight:800}
+    .order-total-box strong{display:block;margin-top:2px;font-size:18px}
     /* Modal */
     .modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
     .modal-box{background:#fff;border-radius:16px;width:100%;max-width:760px;box-shadow:0 24px 64px rgba(0,0,0,.25);overflow:hidden;margin:auto}
@@ -127,16 +154,20 @@
     .modal-head h2{font-size:15px;font-weight:700}
     .modal-body{padding:20px;max-height:calc(100vh - 120px);overflow-y:auto}
     /* Relatório */
-    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:20px}
-    .kpi-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px 18px}
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:18px}
+    .kpi-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:16px 18px;box-shadow:0 12px 34px rgba(15,23,42,.05)}
     .kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:4px}
-    .kpi-val{font-size:24px;font-weight:700;color:#0f172a}
+    .kpi-val{font-size:24px;font-weight:800;color:#0f172a}
     .rel-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .mini-bars{display:grid;gap:10px}
+    .mini-bar{display:grid;grid-template-columns:78px 1fr 88px;gap:10px;align-items:center;font-size:12px}
+    .mini-bar__track{height:24px;background:#f1f5f9;border-radius:8px;overflow:hidden}
+    .mini-bar__fill{height:100%;background:linear-gradient(90deg,#111827,#2f7d58);border-radius:8px}
     @media(max-width:900px){.rel-grid{grid-template-columns:1fr}}
     /* Items list in order form */
     .order-item-entry{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9}
     /* Orders layout wider side */
-    .orders-layout{display:grid;grid-template-columns:1fr 400px;gap:16px;align-items:start}
+    .orders-layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;align-items:start}
     .order-section-title{font-size:11px;font-weight:600;text-transform:uppercase;color:#64748b;letter-spacing:.04em;margin-bottom:8px}
     .order-info-box{background:#f8fafc;border-radius:8px;padding:10px;font-size:13px;margin-bottom:14px}
     .order-item-row{padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
@@ -155,8 +186,10 @@
     ::-webkit-scrollbar{width:4px;height:4px}
     ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
     /* Responsive */
+    @media(max-width:1000px){.stock-layout,.prod-layout,.orders-layout{grid-template-columns:1fr}.quick-stats{grid-template-columns:1fr 1fr}.screen-hero{grid-template-columns:1fr}}
     @media(max-width:900px){.prod-layout,.orders-layout{grid-template-columns:1fr}.tab-panel{padding:12px}}
-    @media(max-width:600px){.frow{grid-template-columns:1fr}.tab-btn{padding:5px 8px;font-size:12px}.adm-header{padding:0 12px}}
+    @media(max-width:700px){.quick-stats{grid-template-columns:1fr}.screen-title{font-size:21px}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}}
+    @media(max-width:600px){.frow{grid-template-columns:1fr}.tab-btn{padding:5px 8px;font-size:12px}.adm-header{padding:0 12px;overflow-x:auto}.tab-nav{overflow-x:auto}.mini-bar{grid-template-columns:58px 1fr 76px}}
   </style>
 </head>
 <body>
@@ -201,22 +234,47 @@
 <!-- ── ESTOQUE ───────────────────────────────────── -->
 <div id="tab-estoque" class="tab-panel">
   <div class="stock-wrap">
-    <div class="card">
-      <div class="card-head"><h2>Entrada de Estoque</h2></div>
-      <div class="card-body">
-        <p style="color:#64748b;font-size:13px;margin-bottom:16px;">Registre mercadoria recebida. Quantidades são <strong>somadas</strong> ao estoque atual.</p>
-        <div id="estoqueNotice" class="notice"></div>
-        <div class="fg">
-          <label class="fl">Produto</label>
-          <select class="fc" id="estoq_prod"><option value="">— Selecione —</option></select>
+    <div class="screen-hero">
+      <div>
+        <div class="screen-kicker">Operação de estoque</div>
+        <h1 class="screen-title">Entrada rápida com visão do saldo atual</h1>
+        <p class="screen-copy">Selecione produto e variação, confira o estoque por tamanho e registre novas peças recebidas.</p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn--secondary btn--sm" type="button" onclick="loadProdutos()">Atualizar produtos</button>
+      </div>
+    </div>
+    <div class="quick-stats" id="stockSummary"></div>
+    <div class="stock-layout">
+      <div class="card">
+        <div class="card-head"><h2>Entrada de estoque</h2></div>
+        <div class="card-body">
+          <p style="color:#64748b;font-size:13px;margin-bottom:16px;">As quantidades informadas são somadas ao estoque atual.</p>
+          <div id="estoqueNotice" class="notice"></div>
+          <div class="fg">
+            <label class="fl">Produto</label>
+            <select class="fc" id="estoq_prod"><option value="">— Selecione —</option></select>
+          </div>
+          <div class="fg">
+            <label class="fl">Cor / Variação</label>
+            <select class="fc" id="estoq_cor"><option value="">— Selecione o produto —</option></select>
+          </div>
+          <div id="estoq_sizes"></div>
+          <div style="margin-top:16px">
+            <button class="btn btn--primary" id="btnEntrada">Registrar entrada</button>
+          </div>
         </div>
-        <div class="fg">
-          <label class="fl">Cor / Variação</label>
-          <select class="fc" id="estoq_cor"><option value="">— Selecione o produto —</option></select>
+      </div>
+      <div class="stock-insights">
+        <div class="card">
+          <div class="card-head"><h2>Produto selecionado</h2></div>
+          <div class="card-body" id="stockPreview">
+            <div class="form-empty" style="padding:34px 12px">Selecione um produto para visualizar saldos e variações.</div>
+          </div>
         </div>
-        <div id="estoq_sizes"></div>
-        <div style="margin-top:16px">
-          <button class="btn btn--primary" id="btnEntrada">Registrar entrada</button>
+        <div class="card">
+          <div class="card-head"><h2>Atenção de reposição</h2></div>
+          <div class="card-body" id="stockLowList"></div>
         </div>
       </div>
     </div>
@@ -225,9 +283,23 @@
 
 <!-- ── PEDIDOS ───────────────────────────────────── -->
 <div id="tab-pedidos" class="tab-panel">
+  <div class="screen-hero">
+    <div>
+      <div class="screen-kicker">Central de pedidos</div>
+      <h1 class="screen-title">Fluxo de venda com status visível</h1>
+      <p class="screen-copy">Acompanhe pedidos, encontre clientes rapidamente e altere o status sem sair da tela.</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn--primary" id="btnNovoPedidoHero" type="button">+ Pedido</button>
+    </div>
+  </div>
+  <div class="quick-stats" id="ordersKpis"></div>
   <div class="orders-layout">
     <div class="card">
       <div class="orders-toolbar">
+        <div class="toolbar-search">
+          <input class="fc" id="orderSearch" placeholder="Buscar por pedido, cliente, telefone ou e-mail" />
+        </div>
         <button class="filter-btn active" data-status="">Todos</button>
         <button class="filter-btn" data-status="reservado">Reservado</button>
         <button class="filter-btn" data-status="confirmado">Confirmado</button>
@@ -240,7 +312,7 @@
       <div style="overflow-x:auto">
         <table class="orders-tbl">
           <thead><tr>
-            <th>Pedido</th><th>Cliente</th><th>Status</th><th>Itens</th><th>Data</th>
+            <th>Pedido</th><th>Cliente</th><th>Status</th><th>Itens</th><th>Total</th><th>Data</th>
           </tr></thead>
           <tbody id="ordersBody"></tbody>
         </table>
@@ -254,6 +326,16 @@
 
 <!-- ── RELATÓRIO ─────────────────────────────────── -->
 <div id="tab-relatorio" class="tab-panel">
+  <div class="screen-hero">
+    <div>
+      <div class="screen-kicker">Relatórios</div>
+      <h1 class="screen-title">Indicadores comerciais em tempo real</h1>
+      <p class="screen-copy">Receita, ticket médio, produtos mais vendidos e pedidos recentes consolidados a partir dos pedidos pagos.</p>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn--secondary" href="/api/relatorio" target="_blank">Abrir relatório completo</a>
+    </div>
+  </div>
   <div class="kpi-grid" id="relKpis"></div>
   <div class="rel-grid">
     <div class="card">
@@ -370,7 +452,7 @@ function showNotice(_el,msg,type='success'){toast(msg,type)}
 function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
-let produtos=[], pedidos=[], activeProdId=null, activePedNum=null, orderFilter='';
+let produtos=[], pedidos=[], activeProdId=null, activePedNum=null, orderFilter='', orderSearch='';
 let colorCounter=0, newOrderItems=[], prodListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
@@ -400,6 +482,7 @@ async function loadProdutos(){
   produtos=await r.json();
   renderProdList();
   fillEstoqueSelect();
+  renderStockSummary();
 }
 
 function renderProdList(){
@@ -774,20 +857,90 @@ function fillEstoqueSelect(){
   sel.innerHTML='<option value="">— Selecione um produto —</option>';
   produtos.forEach(p=>{ const o=document.createElement('option');o.value=p.id;o.textContent=p.nome;sel.appendChild(o) });
   if(cur) sel.value=cur;
+  renderStockSummary();
+  renderStockPreview();
 }
 
 $('estoq_prod').addEventListener('change',()=>{
   const p=produtos.find(p=>String(p.id)===$('estoq_prod').value);
   const cs=$('estoq_cor'); cs.innerHTML=''; $('estoq_sizes').innerHTML='';
-  if(!p?.cores?.length){cs.innerHTML='<option value="">— Sem cores —</option>';return}
+  if(!p?.cores?.length){cs.innerHTML='<option value="">— Sem cores —</option>';renderStockPreview();return}
   p.cores.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.nome||`Cor ${i+1}`;cs.appendChild(o)});
   renderSizes(p,0);
+  renderStockPreview();
 });
 
 $('estoq_cor').addEventListener('change',()=>{
   const p=produtos.find(p=>String(p.id)===$('estoq_prod').value);
   if(p) renderSizes(p,Number($('estoq_cor').value)||0);
+  renderStockPreview();
 });
+
+function stockEntries(){
+  const rows=[];
+  produtos.forEach(p=>{
+    (Array.isArray(p.cores)?p.cores:[]).forEach((c,ci)=>{
+      const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+      Object.entries(e).forEach(([size,qty])=>{
+        rows.push({produto:p,cor:c,corIndex:ci,size,qty:Number(qty)||0});
+      });
+    });
+  });
+  return rows;
+}
+
+function renderStockSummary(){
+  const summary=$('stockSummary');
+  const lowList=$('stockLowList');
+  if(!summary&&!lowList) return;
+  const entries=stockEntries();
+  const total=entries.reduce((s,it)=>s+it.qty,0);
+  const low=entries.filter(it=>it.qty>0&&it.qty<=2).length;
+  const out=entries.filter(it=>it.qty<=0).length;
+  if(summary) summary.innerHTML=[
+    ['Produtos ativos',produtos.filter(p=>p.ativo!==false).length,'visíveis no site'],
+    ['Peças em estoque',total+' un.','somando todos os tamanhos'],
+    ['Reposição crítica',low+out,'tamanhos com saldo baixo ou zerado'],
+  ].map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+  if(lowList){
+    const critical=entries.filter(it=>it.qty<=2).sort((a,b)=>a.qty-b.qty).slice(0,8);
+    lowList.innerHTML=critical.length?`<div class="stock-list">${critical.map(it=>`
+      <div class="stock-list__row">
+        <span class="stock-pick__swatch" style="width:24px;height:24px;border-radius:7px;--tone:${esc(it.cor?.swatch||defaultSwatchForName(it.cor?.nome))}"></span>
+        <div>
+          <div style="font-weight:700">${esc(it.produto.nome)}</div>
+          <div class="stock-pick__meta">${esc(it.cor?.nome||'Variação')} · ${esc(it.size)}</div>
+        </div>
+        <div class="stock-list__qty">${it.qty} un.</div>
+      </div>`).join('')}</div>`:'<div style="color:#64748b;font-size:13px">Nenhum tamanho em nível crítico.</div>';
+  }
+}
+
+function renderStockPreview(){
+  const el=$('stockPreview');
+  if(!el) return;
+  const p=produtos.find(p=>String(p.id)===$('estoq_prod')?.value);
+  if(!p){
+    el.innerHTML='<div class="form-empty" style="padding:34px 12px">Selecione um produto para visualizar saldos e variações.</div>';
+    return;
+  }
+  const ci=Number($('estoq_cor')?.value)||0;
+  const c=p.cores?.[ci]||p.cores?.[0]||{};
+  const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+  const rows=Object.entries(e).sort(([a],[b])=>a.localeCompare(b));
+  const total=rows.reduce((s,[,q])=>s+(Number(q)||0),0);
+  el.innerHTML=`
+    <div class="stock-pick">
+      <span class="stock-pick__swatch" style="--tone:${esc(c.swatch||defaultSwatchForName(c.nome))}"></span>
+      <div>
+        <div class="stock-pick__name">${esc(p.nome)}</div>
+        <div class="stock-pick__meta">${esc(c.nome||'Variação única')} · ${total} un. disponíveis</div>
+      </div>
+    </div>
+    <div class="stock-list" style="margin-top:10px">
+      ${rows.length?rows.map(([size,qty])=>`<div class="stock-list__row"><span>${esc(size)}</span><div class="stock-list__qty">${Number(qty)||0} un.</div></div>`).join(''):'<div style="color:#64748b;font-size:13px;padding-top:10px">Sem estoque cadastrado para esta variação.</div>'}
+    </div>`;
+}
 
 function renderSizes(prod,ci){
   const c=prod?.cores?.[ci];
@@ -830,6 +983,7 @@ $('btnEntrada').addEventListener('click',async()=>{
     await loadProdutos();
     const p=produtos.find(p=>String(p.id)===prodId);
     if(p) renderSizes(p,ci);
+    renderStockPreview();
   }catch(e){ showNotice($('estoqueNotice'),'Erro: '+e.message,'error') }
 });
 
@@ -847,7 +1001,19 @@ async function loadPedidos(){
   }catch(e){console.error(e)}
 }
 
-function filteredPedidos(){ return orderFilter?pedidos.filter(p=>(p.status||'reservado')===orderFilter):pedidos }
+function filteredPedidos(){
+  const q=normalizeColorKey(orderSearch);
+  return pedidos.filter(p=>{
+    const okStatus=orderFilter?(p.status||'reservado')===orderFilter:true;
+    if(!okStatus) return false;
+    if(!q) return true;
+    const hay=[
+      p.pedido,p.cliente?.nome,p.nome,p.cliente?.telefone,p.telefone,p.cliente?.email,p.email,
+      p.cliente?.cidade,p.cidade,p.cliente?.uf,p.uf
+    ].filter(Boolean).join(' ');
+    return normalizeColorKey(hay).includes(q);
+  });
+}
 function orderItems(ped){
   const raw=Array.isArray(ped?.itens)&&ped.itens.length?ped.itens:(Array.isArray(ped?.itensEstoque)?ped.itensEstoque:[]);
   return raw.map(it=>({
@@ -863,9 +1029,10 @@ function orderItems(ped){
 
 function renderOrdersTable(){
   const rows=filteredPedidos();
+  renderOrdersKpis();
   $('ordersCount').textContent=`${rows.length} pedido${rows.length!==1?'s':''}`;
   $('ordersBody').innerHTML=rows.length===0
-    ?`<tr><td colspan="5" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
+    ?`<tr><td colspan="6" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
     :rows.map(p=>{
 	      const nome=p.cliente?.nome||p.nome||'—';
 	      const itens=orderItems(p).length||'—';
@@ -875,6 +1042,7 @@ function renderOrdersTable(){
 	        <td>${esc(nome)}</td>
         <td>${sPill(p.status)}</td>
         <td>${itens}</td>
+        <td style="font-weight:700;white-space:nowrap">${fmtR(p.total||0)}</td>
         <td style="white-space:nowrap;font-size:12px;color:#64748b">${fmtD(p.recebidoEm)}</td>
       </tr>`;
     }).join('');
@@ -884,10 +1052,32 @@ function renderOrdersTable(){
   }));
 }
 
+function renderOrdersKpis(){
+  const kpis=$('ordersKpis');
+  if(!kpis) return;
+  const paid=pedidos.filter(p=>['confirmado','enviado','entregue'].includes(p.status));
+  const pending=pedidos.filter(p=>(p.status||'reservado')==='reservado').length;
+  const cancel=pedidos.filter(p=>p.cancellation_requested&&String(p.cancellation_request_status||'pendente')==='pendente').length;
+  const rec=paid.reduce((s,p)=>s+(Number(p.total)||0),0);
+  kpis.innerHTML=[
+    ['Receita ativa',fmtR(rec),'confirmados, enviados e entregues'],
+    ['Reservados',pending+' pedidos','aguardando confirmação'],
+    ['Cancelamentos',cancel+' pendentes','solicitações de clientes'],
+  ].map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
 $$('.filter-btn[data-status]').forEach(btn=>btn.addEventListener('click',()=>{
   $$('.filter-btn[data-status]').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active'); orderFilter=btn.dataset.status; renderOrdersTable();
 }));
+
+const orderSearchInput=$('orderSearch');
+if(orderSearchInput){
+  orderSearchInput.addEventListener('input',()=>{
+    orderSearch=orderSearchInput.value;
+    renderOrdersTable();
+  });
+}
 
 function renderOrderDetail(ped){
   if(!ped) return;
@@ -909,6 +1099,10 @@ function renderOrderDetail(ped){
     </div>
     <div class="order-detail">
       <div class="order-section-title">Alterar status</div>
+      <div class="order-total-box">
+        <div><span>Total</span><strong>${fmtR(ped.total||total)}</strong></div>
+        <div><span>Itens</span><strong>${itens.reduce((s,it)=>s+it.quantidade,0)} un.</strong></div>
+      </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:16px">
         ${['reservado','confirmado','enviado','entregue','cancelado'].map(s=>
           `<button class="filter-btn ${(ped.status||'reservado')===s?'active':''}" data-set="${esc(s)}">${sLabel(s)}</button>`
@@ -1148,6 +1342,8 @@ $('btnNovoPedido').addEventListener('click',()=>{
   $('modalOv').style.display='flex';
   renderNewOrderForm();
 });
+const btnNovoPedidoHero=$('btnNovoPedidoHero');
+if(btnNovoPedidoHero) btnNovoPedidoHero.addEventListener('click',()=>$('btnNovoPedido').click());
 
 // ═══════════════════════════════════════════════════════════
 // RELATÓRIO
