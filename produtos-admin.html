@@ -212,6 +212,8 @@
     .pipeline-step__value{font-size:22px;font-weight:900;margin-top:3px}
     .pipeline-step__bar{height:6px;background:#e2e8f0;border-radius:99px;margin-top:10px;overflow:hidden}
     .pipeline-step__bar span{display:block;height:100%;width:var(--w);background:#111827;border-radius:99px}
+    .report-filters{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px}
+    .report-filters .fg{margin-bottom:0;min-width:160px}
     .mini-bars{display:grid;gap:10px}
     .mini-bar{display:grid;grid-template-columns:78px 1fr 88px;gap:10px;align-items:center;font-size:12px}
     .mini-bar__track{height:24px;background:#f1f5f9;border-radius:8px;overflow:hidden}
@@ -394,6 +396,22 @@
       <a class="btn btn--secondary" href="/api/relatorio" target="_blank">Abrir relatório completo</a>
     </div>
   </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-body">
+      <div class="report-filters">
+        <div class="fg">
+          <label class="fl">Data inicial</label>
+          <input class="fc" type="date" id="relDateStart" />
+        </div>
+        <div class="fg">
+          <label class="fl">Data final</label>
+          <input class="fc" type="date" id="relDateEnd" />
+        </div>
+        <button class="btn btn--primary" id="btnRelApply" type="button">Aplicar período</button>
+        <button class="btn btn--ghost" id="btnRelClear" type="button">Limpar</button>
+      </div>
+    </div>
+  </div>
   <div class="kpi-grid" id="relKpis"></div>
   <div class="rel-grid">
     <div class="card chart-card">
@@ -415,10 +433,6 @@
     <div class="card" style="grid-column:1/-1">
       <div class="card-head"><h2>Receita por dia (últimos 30 dias)</h2></div>
       <div class="card-body" id="relPeriodo"></div>
-    </div>
-    <div class="card" style="grid-column:1/-1">
-      <div class="card-head"><h2>Pedidos recentes</h2><a class="btn btn--secondary btn--sm" style="margin-left:auto" href="/api/relatorio" target="_blank">Ver relatório completo</a></div>
-      <div class="card-body" style="overflow-x:auto" id="relRecentes"></div>
     </div>
   </div>
 </div>
@@ -459,6 +473,17 @@ function effectiveSales(list){
     if(!map.has(key)) map.set(key,p);
   });
   return Array.from(map.values());
+}
+function filterByReportDate(list){
+  const start=relDateStart?new Date(relDateStart+'T00:00:00'):null;
+  const end=relDateEnd?new Date(relDateEnd+'T23:59:59.999'):null;
+  return list.filter(p=>{
+    const d=new Date(p.recebidoEm||p.confirmedAt||p.createdAt||0);
+    if(Number.isNaN(d.getTime())) return false;
+    if(start&&d<start) return false;
+    if(end&&d>end) return false;
+    return true;
+  });
 }
 const COLOR_SWATCH_MAP={
   "preto":"#111111","branco":"#f7f7f2","azul":"#1a3d6b","azul marinho":"#1a3d6b","azul bic":"#0045c8","azul frozen":"#b0d0e8",
@@ -532,7 +557,7 @@ function showNotice(_el,msg,type='success'){toast(msg,type)}
 function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
-let produtos=[], pedidos=[], stockMovimentos=[], activeProdId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='';
+let produtos=[], pedidos=[], stockMovimentos=[], activeProdId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', relDateStart='', relDateEnd='';
 let colorCounter=0, newOrderItems=[], prodListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
@@ -1551,7 +1576,8 @@ async function loadRelatorio(){
     const r=await fetch('/api/pedidos');
     if(r.status===401){redirect401();return}
     if(!r.ok) return;
-    const peds=await r.json();
+    const allPeds=await r.json();
+    const peds=filterByReportDate(allPeds);
     // Venda efetiva: a partir de confirmado. Enviado/entregue são etapas posteriores do mesmo pedido.
     const vendas=effectiveSales(peds);
     const totalRec=vendas.reduce((s,p)=>s+(Number(p.total)||0),0);
@@ -1654,30 +1680,26 @@ async function loadRelatorio(){
       <div style="display:flex;justify-content:space-between;color:#64748b;font-size:11px;margin-top:8px"><span>${esc(dayEntries[0][0])}</span><span>${esc(dayEntries[dayEntries.length-1][0])}</span></div>
     `:'<div style="color:#94a3b8;font-size:13px">Sem dados nos últimos 30 dias.</div>';
 
-    // Recent orders table (all, sorted newest first)
-    const recent=[...peds].sort((a,b)=>new Date(b.recebidoEm||0)-new Date(a.recebidoEm||0)).slice(0,20);
-    $('relRecentes').innerHTML=`<table class="orders-tbl" style="font-size:12px">
-      <thead><tr><th>Pedido</th><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Cidade/UF</th><th>Status</th><th>Itens</th><th>Total</th><th>Data</th></tr></thead>
-      <tbody>${recent.map(p=>{
-        const nome    = esc(p.cliente?.nome     || p.cliente_nome     || p.nome     || '—');
-        const tel     = esc(p.cliente?.telefone || p.cliente_telefone || '—');
-        const email   = esc(p.cliente?.email    || p.cliente_email    || '—');
-        const cidade  = [p.cliente?.cidade||p.cidade||'', p.cliente?.uf||p.uf||''].filter(Boolean).join('/') || '—';
-        const itens   = orderItems(p).length||'—';
-        return `<tr>
-          <td><strong>#${esc(String(p.pedido))}</strong></td>
-          <td>${nome}</td>
-          <td><a href="tel:${tel.replace(/\D/g,'')}" style="color:#2563eb;text-decoration:none">${tel}</a></td>
-          <td><a href="mailto:${email}" style="color:#2563eb;text-decoration:none">${email}</a></td>
-          <td style="color:#64748b">${esc(cidade)}</td>
-          <td>${sPill(p.status)}</td>
-          <td>${itens}</td>
-          <td style="font-weight:700">${fmtR(p.total||0)}</td>
-          <td style="color:#64748b;white-space:nowrap">${fmtD(p.recebidoEm)}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
   }catch(e){console.error('[relatorio]',e)}
+}
+
+const btnRelApply=$('btnRelApply');
+if(btnRelApply){
+  btnRelApply.addEventListener('click',()=>{
+    relDateStart=$('relDateStart')?.value||'';
+    relDateEnd=$('relDateEnd')?.value||'';
+    loadRelatorio();
+  });
+}
+const btnRelClear=$('btnRelClear');
+if(btnRelClear){
+  btnRelClear.addEventListener('click',()=>{
+    relDateStart='';
+    relDateEnd='';
+    if($('relDateStart')) $('relDateStart').value='';
+    if($('relDateEnd')) $('relDateEnd').value='';
+    loadRelatorio();
+  });
 }
 
 // ── Init ─────────────────────────────────────────────────────
