@@ -92,18 +92,19 @@
     /* Notice (legado — oculto) */
     .notice{display:none!important}
     /* Stock */
-    .screen-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end;margin-bottom:18px;padding:20px;border:1px solid rgba(226,232,240,.9);border-radius:14px;background:linear-gradient(135deg,#ffffff 0,#f8fbff 64%,#eef6f1 100%);box-shadow:0 20px 60px rgba(15,23,42,.07)}
+    .screen-hero{display:block;margin-bottom:18px;padding:20px;border:1px solid rgba(226,232,240,.9);border-radius:14px;background:linear-gradient(135deg,#ffffff 0,#f8fbff 64%,#eef6f1 100%);box-shadow:0 20px 60px rgba(15,23,42,.07)}
     .screen-kicker{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:5px}
     .screen-title{font-size:24px;line-height:1.1;font-weight:800;letter-spacing:0;color:#0f172a}
     .screen-copy{margin-top:8px;color:#64748b;font-size:13px;max-width:640px}
     .hero-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-    .quick-stats{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+    .quick-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}
+    .quick-stat-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
     .quick-stat{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:13px 14px;box-shadow:0 12px 34px rgba(15,23,42,.05)}
     .quick-stat__label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:800}
     .quick-stat__value{font-size:22px;font-weight:800;margin-top:3px}
     .quick-stat__hint{font-size:12px;color:#64748b;margin-top:2px}
     .stock-wrap{max-width:none}
-    .stock-layout{display:grid;grid-template-columns:minmax(320px,.95fr) minmax(360px,1.05fr);grid-template-areas:"catalog detail" "entry movement";gap:16px;align-items:stretch}
+    .stock-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"catalog detail" "entry movement";gap:16px;align-items:stretch}
     .stock-card{height:100%;display:flex;flex-direction:column;overflow:hidden}
     .stock-card .card-body{flex:1}
     .stock-card--catalog{grid-area:catalog}
@@ -214,9 +215,9 @@
     ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
     /* Responsive */
     @media(max-width:1100px){.stock-layout{grid-template-columns:1fr;grid-template-areas:"catalog" "detail" "entry" "movement"}}
-    @media(max-width:1000px){.prod-layout,.orders-layout{grid-template-columns:1fr}.quick-stats{grid-template-columns:1fr 1fr}.screen-hero{grid-template-columns:1fr}}
+    @media(max-width:1000px){.prod-layout,.orders-layout{grid-template-columns:1fr}.quick-stats{grid-template-columns:1fr}.screen-hero{grid-template-columns:1fr}}
     @media(max-width:900px){.prod-layout,.orders-layout{grid-template-columns:1fr}.tab-panel{padding:12px}}
-    @media(max-width:700px){.quick-stats{grid-template-columns:1fr}.screen-title{font-size:21px}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}}
+    @media(max-width:700px){.quick-stat-group{grid-template-columns:1fr}.screen-title{font-size:21px}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}}
     @media(max-width:600px){.frow{grid-template-columns:1fr}.tab-btn{padding:5px 8px;font-size:12px}.adm-header{padding:0 12px;overflow-x:auto}.tab-nav{overflow-x:auto}.mini-bar{grid-template-columns:58px 1fr 76px}}
   </style>
 </head>
@@ -267,9 +268,6 @@
         <div class="screen-kicker">Operação de estoque</div>
         <h1 class="screen-title">Consulta e movimentação de estoque</h1>
         <p class="screen-copy">Pesquise produtos, acompanhe saldo por item e registre entradas. As saídas acontecem quando a venda é confirmada no checkout ou criada como pedido efetivo no admin.</p>
-      </div>
-      <div class="hero-actions">
-        <button class="btn btn--secondary btn--sm" type="button" onclick="refreshStockScreen()">Atualizar estoque</button>
       </div>
     </div>
     <div class="quick-stats" id="stockSummary"></div>
@@ -337,7 +335,6 @@
           <input class="fc" id="orderSearch" placeholder="Buscar por pedido, cliente, telefone ou e-mail" />
         </div>
         <button class="filter-btn active" data-status="">Todos</button>
-        <button class="filter-btn" data-status="reservado">Reservado</button>
         <button class="filter-btn" data-status="confirmado">Confirmado</button>
         <button class="filter-btn" data-status="enviado">Enviado</button>
         <button class="filter-btn" data-status="entregue">Entregue</button>
@@ -348,7 +345,7 @@
       <div style="overflow-x:auto">
         <table class="orders-tbl">
           <thead><tr>
-            <th>Pedido</th><th>Cliente</th><th>Status</th><th>Itens</th><th>Total</th><th>Data</th>
+            <th>Pedido</th><th>Cliente</th><th>Origem</th><th>Status</th><th>Itens</th><th>Total</th><th>Data</th>
           </tr></thead>
           <tbody id="ordersBody"></tbody>
         </table>
@@ -416,6 +413,10 @@ function fmtR(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',c
 function fmtD(iso){ if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) }
 function sLabel(s){ return ({reservado:'Reservado',confirmado:'Confirmado',enviado:'Enviado',entregue:'Entregue',cancelado:'Cancelado'})[s]||s||'Reservado' }
 function sPill(s){ return `<span class="status-pill s-${s||'reservado'}">${sLabel(s)}</span>` }
+function origemLabel(o){
+  const key=String(o||'').trim().toLowerCase();
+  return ({ecommerce:'Ecommerce',admin:'Admin',whatsapp:'WhatsApp',instagram:'Instagram','loja_fisica':'Loja física',telefone:'Telefone',outro:'Outro'})[key]||o||'—';
+}
 const COLOR_SWATCH_MAP={
   "preto":"#111111","branco":"#f7f7f2","azul":"#1a3d6b","azul marinho":"#1a3d6b","azul bic":"#0045c8","azul frozen":"#b0d0e8",
   "cinza":"#7c8590","grafite":"#4e4e6e","verde":"#107878","verde agua":"#a5e8d2","verde suzy":"#1dafb0","verde pavao":"#006f68",
@@ -962,12 +963,16 @@ function renderStockSummary(){
   const inactive=produtos.length-active;
   const variants=produtos.reduce((s,p)=>s+(Array.isArray(p.cores)?p.cores.length:0),0);
   const stockedProducts=produtos.filter(p=>productStockTotal(p)>0).length;
-  summary.innerHTML=[
+  const cards=[
     ['Produtos ativos',active,'visíveis no site'],
     ['Produtos inativos',inactive,'ocultos no catálogo'],
     ['Estoque total',total+' un.','saldo atual consolidado'],
     ['Itens com saldo',stockedProducts,`${variants} variações cadastradas`],
-  ].map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+  ];
+  summary.innerHTML=[cards.slice(0,2),cards.slice(2,4)].map(group=>`
+    <div class="quick-stat-group">
+      ${group.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('')}
+    </div>`).join('');
 }
 
 function renderStockPreview(){
@@ -1172,7 +1177,7 @@ function renderOrdersTable(){
   renderOrdersKpis();
   $('ordersCount').textContent=`${rows.length} pedido${rows.length!==1?'s':''}`;
   $('ordersBody').innerHTML=rows.length===0
-    ?`<tr><td colspan="6" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
+    ?`<tr><td colspan="7" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
     :rows.map(p=>{
 	      const nome=p.cliente?.nome||p.nome||'—';
 	      const itens=orderItems(p).length||'—';
@@ -1180,6 +1185,7 @@ function renderOrdersTable(){
 	      return `<tr data-num="${esc(String(p.pedido))}" class="${String(p.pedido)===String(activePedNum)?'selected':''}">
 	        <td><strong>#${esc(String(p.pedido))}</strong>${cancelPending?'<span class="cancel-dot">Cancelamento</span>':''}</td>
 	        <td>${esc(nome)}</td>
+        <td style="color:#64748b;font-size:12px">${esc(origemLabel(p.origem))}</td>
         <td>${sPill(p.status)}</td>
         <td>${itens}</td>
         <td style="font-weight:700;white-space:nowrap">${fmtR(p.total||0)}</td>
@@ -1196,12 +1202,12 @@ function renderOrdersKpis(){
   const kpis=$('ordersKpis');
   if(!kpis) return;
   const paid=pedidos.filter(p=>['confirmado','enviado','entregue'].includes(p.status));
-  const pending=pedidos.filter(p=>(p.status||'reservado')==='reservado').length;
+  const open=pedidos.filter(p=>['confirmado','enviado'].includes(p.status)).length;
   const cancel=pedidos.filter(p=>p.cancellation_requested&&String(p.cancellation_request_status||'pendente')==='pendente').length;
   const rec=paid.reduce((s,p)=>s+(Number(p.total)||0),0);
   kpis.innerHTML=[
     ['Receita ativa',fmtR(rec),'confirmados, enviados e entregues'],
-    ['Reservados',pending+' pedidos','aguardando confirmação'],
+    ['Pedidos em aberto',open+' pedidos','confirmados ou enviados'],
     ['Cancelamentos',cancel+' pendentes','solicitações de clientes'],
   ].map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
 }
@@ -1244,7 +1250,7 @@ function renderOrderDetail(ped){
         <div><span>Itens</span><strong>${itens.reduce((s,it)=>s+it.quantidade,0)} un.</strong></div>
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:16px">
-        ${['reservado','confirmado','enviado','entregue','cancelado'].map(s=>
+        ${['confirmado','enviado','entregue','cancelado'].map(s=>
           `<button class="filter-btn ${(ped.status||'reservado')===s?'active':''}" data-set="${esc(s)}">${sLabel(s)}</button>`
         ).join('')}
 	      </div>
@@ -1278,6 +1284,7 @@ function renderOrderDetail(ped){
           ${Number(ped.total)>0?`<div style="text-align:right;font-weight:800;margin-top:4px">Total pedido: ${fmtR(ped.total)}</div>`:''}
         </div>`:''}
       ${ped.pagamento?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Pagamento: ${esc(ped.pagamento)}</div>`:''}
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">Origem: ${esc(origemLabel(ped.origem))}</div>
       ${ped.pagamento_status?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Status pagamento: ${esc(ped.pagamento_status)}</div>`:''}
       ${ped.frete_modo?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Entrega: ${esc(ped.frete_modo)}</div>`:''}
       ${ped.obs?`<div style="font-size:12px;color:#64748b;margin-bottom:12px">Obs: ${esc(ped.obs)}</div>`:''}
@@ -1335,12 +1342,20 @@ function renderNewOrderForm(){
           </div>
           <div class="fg"><label class="fl">Status</label>
             <select class="fc" id="np_st">
-              <option value="reservado">Reservado</option>
               <option value="confirmado" selected>Confirmado</option>
               <option value="enviado">Enviado</option>
               <option value="entregue">Entregue</option>
             </select>
           </div>
+        </div>
+        <div class="fg"><label class="fl">Origem / Canal</label>
+          <select class="fc" id="np_origem">
+            <option value="whatsapp" selected>WhatsApp</option>
+            <option value="instagram">Instagram</option>
+            <option value="loja_fisica">Loja física</option>
+            <option value="telefone">Telefone</option>
+            <option value="outro">Outro</option>
+          </select>
         </div>
         <div class="fg"><label class="fl">Observações</label><textarea class="fc" id="np_obs" style="min-height:50px"></textarea></div>
       </div>
@@ -1457,14 +1472,14 @@ function renderNewOrderForm(){
     const body={
       cliente:{nome,telefone:($('np_tel').value||'').trim(),email:($('np_email').value||'').trim(),
                 endereco:($('np_end').value||'').trim(),cidade:($('np_cidade').value||'').trim(),uf:($('np_uf').value||'').trim().toUpperCase()},
-      status:$('np_st').value, pagamento:$('np_pg').value,
+      status:$('np_st').value, pagamento:$('np_pg').value, origem:$('np_origem').value,
       obs:($('np_obs').value||'').trim(),
       itens:newOrderItems,
       itensEstoque:newOrderItems.map(it=>({productId:it.productId,colorIndex:it.colorIndex,tamanhoSelecionado:it.tamanhoSelecionado,quantidade:it.quantidade,nome:it.nome})),
-      subtotal:sub, taxa, total:sub+taxa, origem:'admin'
+      subtotal:sub, taxa, total:sub+taxa
     };
     try{
-      const r=await fetch('/api/pedidos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const r=await fetch('/api/admin/pedido',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const d=await r.json();
       if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao salvar pedido');
       await loadProdutos();

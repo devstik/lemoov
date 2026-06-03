@@ -1502,6 +1502,7 @@ app.post('/api/pedidos', async (req, res) => {
       ...req.body,
       pedido: numeroPedido,
       status: req.body?.status || 'confirmado',
+      origem: 'ecommerce',
       estoqueBaixado: true,
       recebidoEm: new Date().toISOString()
     };
@@ -1775,6 +1776,7 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
           rua: basePedido.rua || pending.endereco?.rua || '',
           itensEstoque: itensReserva,
           cliente: pending.cliente || basePedido.cliente || {},
+          origem: basePedido.origem || pending.origem || 'ecommerce',
           estoqueBaixado: true,
           recebidoEm: new Date().toISOString(),
           ...paymentUpdates
@@ -2186,7 +2188,7 @@ app.post('/api/admin/pedido', authRequired, async (req, res) => {
     }
     const pedidos = await readPedidosStore(conn);
     const numeroPedido = String(req.body?.pedido || '').trim() || generateOrderNumber(pedidos);
-    const pedido = { ...req.body, pedido: numeroPedido, status: req.body?.status || 'confirmado', recebidoEm: new Date().toISOString(), origem: 'admin' };
+    const pedido = { ...req.body, pedido: numeroPedido, status: req.body?.status || 'confirmado', recebidoEm: new Date().toISOString(), origem: req.body?.origem || 'admin' };
     if (isPaidOrderStatus(pedido)) {
       const produtos = ensureProductIds(await readProdutosStore(conn));
       const itensReserva = Array.isArray(pedido.itensEstoque)
