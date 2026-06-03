@@ -97,19 +97,26 @@
     .screen-title{font-size:24px;line-height:1.1;font-weight:800;letter-spacing:0;color:#0f172a}
     .screen-copy{margin-top:8px;color:#64748b;font-size:13px;max-width:640px}
     .hero-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-    .quick-stats{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+    .quick-stats{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px}
     .quick-stat{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:13px 14px;box-shadow:0 12px 34px rgba(15,23,42,.05)}
     .quick-stat__label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:800}
     .quick-stat__value{font-size:22px;font-weight:800;margin-top:3px}
     .quick-stat__hint{font-size:12px;color:#64748b;margin-top:2px}
     .stock-wrap{max-width:none}
-    .stock-layout{display:grid;grid-template-columns:minmax(360px,520px) minmax(0,1fr);gap:16px;align-items:start}
-    .stock-insights{display:grid;gap:12px}
+    .stock-layout{display:grid;grid-template-columns:minmax(320px,.95fr) minmax(360px,1.05fr);grid-template-areas:"catalog detail" "entry movement";gap:16px;align-items:stretch}
+    .stock-card{height:100%;display:flex;flex-direction:column;overflow:hidden}
+    .stock-card .card-body{flex:1}
+    .stock-card--catalog{grid-area:catalog}
+    .stock-card--detail{grid-area:detail}
+    .stock-card--entry{grid-area:entry}
+    .stock-card--movement{grid-area:movement}
+    .stock-card .card-head{min-height:58px}
+    .stock-head-sub{font-size:12px;color:#64748b;margin-left:auto;white-space:nowrap}
     .stock-command{background:linear-gradient(180deg,#fff,#f8fafc);border:1px solid #e2e8f0;border-radius:12px;padding:14px}
     .stock-search{position:relative;margin-bottom:12px}
     .stock-search::before{content:'⌕';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-weight:900;z-index:1}
     .stock-search input{padding-left:34px}
-    .stock-result-list{display:grid;gap:8px;max-height:330px;overflow:auto;padding-right:2px}
+    .stock-result-list{display:grid;gap:8px;max-height:430px;overflow:auto;padding-right:2px}
     .stock-result{width:100%;text-align:left;border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:10px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;transition:all .15s}
     .stock-result:hover{border-color:#cbd5e1;background:#f8fafc}
     .stock-result.active{border-color:#111827;box-shadow:0 0 0 3px rgba(15,23,42,.08)}
@@ -117,7 +124,7 @@
     .stock-result__name{display:block;font-size:13px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .stock-result__meta{display:block;font-size:12px;color:#64748b}
     .stock-result__qty{margin-left:auto;font-weight:900;color:#0f172a;white-space:nowrap}
-    .stock-pick{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;background:#f8fafc;border:1px solid #eef2f7}
+    .stock-pick{display:flex;gap:12px;align-items:center;padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #eef2f7}
     .stock-pick__swatch{width:42px;height:42px;border-radius:9px;background:var(--tone,#e2e8f0);border:1px solid rgba(15,23,42,.12);flex-shrink:0}
     .stock-pick__name{font-weight:700}
     .stock-pick__meta{font-size:12px;color:#64748b}
@@ -125,7 +132,7 @@
     .stock-list__row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
     .stock-list__row:last-child{border-bottom:0}
     .stock-list__qty{margin-left:auto;font-weight:800;color:#0f172a}
-    .stock-ledger{display:grid;gap:8px;max-height:390px;overflow:auto}
+    .stock-ledger{display:grid;gap:8px;max-height:360px;overflow:auto}
     .stock-move{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid #eef2f7;border-radius:10px;background:#fff}
     .stock-move__type{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900}
     .stock-move__type.in{background:#dcfce7;color:#166534}
@@ -206,7 +213,8 @@
     ::-webkit-scrollbar{width:4px;height:4px}
     ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:99px}
     /* Responsive */
-    @media(max-width:1000px){.stock-layout,.prod-layout,.orders-layout{grid-template-columns:1fr}.quick-stats{grid-template-columns:1fr 1fr}.screen-hero{grid-template-columns:1fr}}
+    @media(max-width:1100px){.stock-layout{grid-template-columns:1fr;grid-template-areas:"catalog" "detail" "entry" "movement"}}
+    @media(max-width:1000px){.prod-layout,.orders-layout{grid-template-columns:1fr}.quick-stats{grid-template-columns:1fr 1fr}.screen-hero{grid-template-columns:1fr}}
     @media(max-width:900px){.prod-layout,.orders-layout{grid-template-columns:1fr}.tab-panel{padding:12px}}
     @media(max-width:700px){.quick-stats{grid-template-columns:1fr}.screen-title{font-size:21px}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}}
     @media(max-width:600px){.frow{grid-template-columns:1fr}.tab-btn{padding:5px 8px;font-size:12px}.adm-header{padding:0 12px;overflow-x:auto}.tab-nav{overflow-x:auto}.mini-bar{grid-template-columns:58px 1fr 76px}}
@@ -266,8 +274,8 @@
     </div>
     <div class="quick-stats" id="stockSummary"></div>
     <div class="stock-layout">
-      <div class="card">
-        <div class="card-head"><h2>Entrada e pesquisa</h2></div>
+      <div class="card stock-card stock-card--catalog">
+        <div class="card-head"><h2>Catálogo de estoque</h2><span class="stock-head-sub" id="stockCatalogCount"></span></div>
         <div class="card-body">
           <div class="stock-command">
             <div class="stock-search">
@@ -275,7 +283,17 @@
             </div>
             <div id="stockProductResults" class="stock-result-list"></div>
           </div>
-          <p style="color:#64748b;font-size:13px;margin:16px 0 12px;">Lance entrada para o produto selecionado. As quantidades são somadas ao saldo atual.</p>
+        </div>
+      </div>
+      <div class="card stock-card stock-card--detail">
+        <div class="card-head"><h2>Consulta do produto</h2><span class="stock-head-sub">Saldo por variação e tamanho</span></div>
+        <div class="card-body" id="stockPreview">
+          <div class="form-empty" style="padding:34px 12px">Selecione um produto para visualizar saldos e variações.</div>
+        </div>
+      </div>
+      <div class="card stock-card stock-card--entry">
+        <div class="card-head"><h2>Entrada de estoque</h2><span class="stock-head-sub">Soma ao saldo atual</span></div>
+        <div class="card-body">
           <div id="estoqueNotice" class="notice"></div>
           <div class="fg">
             <label class="fl">Produto</label>
@@ -291,17 +309,9 @@
           </div>
         </div>
       </div>
-      <div class="stock-insights">
-        <div class="card">
-          <div class="card-head"><h2>Consulta do produto</h2></div>
-          <div class="card-body" id="stockPreview">
-            <div class="form-empty" style="padding:34px 12px">Selecione um produto para visualizar saldos e variações.</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h2>Movimentação de estoque</h2></div>
-          <div class="card-body" id="stockMovements"></div>
-        </div>
+      <div class="card stock-card stock-card--movement">
+        <div class="card-head"><h2>Movimentação de estoque</h2><span class="stock-head-sub">Entradas, saídas e devoluções</span></div>
+        <div class="card-body" id="stockMovements"></div>
       </div>
     </div>
   </div>
@@ -951,10 +961,12 @@ function renderStockSummary(){
   const active=produtos.filter(p=>p.ativo!==false).length;
   const inactive=produtos.length-active;
   const variants=produtos.reduce((s,p)=>s+(Array.isArray(p.cores)?p.cores.length:0),0);
+  const stockedProducts=produtos.filter(p=>productStockTotal(p)>0).length;
   summary.innerHTML=[
     ['Produtos ativos',active,'visíveis no site'],
     ['Produtos inativos',inactive,'ocultos no catálogo'],
-    ['Estoque total',total+' un.',`${variants} variações cadastradas`],
+    ['Estoque total',total+' un.','saldo atual consolidado'],
+    ['Itens com saldo',stockedProducts,`${variants} variações cadastradas`],
   ].map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
 }
 
@@ -1019,6 +1031,8 @@ function renderStockProductResults(){
     ].filter(Boolean).join(' ');
     return normalizeColorKey(hay).includes(q);
   }).slice(0,60);
+  const countEl=$('stockCatalogCount');
+  if(countEl) countEl.textContent=`${rows.length} item${rows.length!==1?'s':''}`;
   el.innerHTML=rows.length?rows.map(p=>{
     const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
     const img=c?.imagens?.[0]||c?.imagem||'';
