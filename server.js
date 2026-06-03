@@ -129,6 +129,14 @@ async function initDatabase() {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_stock_movements (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        data LONGTEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_stock_created_at (created_at)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await mysqlPool.execute(`
       CREATE TABLE IF NOT EXISTS lemoov_payment_intents (
         id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
         order_number VARCHAR(40) NOT NULL UNIQUE,
@@ -300,6 +308,30 @@ async function readPedidoStore(numero, conn = null) {
   if (!rows.length) return null;
   const item = JSON.parse(rows[0].data);
   return { ...item, pedido: item.pedido || rows[0].order_number };
+}
+async function readStockMovementsStore(conn = null) {
+  if (!MYSQL_ENABLED) throw new Error('Banco de dados não configurado para movimentação de estoque.');
+  await initDatabase();
+  const db = conn || mysqlPool;
+  const [rows] = await db.execute('SELECT id, data, created_at FROM lemoov_stock_movements ORDER BY id DESC LIMIT 300');
+  return rows.map((row) => {
+    const item = JSON.parse(row.data);
+    return { ...item, id: item.id || row.id, createdAt: item.createdAt || row.created_at };
+  });
+}
+async function appendStockMovementsStore(items = [], conn = null) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) return;
+  if (!MYSQL_ENABLED) throw new Error('Banco de dados não configurado para movimentação de estoque.');
+  await initDatabase();
+  const db = conn || mysqlPool;
+  for (const item of list) {
+    const createdAt = item.createdAt ? new Date(item.createdAt) : new Date();
+    await db.execute('INSERT INTO lemoov_stock_movements (data, created_at) VALUES (?, ?)', [JSON.stringify(item), createdAt]);
+  }
+}
+function requireStockMovementDatabase() {
+  if (!MYSQL_ENABLED) throw new Error('Banco de dados não configurado para movimentação de estoque.');
 }
 async function appendPedidoStore(item, conn = null) {
   if (!MYSQL_ENABLED) {
@@ -494,13 +526,28 @@ function normalizePaymentItems(itens = []) {
 }
 function reserveStock(produtos, itens = []) {
   const stockItems = validateStockAvailability(produtos, itens);
+  const movements = [];
 
   for (const item of stockItems) {
     const prod = produtos.find((p) => Number(p.id) === item.productId);
     const cor = Array.isArray(prod?.cores) ? prod.cores[item.colorIndex] : null;
     const stock = getColorStock(cor);
     if (!stock) continue;
-    stock[item.tamanho] = Math.max(0, Number(stock[item.tamanho]) - item.quantidade);
+    const before = Number(stock[item.tamanho]) || 0;
+    const after = Math.max(0, before - item.quantidade);
+    stock[item.tamanho] = after;
+    movements.push({
+      type: 'saida',
+      reason: 'venda',
+      productId: item.productId,
+      productName: prod?.nome || item.nome || '',
+      colorIndex: item.colorIndex,
+      colorName: cor?.nome || '',
+      size: item.tamanho,
+      quantity: item.quantidade,
+      before,
+      after
+    });
     cor.tamanhos = Object.keys(stock).filter((size) => Number(stock[size]) > 0);
     cor.soldOut = cor.tamanhos.length === 0;
     prod.updatedAt = new Date().toISOString();
@@ -515,17 +562,33 @@ function reserveStock(produtos, itens = []) {
       return !stock || Object.values(stock).every((qty) => Number(qty) <= 0);
     });
   });
+  return movements;
 }
 
 function restoreStock(produtos, itens = []) {
   const stockItems = normalizeStockItems(itens);
+  const movements = [];
 
   for (const item of stockItems) {
     const prod = produtos.find((p) => Number(p.id) === item.productId);
     const cor = Array.isArray(prod?.cores) ? prod.cores[item.colorIndex] : null;
     const stock = getColorStock(cor);
     if (!stock) continue;
-    stock[item.tamanho] = Math.max(0, Number(stock[item.tamanho]) || 0) + item.quantidade;
+    const before = Math.max(0, Number(stock[item.tamanho]) || 0);
+    const after = before + item.quantidade;
+    stock[item.tamanho] = after;
+    movements.push({
+      type: 'entrada',
+      reason: 'devolucao',
+      productId: item.productId,
+      productName: prod?.nome || item.nome || '',
+      colorIndex: item.colorIndex,
+      colorName: cor?.nome || '',
+      size: item.tamanho,
+      quantity: item.quantidade,
+      before,
+      after
+    });
     cor.tamanhos = Object.keys(stock).filter((size) => Number(stock[size]) > 0);
     cor.soldOut = cor.tamanhos.length === 0;
     prod.updatedAt = new Date().toISOString();
@@ -540,6 +603,7 @@ function restoreStock(produtos, itens = []) {
       return !stock || Object.values(stock).every((qty) => Number(qty) <= 0);
     });
   });
+  return movements;
 }
 
 const upload = multer({
@@ -1412,6 +1476,7 @@ app.post('/api/frete', async (req, res) => {
 app.post('/api/pedidos', async (req, res) => {
   let conn = null;
   try {
+    requireStockMovementDatabase();
     if (!isPaidOrderStatus(req.body || {})) {
       return res.status(400).json({
         ok: false,
@@ -1431,7 +1496,7 @@ app.post('/api/pedidos', async (req, res) => {
       ? req.body.itensEstoque
       : (Array.isArray(req.body?.itens) ? req.body.itens : []);
 
-    reserveStock(produtos, itensReserva);
+    const movements = reserveStock(produtos, itensReserva);
     await writeProdutosStore(produtos, conn);
     const pedido = {
       ...req.body,
@@ -1440,6 +1505,13 @@ app.post('/api/pedidos', async (req, res) => {
       estoqueBaixado: true,
       recebidoEm: new Date().toISOString()
     };
+    await appendStockMovementsStore(movements.map((m) => ({
+      ...m,
+      id: crypto.randomUUID(),
+      orderNumber: numeroPedido,
+      source: 'checkout',
+      createdAt: new Date().toISOString()
+    })), conn);
     await appendPedidoStore(pedido, conn);
     if (conn) await conn.commit();
     res.json({ ok: true, pedido: numeroPedido });
@@ -1644,6 +1716,7 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
 app.post('/api/webhooks/infinitepay', async (req, res) => {
   let conn = null;
   try {
+    requireStockMovementDatabase();
     const body = req.body || {};
     const orderNsu = String(body.order_nsu || '').trim();
     if (!orderNsu) {
@@ -1681,7 +1754,7 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
       } else {
         const produtos = ensureProductIds(await readProdutosStore(conn));
         const itensReserva = Array.isArray(pending.itensEstoque) ? pending.itensEstoque : [];
-        reserveStock(produtos, itensReserva);
+        const movements = reserveStock(produtos, itensReserva);
         await writeProdutosStore(produtos, conn);
         const basePedido = pending.pedidoPayload || {};
         const pedido = {
@@ -1706,6 +1779,13 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
           recebidoEm: new Date().toISOString(),
           ...paymentUpdates
         };
+        await appendStockMovementsStore(movements.map((m) => ({
+          ...m,
+          id: crypto.randomUUID(),
+          orderNumber: orderNsu,
+          source: 'checkout_webhook',
+          createdAt: new Date().toISOString()
+        })), conn);
         await appendPedidoStore(pedido, conn);
         await deletePendingPaymentStore(orderNsu, conn);
         notifyOrderConfirmed(pedido).catch((e) => console.error('[notify]', e.message));
@@ -1953,6 +2033,7 @@ app.patch('/api/admin/produtos/ordem', authRequired, async (req, res) => {
 
 app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
   try {
+    requireStockMovementDatabase();
     const { produtoId, corIndex, quantidades } = req.body || {};
     if (!produtoId || !quantidades || typeof quantidades !== 'object') {
       return res.status(400).json({ ok: false, error: 'Dados inválidos' });
@@ -1965,10 +2046,31 @@ app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
     if (!cor.estoque || typeof cor.estoque !== 'object' || Array.isArray(cor.estoque)) {
       cor.estoque = {};
     }
+    const movements = [];
+    const now = new Date().toISOString();
     Object.entries(quantidades).forEach(([size, qty]) => {
       const s = String(size).trim().toUpperCase();
       if (!s) return;
-      cor.estoque[s] = Math.max(0, (Number(cor.estoque[s]) || 0) + (Math.max(0, Number(qty)) || 0));
+      const addQty = Math.max(0, Number(qty)) || 0;
+      if (addQty <= 0) return;
+      const before = Math.max(0, Number(cor.estoque[s]) || 0);
+      const after = before + addQty;
+      cor.estoque[s] = after;
+      movements.push({
+        id: crypto.randomUUID(),
+        type: 'entrada',
+        reason: 'entrada_manual',
+        productId: Number(produtoId),
+        productName: prod.nome || '',
+        colorIndex: Number(corIndex) || 0,
+        colorName: cor.nome || '',
+        size: s,
+        quantity: addQty,
+        before,
+        after,
+        source: 'admin',
+        createdAt: now
+      });
     });
     cor.tamanhos = Object.keys(cor.estoque).filter((s) => Number(cor.estoque[s]) > 0);
     cor.soldOut = cor.tamanhos.length === 0;
@@ -1978,6 +2080,7 @@ app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
     }
     prod.updatedAt = new Date().toISOString();
     await writeProdutosStore(produtos);
+    await appendStockMovementsStore(movements);
     res.json({ ok: true, produto: prod });
   } catch (e) {
     console.error('[entrada-estoque]', e.message);
@@ -1985,9 +2088,19 @@ app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
   }
 });
 
+app.get('/api/admin/estoque-movimentos', authRequired, async (_req, res) => {
+  try {
+    const items = await readStockMovementsStore();
+    res.json(items);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
   let conn = null;
   try {
+    requireStockMovementDatabase();
     if (MYSQL_ENABLED) {
       await initDatabase();
       conn = await mysqlPool.getConnection();
@@ -2005,8 +2118,15 @@ app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
       const itensReserva = Array.isArray(nextOrder.itensEstoque)
         ? nextOrder.itensEstoque
         : (Array.isArray(nextOrder.itens) ? nextOrder.itens : []);
-      reserveStock(produtos, itensReserva);
+      const movements = reserveStock(produtos, itensReserva);
       await writeProdutosStore(produtos, conn);
+      await appendStockMovementsStore(movements.map((m) => ({
+        ...m,
+        id: crypto.randomUUID(),
+        orderNumber: req.params.numero,
+        source: 'admin_status',
+        createdAt: new Date().toISOString()
+      })), conn);
       updates.estoqueBaixado = true;
     }
     if (shouldRestoreStock) {
@@ -2014,8 +2134,15 @@ app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
       const itensReserva = Array.isArray(existing.itensEstoque)
         ? existing.itensEstoque
         : (Array.isArray(existing.itens) ? existing.itens : []);
-      restoreStock(produtos, itensReserva);
+      const movements = restoreStock(produtos, itensReserva);
       await writeProdutosStore(produtos, conn);
+      await appendStockMovementsStore(movements.map((m) => ({
+        ...m,
+        id: crypto.randomUUID(),
+        orderNumber: req.params.numero,
+        source: 'admin_status',
+        createdAt: new Date().toISOString()
+      })), conn);
       updates.estoqueBaixado = false;
       if (String(nextOrder.status || '').toLowerCase() === 'cancelado') {
         updates.cancelledAt = updates.cancelledAt || new Date().toISOString();
@@ -2050,6 +2177,7 @@ app.delete('/api/admin/pedido/:numero', authRequired, async (req, res) => {
 app.post('/api/admin/pedido', authRequired, async (req, res) => {
   let conn = null;
   try {
+    requireStockMovementDatabase();
     if (MYSQL_ENABLED) {
       await initDatabase();
       conn = await mysqlPool.getConnection();
@@ -2064,8 +2192,15 @@ app.post('/api/admin/pedido', authRequired, async (req, res) => {
       const itensReserva = Array.isArray(pedido.itensEstoque)
         ? pedido.itensEstoque
         : (Array.isArray(pedido.itens) ? pedido.itens : []);
-      reserveStock(produtos, itensReserva);
+      const movements = reserveStock(produtos, itensReserva);
       await writeProdutosStore(produtos, conn);
+      await appendStockMovementsStore(movements.map((m) => ({
+        ...m,
+        id: crypto.randomUUID(),
+        orderNumber: numeroPedido,
+        source: 'admin_pedido',
+        createdAt: new Date().toISOString()
+      })), conn);
       pedido.estoqueBaixado = true;
     }
     await appendPedidoStore(pedido, conn);

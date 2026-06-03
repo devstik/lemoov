@@ -103,8 +103,20 @@
     .quick-stat__value{font-size:22px;font-weight:800;margin-top:3px}
     .quick-stat__hint{font-size:12px;color:#64748b;margin-top:2px}
     .stock-wrap{max-width:none}
-    .stock-layout{display:grid;grid-template-columns:minmax(340px,580px) minmax(280px,1fr);gap:16px;align-items:start}
+    .stock-layout{display:grid;grid-template-columns:minmax(360px,520px) minmax(0,1fr);gap:16px;align-items:start}
     .stock-insights{display:grid;gap:12px}
+    .stock-command{background:linear-gradient(180deg,#fff,#f8fafc);border:1px solid #e2e8f0;border-radius:12px;padding:14px}
+    .stock-search{position:relative;margin-bottom:12px}
+    .stock-search::before{content:'⌕';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#94a3b8;font-weight:900;z-index:1}
+    .stock-search input{padding-left:34px}
+    .stock-result-list{display:grid;gap:8px;max-height:330px;overflow:auto;padding-right:2px}
+    .stock-result{width:100%;text-align:left;border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:10px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;transition:all .15s}
+    .stock-result:hover{border-color:#cbd5e1;background:#f8fafc}
+    .stock-result.active{border-color:#111827;box-shadow:0 0 0 3px rgba(15,23,42,.08)}
+    .stock-result__img{width:42px;height:42px;border-radius:8px;object-fit:cover;background:#eef2f7;flex-shrink:0}
+    .stock-result__name{display:block;font-size:13px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .stock-result__meta{display:block;font-size:12px;color:#64748b}
+    .stock-result__qty{margin-left:auto;font-weight:900;color:#0f172a;white-space:nowrap}
     .stock-pick{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;background:#f8fafc;border:1px solid #eef2f7}
     .stock-pick__swatch{width:42px;height:42px;border-radius:9px;background:var(--tone,#e2e8f0);border:1px solid rgba(15,23,42,.12);flex-shrink:0}
     .stock-pick__name{font-weight:700}
@@ -113,6 +125,14 @@
     .stock-list__row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}
     .stock-list__row:last-child{border-bottom:0}
     .stock-list__qty{margin-left:auto;font-weight:800;color:#0f172a}
+    .stock-ledger{display:grid;gap:8px;max-height:390px;overflow:auto}
+    .stock-move{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid #eef2f7;border-radius:10px;background:#fff}
+    .stock-move__type{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900}
+    .stock-move__type.in{background:#dcfce7;color:#166534}
+    .stock-move__type.out{background:#fee2e2;color:#991b1b}
+    .stock-move__name{font-size:13px;font-weight:800}
+    .stock-move__meta{font-size:12px;color:#64748b}
+    .stock-move__qty{text-align:right;font-weight:900}
     .size-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:10px}
     .size-slot .fl{text-transform:none;letter-spacing:0;font-size:12px;color:#374151}
     .size-current{font-size:11px;color:#64748b;margin-bottom:3px}
@@ -237,19 +257,25 @@
     <div class="screen-hero">
       <div>
         <div class="screen-kicker">Operação de estoque</div>
-        <h1 class="screen-title">Entrada rápida com visão do saldo atual</h1>
-        <p class="screen-copy">Selecione produto e variação, confira o estoque por tamanho e registre novas peças recebidas.</p>
+        <h1 class="screen-title">Consulta e movimentação de estoque</h1>
+        <p class="screen-copy">Pesquise produtos, acompanhe saldo por item e registre entradas. As saídas acontecem quando a venda é confirmada no checkout ou criada como pedido efetivo no admin.</p>
       </div>
       <div class="hero-actions">
-        <button class="btn btn--secondary btn--sm" type="button" onclick="loadProdutos()">Atualizar produtos</button>
+        <button class="btn btn--secondary btn--sm" type="button" onclick="refreshStockScreen()">Atualizar estoque</button>
       </div>
     </div>
     <div class="quick-stats" id="stockSummary"></div>
     <div class="stock-layout">
       <div class="card">
-        <div class="card-head"><h2>Entrada de estoque</h2></div>
+        <div class="card-head"><h2>Entrada e pesquisa</h2></div>
         <div class="card-body">
-          <p style="color:#64748b;font-size:13px;margin-bottom:16px;">As quantidades informadas são somadas ao estoque atual.</p>
+          <div class="stock-command">
+            <div class="stock-search">
+              <input class="fc" id="stockSearch" placeholder="Pesquisar produto por nome, categoria ou cor" />
+            </div>
+            <div id="stockProductResults" class="stock-result-list"></div>
+          </div>
+          <p style="color:#64748b;font-size:13px;margin:16px 0 12px;">Lance entrada para o produto selecionado. As quantidades são somadas ao saldo atual.</p>
           <div id="estoqueNotice" class="notice"></div>
           <div class="fg">
             <label class="fl">Produto</label>
@@ -267,14 +293,14 @@
       </div>
       <div class="stock-insights">
         <div class="card">
-          <div class="card-head"><h2>Produto selecionado</h2></div>
+          <div class="card-head"><h2>Consulta do produto</h2></div>
           <div class="card-body" id="stockPreview">
             <div class="form-empty" style="padding:34px 12px">Selecione um produto para visualizar saldos e variações.</div>
           </div>
         </div>
         <div class="card">
-          <div class="card-head"><h2>Atenção de reposição</h2></div>
-          <div class="card-body" id="stockLowList"></div>
+          <div class="card-head"><h2>Movimentação de estoque</h2></div>
+          <div class="card-body" id="stockMovements"></div>
         </div>
       </div>
     </div>
@@ -452,7 +478,7 @@ function showNotice(_el,msg,type='success'){toast(msg,type)}
 function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
-let produtos=[], pedidos=[], activeProdId=null, activePedNum=null, orderFilter='', orderSearch='';
+let produtos=[], pedidos=[], stockMovimentos=[], activeProdId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='';
 let colorCounter=0, newOrderItems=[], prodListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
@@ -463,7 +489,7 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   btn.classList.add('active');
   $(`tab-${tab}`).classList.add('active');
   if(tab==='pedidos') loadPedidos();
-  if(tab==='estoque') fillEstoqueSelect();
+  if(tab==='estoque') refreshStockScreen();
   if(tab==='relatorio') loadRelatorio();
 }));
 
@@ -859,6 +885,7 @@ function fillEstoqueSelect(){
   if(cur) sel.value=cur;
   renderStockSummary();
   renderStockPreview();
+  renderStockProductResults();
 }
 
 $('estoq_prod').addEventListener('change',()=>{
@@ -868,6 +895,7 @@ $('estoq_prod').addEventListener('change',()=>{
   p.cores.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.nome||`Cor ${i+1}`;cs.appendChild(o)});
   renderSizes(p,0);
   renderStockPreview();
+  renderStockProductResults();
 });
 
 $('estoq_cor').addEventListener('change',()=>{
@@ -875,6 +903,32 @@ $('estoq_cor').addEventListener('change',()=>{
   if(p) renderSizes(p,Number($('estoq_cor').value)||0);
   renderStockPreview();
 });
+
+const stockSearchInput=$('stockSearch');
+if(stockSearchInput){
+  stockSearchInput.addEventListener('input',()=>{
+    stockSearch=stockSearchInput.value;
+    renderStockProductResults();
+  });
+}
+
+async function refreshStockScreen(){
+  await loadProdutos();
+  await loadStockMovements();
+  renderStockSummary();
+  renderStockProductResults();
+  renderStockPreview();
+}
+
+async function loadStockMovements(){
+  try{
+    const r=await fetch('/api/admin/estoque-movimentos');
+    if(r.status===401){redirect401();return}
+    if(!r.ok) return;
+    stockMovimentos=await r.json();
+    renderStockMovements();
+  }catch(e){console.error('[estoque-movimentos]',e)}
+}
 
 function stockEntries(){
   const rows=[];
@@ -891,29 +945,17 @@ function stockEntries(){
 
 function renderStockSummary(){
   const summary=$('stockSummary');
-  const lowList=$('stockLowList');
-  if(!summary&&!lowList) return;
+  if(!summary) return;
   const entries=stockEntries();
   const total=entries.reduce((s,it)=>s+it.qty,0);
-  const low=entries.filter(it=>it.qty>0&&it.qty<=2).length;
-  const out=entries.filter(it=>it.qty<=0).length;
-  if(summary) summary.innerHTML=[
-    ['Produtos ativos',produtos.filter(p=>p.ativo!==false).length,'visíveis no site'],
-    ['Peças em estoque',total+' un.','somando todos os tamanhos'],
-    ['Reposição crítica',low+out,'tamanhos com saldo baixo ou zerado'],
+  const active=produtos.filter(p=>p.ativo!==false).length;
+  const inactive=produtos.length-active;
+  const variants=produtos.reduce((s,p)=>s+(Array.isArray(p.cores)?p.cores.length:0),0);
+  summary.innerHTML=[
+    ['Produtos ativos',active,'visíveis no site'],
+    ['Produtos inativos',inactive,'ocultos no catálogo'],
+    ['Estoque total',total+' un.',`${variants} variações cadastradas`],
   ].map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
-  if(lowList){
-    const critical=entries.filter(it=>it.qty<=2).sort((a,b)=>a.qty-b.qty).slice(0,8);
-    lowList.innerHTML=critical.length?`<div class="stock-list">${critical.map(it=>`
-      <div class="stock-list__row">
-        <span class="stock-pick__swatch" style="width:24px;height:24px;border-radius:7px;--tone:${esc(it.cor?.swatch||defaultSwatchForName(it.cor?.nome))}"></span>
-        <div>
-          <div style="font-weight:700">${esc(it.produto.nome)}</div>
-          <div class="stock-pick__meta">${esc(it.cor?.nome||'Variação')} · ${esc(it.size)}</div>
-        </div>
-        <div class="stock-list__qty">${it.qty} un.</div>
-      </div>`).join('')}</div>`:'<div style="color:#64748b;font-size:13px">Nenhum tamanho em nível crítico.</div>';
-  }
 }
 
 function renderStockPreview(){
@@ -924,22 +966,105 @@ function renderStockPreview(){
     el.innerHTML='<div class="form-empty" style="padding:34px 12px">Selecione um produto para visualizar saldos e variações.</div>';
     return;
   }
-  const ci=Number($('estoq_cor')?.value)||0;
-  const c=p.cores?.[ci]||p.cores?.[0]||{};
-  const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
-  const rows=Object.entries(e).sort(([a],[b])=>a.localeCompare(b));
-  const total=rows.reduce((s,[,q])=>s+(Number(q)||0),0);
+  const selectedCi=Number($('estoq_cor')?.value);
+  const cores=Array.isArray(p.cores)?p.cores:[];
+  const selected=Number.isFinite(selectedCi)?selectedCi:0;
+  const total=cores.reduce((sum,c)=>{
+    const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+    return sum+Object.values(e).reduce((s,q)=>s+(Number(q)||0),0);
+  },0);
+  const c=cores[selected]||cores[0]||{};
   el.innerHTML=`
     <div class="stock-pick">
       <span class="stock-pick__swatch" style="--tone:${esc(c.swatch||defaultSwatchForName(c.nome))}"></span>
       <div>
         <div class="stock-pick__name">${esc(p.nome)}</div>
-        <div class="stock-pick__meta">${esc(c.nome||'Variação única')} · ${total} un. disponíveis</div>
+        <div class="stock-pick__meta">${p.ativo===false?'Inativo':'Ativo'} · ${cores.length||1} variação${cores.length!==1?'ões':''} · ${total} un. no total</div>
       </div>
     </div>
     <div class="stock-list" style="margin-top:10px">
-      ${rows.length?rows.map(([size,qty])=>`<div class="stock-list__row"><span>${esc(size)}</span><div class="stock-list__qty">${Number(qty)||0} un.</div></div>`).join(''):'<div style="color:#64748b;font-size:13px;padding-top:10px">Sem estoque cadastrado para esta variação.</div>'}
+      ${cores.length?cores.map((cor,idx)=>{
+        const e=(cor?.estoque&&typeof cor.estoque==='object'&&!Array.isArray(cor.estoque))?cor.estoque:{};
+        const rows=Object.entries(e).sort(([a],[b])=>a.localeCompare(b));
+        const colorTotal=rows.reduce((s,[,q])=>s+(Number(q)||0),0);
+        return `<div style="padding:10px 0;border-bottom:1px solid #f1f5f9">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+            <span class="stock-pick__swatch" style="width:22px;height:22px;border-radius:7px;--tone:${esc(cor.swatch||defaultSwatchForName(cor.nome))}"></span>
+            <strong>${esc(cor.nome||`Variação ${idx+1}`)}</strong>
+            <span style="margin-left:auto;font-weight:900">${colorTotal} un.</span>
+          </div>
+          ${rows.length?rows.map(([size,qty])=>`<div class="stock-list__row" style="padding:6px 0 6px 30px"><span>${esc(size)}</span><div class="stock-list__qty">${Number(qty)||0} un.</div></div>`).join(''):'<div style="color:#64748b;font-size:12px;padding-left:30px">Sem estoque cadastrado.</div>'}
+        </div>`;
+      }).join(''):'<div style="color:#64748b;font-size:13px;padding-top:10px">Sem variações cadastradas.</div>'}
     </div>`;
+}
+
+function productStockTotal(p){
+  return (Array.isArray(p?.cores)?p.cores:[]).reduce((sum,c)=>{
+    const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+    return sum+Object.values(e).reduce((s,q)=>s+(Number(q)||0),0);
+  },0);
+}
+
+function renderStockProductResults(){
+  const el=$('stockProductResults');
+  if(!el) return;
+  const q=normalizeColorKey(stockSearch);
+  const selectedId=$('estoq_prod')?.value;
+  const rows=produtos.filter(p=>{
+    if(!q) return true;
+    const hay=[
+      p.nome,p.categoria,p.ativo===false?'inativo':'ativo',
+      ...(Array.isArray(p.cores)?p.cores.map(c=>c.nome):[])
+    ].filter(Boolean).join(' ');
+    return normalizeColorKey(hay).includes(q);
+  }).slice(0,60);
+  el.innerHTML=rows.length?rows.map(p=>{
+    const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
+    const img=c?.imagens?.[0]||c?.imagem||'';
+    const src=img?(img.startsWith('http')?img:'/'+img):'';
+    const total=productStockTotal(p);
+    return `<button type="button" class="stock-result ${String(p.id)===String(selectedId)?'active':''}" data-stock-product="${esc(String(p.id))}">
+      ${src?`<img class="stock-result__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:`<span class="stock-result__img"></span>`}
+      <span style="min-width:0">
+        <span class="stock-result__name">${esc(p.nome)}</span>
+        <span class="stock-result__meta">${esc(p.categoria||'Sem categoria')} · ${p.ativo===false?'Inativo':'Ativo'}</span>
+      </span>
+      <span class="stock-result__qty">${total} un.</span>
+    </button>`;
+  }).join(''):'<div style="color:#64748b;font-size:13px;padding:12px">Nenhum produto encontrado.</div>';
+  $$('[data-stock-product]').forEach(btn=>btn.addEventListener('click',()=>{
+    const sel=$('estoq_prod');
+    sel.value=btn.dataset.stockProduct;
+    sel.dispatchEvent(new Event('change'));
+  }));
+}
+
+function movementLabel(m){
+  if(m.reason==='saldo_inicial') return 'Saldo inicial';
+  if(m.reason==='entrada_manual') return 'Entrada manual';
+  if(m.reason==='devolucao') return 'Devolução ao estoque';
+  if(m.reason==='venda') return 'Venda efetiva';
+  return m.type==='saida'?'Saída':'Entrada';
+}
+
+function renderStockMovements(){
+  const el=$('stockMovements');
+  if(!el) return;
+  const rows=[...stockMovimentos].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,80);
+  el.innerHTML=rows.length?`<div class="stock-ledger">${rows.map(m=>{
+    const isOut=m.type==='saida';
+    const qty=(isOut?'-':'+')+(Number(m.quantity)||0);
+    const ref=m.orderNumber?` · Pedido #${esc(String(m.orderNumber))}`:'';
+    return `<div class="stock-move">
+      <div class="stock-move__type ${isOut?'out':'in'}">${isOut?'−':'+'}</div>
+      <div>
+        <div class="stock-move__name">${esc(m.productName||'Produto')}</div>
+        <div class="stock-move__meta">${movementLabel(m)}${ref} · ${esc(m.colorName||'Variação')} · ${esc(m.size||'UNICO')} · ${fmtD(m.createdAt)}</div>
+      </div>
+      <div class="stock-move__qty">${qty}<div style="font-size:11px;color:#64748b;font-weight:700">${Number(m.before)||0} → ${Number(m.after)||0}</div></div>
+    </div>`;
+  }).join('')}</div>`:'<div style="color:#64748b;font-size:13px">Nenhuma movimentação registrada ainda.</div>';
 }
 
 function renderSizes(prod,ci){
@@ -981,6 +1106,7 @@ $('btnEntrada').addEventListener('click',async()=>{
     if(!d.ok) throw new Error(d.error||'Falha');
     showNotice($('estoqueNotice'),'Estoque atualizado com sucesso!','success');
     await loadProdutos();
+    await loadStockMovements();
     const p=produtos.find(p=>String(p.id)===prodId);
     if(p) renderSizes(p,ci);
     renderStockPreview();
