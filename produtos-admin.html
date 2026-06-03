@@ -216,10 +216,35 @@
     .pipeline-step__bar span{display:block;height:100%;width:var(--w);background:#111827;border-radius:99px}
     .report-filters{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px}
     .report-filters .fg{margin-bottom:0;min-width:160px}
+    /* CRM */
+    .crm-shell{display:grid;gap:16px}
+    .crm-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .crm-grid{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px;align-items:start}
+    .crm-main{display:grid;gap:16px}
+    .crm-side{display:grid;gap:16px}
+    .crm-note{font-size:12px;color:#64748b;line-height:1.5}
+    .crm-funnel{display:grid;gap:10px}
+    .crm-step{display:grid;grid-template-columns:150px 1fr 72px;gap:10px;align-items:center}
+    .crm-step__label{font-size:12px;font-weight:800;color:#334155}
+    .crm-step__bar{height:22px;background:#f1f5f9;border-radius:8px;overflow:hidden}
+    .crm-step__fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#111827,#2f7d58)}
+    .crm-step__count{text-align:right;font-weight:900}
+    .crm-filter{display:grid;grid-template-columns:170px minmax(220px,1fr) 190px;gap:10px;align-items:end}
+    .crm-leads{display:grid;gap:8px;max-height:390px;overflow:auto}
+    .crm-lead{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid #eef2f7;border-radius:10px;background:#fff}
+    .crm-lead__name{font-size:13px;font-weight:900}
+    .crm-lead__meta{font-size:12px;color:#64748b;margin-top:2px}
+    .crm-score{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:28px;border-radius:8px;background:#111827;color:#fff;font-weight:900;font-size:12px}
+    .crm-table{width:100%;border-collapse:collapse;font-size:13px}
+    .crm-table th{text-align:left;padding:9px 10px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#64748b;border-bottom:1px solid #eef2f7;background:#fafbfc}
+    .crm-table td{padding:10px;border-bottom:1px solid #f8fafc;vertical-align:middle;color:#334155}
+    .crm-table tr:hover td{background:#f8fafc}
+    .crm-badge{display:inline-flex;align-items:center;font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;background:#f8fafc;border:1px solid #e2e8f0}
     .mini-bars{display:grid;gap:10px}
     .mini-bar{display:grid;grid-template-columns:78px 1fr 88px;gap:10px;align-items:center;font-size:12px}
     .mini-bar__track{height:24px;background:#f1f5f9;border-radius:8px;overflow:hidden}
     .mini-bar__fill{height:100%;background:linear-gradient(90deg,#111827,#2f7d58);border-radius:8px}
+    @media(max-width:1100px){.crm-grid{grid-template-columns:1fr}.crm-kpis{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:900px){.rel-grid{grid-template-columns:1fr}.orders-shell{grid-template-columns:1fr;grid-template-areas:"kpis" "list" "detail"}.orders-kpis{grid-template-columns:1fr}.chart-donut-wrap{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr 1fr}}
     /* Items list in order form */
     .order-item-entry{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9}
@@ -245,7 +270,7 @@
     @media(max-width:1100px){.stock-layout{grid-template-columns:1fr;grid-template-areas:"catalog" "detail" "entry" "movement"}}
     @media(max-width:1000px){.prod-layout{grid-template-columns:1fr}.quick-stats{grid-template-columns:1fr}.screen-hero{grid-template-columns:1fr}}
     @media(max-width:900px){.prod-layout{grid-template-columns:1fr}.tab-panel{padding:12px}}
-    @media(max-width:700px){.quick-stat-group{grid-template-columns:1fr}.screen-title{font-size:21px}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}.chart-bar{grid-template-columns:1fr}.chart-bar__value{text-align:left}.pipeline{grid-template-columns:1fr}}
+    @media(max-width:700px){.quick-stat-group{grid-template-columns:1fr}.screen-title{font-size:21px}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}.chart-bar{grid-template-columns:1fr}.chart-bar__value{text-align:left}.pipeline{grid-template-columns:1fr}.crm-kpis,.crm-filter,.crm-step{grid-template-columns:1fr}.crm-step__count{text-align:left}}
     @media(max-width:600px){.frow{grid-template-columns:1fr}.tab-btn{padding:5px 8px;font-size:12px}.adm-header{padding:0 12px;overflow-x:auto}.tab-nav{overflow-x:auto}.mini-bar{grid-template-columns:58px 1fr 76px}}
   </style>
 </head>
@@ -1716,14 +1741,55 @@ const CRM_EVENT_LABELS = {
   checkout_start: 'Iniciou checkout', purchase: 'Comprou', heartbeat: '—'
 };
 const CRM_STATUS = (s) => {
-  if (s.purchased) return { label: '✅ Comprou', color: '#16a34a' };
-  if (s.checkout)  return { label: '💳 Checkout', color: '#2563eb' };
-  if (s.carted)    return { label: '🛒 Carrinho', color: '#d97706' };
-  if (s.viewed)    return { label: '👁 Viu produto', color: '#7c3aed' };
-  return             { label: '🔵 Visitou', color: '#6b7280' };
+  if (s.purchased) return { label: 'Comprou', color: '#16a34a' };
+  if (s.checkout)  return { label: 'Checkout', color: '#2563eb' };
+  if (s.carted)    return { label: 'Carrinho', color: '#d97706' };
+  if (s.viewed)    return { label: 'Viu produto', color: '#7c3aed' };
+  return             { label: 'Visitou', color: '#6b7280' };
 };
 function fmtTime(s){ if(!s)return '—'; if(s<60)return s+'s'; if(s<3600)return Math.floor(s/60)+'min'; return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'min'; }
 function fmtDt(iso){ if(!iso)return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function leadScore(s){
+  let score=10;
+  if(s.viewed) score+=15;
+  if(s.carted) score+=30;
+  if(s.checkout) score+=35;
+  if(s.clientId) score+=15;
+  if(Number(s.timeOnSite||0)>180) score+=10;
+  if(Number(s.eventCount||0)>5) score+=10;
+  if(s.purchased) score=100;
+  return Math.min(100,score);
+}
+function leadTier(score){
+  if(score>=80) return 'Alta';
+  if(score>=55) return 'Média';
+  return 'Baixa';
+}
+function crmMatchesSegment(s, segment){
+  if(!segment) return true;
+  if(segment==='hot') return leadScore(s)>=70&&!s.purchased;
+  if(segment==='checkout') return s.checkout&&!s.purchased;
+  if(segment==='carted') return s.carted&&!s.purchased;
+  if(segment==='identified') return Boolean(s.clientId);
+  if(segment==='purchased') return Boolean(s.purchased);
+  return true;
+}
+function applyCrmFilters(){
+  const q=(document.getElementById('crmSearch')?.value||'').toLowerCase();
+  const segment=document.getElementById('crmStatusFilter')?.value||'';
+  const filtered=crmSessions.filter(s=>{
+    const hay=[s.clienteNome,s.cidade,s.bairro,s.regiao,s.origem,s.utm_source,s.utm_medium,s.utm_campaign,s.clientId].filter(Boolean).join(' ').toLowerCase();
+    return (!q||hay.includes(q))&&crmMatchesSegment(s,segment);
+  });
+  const body=document.getElementById('crmTbody');
+  if(body) body.innerHTML=renderCrmRows(filtered);
+  updateCrmCount(filtered.length);
+  bindCrmRows();
+}
+function updateCrmCount(n){
+  const el=document.getElementById('crmCountLabel');
+  if(el) el.textContent=`${n} sessão${n!==1?'ões':''}`;
+}
 
 async function loadCRM(){
   const panel = document.getElementById('tab-crm');
@@ -1744,124 +1810,148 @@ function renderCRM(sessions, funnel){
   const f = funnel || {};
   const conv = f.total > 0 ? ((f.purchased||0)/f.total*100).toFixed(1) : '0.0';
   const abandon = f.carted > 0 ? (((f.carted-(f.purchased||0))/f.carted)*100).toFixed(1) : '0.0';
+  const identified = sessions.filter(s=>s.clientId).length;
+  const hotLeads = sessions.filter(s=>leadScore(s)>=70 && !s.purchased);
   const panel = document.getElementById('tab-crm');
   panel.innerHTML = `
-<style>
-.crm-bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
-.crm-stat{background:#1e293b;border-radius:10px;padding:14px 20px;min-width:130px;flex:1}
-.crm-stat__val{font-size:26px;font-weight:700;color:#f8fafc}
-.crm-stat__lbl{font-size:11px;color:#94a3b8;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
-.crm-funnel{background:#1e293b;border-radius:10px;padding:16px 20px;margin-bottom:20px}
-.crm-funnel h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin:0 0 12px}
-.crm-step{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.crm-step__label{width:180px;font-size:13px;color:#cbd5e1}
-.crm-step__bar{flex:1;height:12px;background:#0f172a;border-radius:6px;overflow:hidden}
-.crm-step__fill{height:100%;border-radius:6px;transition:width .4s}
-.crm-step__count{font-size:13px;font-weight:600;color:#f8fafc;width:50px;text-align:right}
-.crm-step__pct{font-size:11px;color:#94a3b8;width:44px;text-align:right}
-.crm-table{width:100%;border-collapse:collapse;font-size:13px}
-.crm-table th{text-align:left;padding:8px 10px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;border-bottom:1px solid #334155}
-.crm-table td{padding:9px 10px;border-bottom:1px solid #1e293b;vertical-align:middle;color:#cbd5e1}
-.crm-table tr:hover td{background:#1e293b;cursor:pointer}
-.crm-badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#0f172a}
-.crm-filter{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
-.crm-filter select,.crm-filter input{background:#1e293b;border:1px solid #334155;color:#f8fafc;border-radius:6px;padding:5px 10px;font-size:13px}
-.crm-note{font-size:11px;color:#64748b;margin-bottom:12px;line-height:1.5}
-</style>
-
-<div class="crm-note">⚖️ <strong>LGPD:</strong> Dados coletados somente com consentimento do usuário (cookie). IP anonimizado. Use apenas para análise interna e segmentação de anúncios. Exclua sessões sob solicitação.</div>
-
-<div class="crm-bar">
-  <div class="crm-stat"><div class="crm-stat__val">${f.total||0}</div><div class="crm-stat__lbl">Sessões (${crmDays}d)</div></div>
-  <div class="crm-stat"><div class="crm-stat__val">${sessions.filter(s=>s.clientId).length}</div><div class="crm-stat__lbl">Identificados</div></div>
-  <div class="crm-stat"><div class="crm-stat__val">${conv}%</div><div class="crm-stat__lbl">Conversão</div></div>
-  <div class="crm-stat"><div class="crm-stat__val">${abandon}%</div><div class="crm-stat__lbl">Abandono carrinho</div></div>
-  <div class="crm-stat"><div class="crm-stat__val">${f.purchased||0}</div><div class="crm-stat__lbl">Compras</div></div>
+<div class="screen-hero">
+  <div>
+    <div class="screen-kicker">CRM e leads</div>
+    <h1 class="screen-title">Oportunidades de relacionamento</h1>
+    <p class="screen-copy">Priorize visitantes com intenção de compra, entenda origem de tráfego e acompanhe o funil para ações de remarketing.</p>
+  </div>
 </div>
 
-<div class="crm-funnel">
-  <h3>Funil de conversão</h3>
-  ${[
-    {label:'Visitantes',val:f.total,color:'#3b82f6'},
-    {label:'Viram produto',val:f.viewed,color:'#8b5cf6'},
-    {label:'Adicionaram ao carrinho',val:f.carted,color:'#f59e0b'},
-    {label:'Iniciaram checkout',val:f.checkout,color:'#06b6d4'},
-    {label:'Compraram',val:f.purchased,color:'#22c55e'},
-  ].map(step=>{
-    const pct = f.total > 0 ? Math.round((step.val||0)/f.total*100) : 0;
-    return `<div class="crm-step">
-      <span class="crm-step__label">${step.label}</span>
-      <div class="crm-step__bar"><div class="crm-step__fill" style="width:${pct}%;background:${step.color}"></div></div>
-      <span class="crm-step__count">${step.val||0}</span>
-      <span class="crm-step__pct">${pct}%</span>
-    </div>`;
-  }).join('')}
-</div>
+<div class="crm-shell">
+  <div class="crm-note card"><div class="card-body">LGPD: dados coletados com consentimento por cookie, IP anonimizado e uso interno para análise, segmentação e atendimento. Exclua sessões sob solicitação.</div></div>
 
-<div class="crm-filter">
-  <select id="crmDaysFilter">
-    <option value="7" ${crmDays===7?'selected':''}>Últimos 7 dias</option>
-    <option value="30" ${crmDays===30?'selected':''}>Últimos 30 dias</option>
-    <option value="90" ${crmDays===90?'selected':''}>Últimos 90 dias</option>
-  </select>
-  <input type="text" id="crmSearch" placeholder="Buscar por cliente ou cidade..." style="flex:1;min-width:180px">
-  <select id="crmStatusFilter">
-    <option value="">Todos os status</option>
-    <option value="purchased">Compraram</option>
-    <option value="carted">Carrinho abandonado</option>
-    <option value="viewed">Só visualizaram</option>
-  </select>
-</div>
+  <div class="crm-kpis">
+    ${[
+      ['Sessões',f.total||0,`${crmDays} dias`],
+      ['Identificados',identified,'com conta/cliente'],
+      ['Leads quentes',hotLeads.length,'alta intenção sem compra'],
+      ['Conversão',conv+'%','compras no período'],
+      ['Abandono',abandon+'%','carrinho sem compra'],
+    ].map(([l,v,h])=>`<div class="quick-stat"><div class="quick-stat__label">${l}</div><div class="quick-stat__value">${v}</div><div class="quick-stat__hint">${h}</div></div>`).join('')}
+  </div>
 
-<div style="overflow-x:auto">
-<table class="crm-table" id="crmTable">
-  <thead><tr>
-    <th>Data/Hora</th><th>Cliente</th><th>Localização</th><th>Dispositivo</th><th>Origem</th><th>Status</th><th>Eventos</th><th>Tempo</th><th></th>
-  </tr></thead>
-  <tbody id="crmTbody">${renderCrmRows(sessions)}</tbody>
-</table>
+  <div class="crm-grid">
+    <div class="crm-main">
+      <div class="card">
+        <div class="card-head"><h2>Funil de conversão</h2><span class="stock-head-sub">da visita à compra</span></div>
+        <div class="card-body">
+          <div class="crm-funnel">
+            ${[
+              {label:'Visitantes',val:f.total,color:'#111827'},
+              {label:'Viram produto',val:f.viewed,color:'#2563eb'},
+              {label:'Carrinho',val:f.carted,color:'#d97706'},
+              {label:'Checkout',val:f.checkout,color:'#0891b2'},
+              {label:'Compraram',val:f.purchased,color:'#16a34a'},
+            ].map(step=>{
+              const pct = f.total > 0 ? Math.round((step.val||0)/f.total*100) : 0;
+              return `<div class="crm-step">
+                <span class="crm-step__label">${step.label}</span>
+                <div class="crm-step__bar"><div class="crm-step__fill" style="width:${Math.max(3,pct)}%;background:${step.color}"></div></div>
+                <span class="crm-step__count">${step.val||0} · ${pct}%</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Sessões e leads</h2><span class="stock-head-sub" id="crmCountLabel"></span></div>
+        <div class="card-body">
+          <div class="crm-filter">
+            <div class="fg"><label class="fl">Período</label><select class="fc" id="crmDaysFilter">
+              <option value="7" ${crmDays===7?'selected':''}>Últimos 7 dias</option>
+              <option value="30" ${crmDays===30?'selected':''}>Últimos 30 dias</option>
+              <option value="90" ${crmDays===90?'selected':''}>Últimos 90 dias</option>
+            </select></div>
+            <div class="fg"><label class="fl">Busca</label><input class="fc" type="text" id="crmSearch" placeholder="Cliente, cidade, origem ou campanha"></div>
+            <div class="fg"><label class="fl">Segmento</label><select class="fc" id="crmStatusFilter">
+              <option value="">Todos</option>
+              <option value="hot">Leads quentes</option>
+              <option value="checkout">Checkout sem compra</option>
+              <option value="carted">Carrinho abandonado</option>
+              <option value="identified">Identificados</option>
+              <option value="purchased">Compraram</option>
+            </select></div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="crm-table" id="crmTable">
+              <thead><tr><th>Lead</th><th>Intenção</th><th>Local</th><th>Origem</th><th>Status</th><th>Eventos</th><th>Tempo</th><th></th></tr></thead>
+              <tbody id="crmTbody">${renderCrmRows(sessions)}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="crm-side">
+      <div class="card">
+        <div class="card-head"><h2>Oportunidades quentes</h2></div>
+        <div class="card-body">${renderHotLeads(hotLeads)}</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Ações sugeridas</h2></div>
+        <div class="card-body">
+          <div class="pipeline">
+            <div class="pipeline-step"><div class="pipeline-step__label">Remarketing</div><div class="pipeline-step__value">${sessions.filter(s=>s.carted&&!s.purchased).length}</div><div class="pipeline-step__bar"><span style="--w:85%"></span></div></div>
+            <div class="pipeline-step"><div class="pipeline-step__label">Recontato</div><div class="pipeline-step__value">${sessions.filter(s=>s.clientId&&!s.purchased).length}</div><div class="pipeline-step__bar"><span style="--w:70%"></span></div></div>
+            <div class="pipeline-step"><div class="pipeline-step__label">Campanhas</div><div class="pipeline-step__value">${new Set(sessions.map(s=>s.utm_campaign||s.utm_source||s.origem).filter(Boolean)).size}</div><div class="pipeline-step__bar"><span style="--w:55%"></span></div></div>
+            <div class="pipeline-step"><div class="pipeline-step__label">Retenção</div><div class="pipeline-step__value">${sessions.filter(s=>s.purchased).length}</div><div class="pipeline-step__bar"><span style="--w:45%"></span></div></div>
+          </div>
+          <div style="margin-top:12px;color:#64748b;font-size:12px">Use leads quentes para campanhas de carrinho/checkout e clientes identificados para recontato ativo.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>`;
 
   document.getElementById('crmDaysFilter')?.addEventListener('change', (e)=>{ crmDays=Number(e.target.value); loadCRM(); });
-  document.getElementById('crmSearch')?.addEventListener('input', (e)=>{
-    const q = e.target.value.toLowerCase();
-    const filtered = crmSessions.filter(s=> (s.clienteNome||'').toLowerCase().includes(q)||(s.cidade||'').toLowerCase().includes(q)||(s.clientId||'').toString().includes(q));
-    document.getElementById('crmTbody').innerHTML = renderCrmRows(filtered);
-    bindCrmRows();
-  });
-  document.getElementById('crmStatusFilter')?.addEventListener('change', (e)=>{
-    const v = e.target.value;
-    const filtered = !v ? crmSessions : crmSessions.filter(s=>s[v]);
-    document.getElementById('crmTbody').innerHTML = renderCrmRows(filtered);
-    bindCrmRows();
-  });
+  document.getElementById('crmSearch')?.addEventListener('input', applyCrmFilters);
+  document.getElementById('crmStatusFilter')?.addEventListener('change', applyCrmFilters);
+  updateCrmCount(sessions.length);
   bindCrmRows();
 }
 
 function renderCrmRows(sessions){
-  if(!sessions.length) return `<tr><td colspan="7" style="text-align:center;color:#475569;padding:24px">Nenhuma sessão registrada.</td></tr>`;
+  if(!sessions.length) return `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:24px">Nenhuma sessão registrada.</td></tr>`;
   return sessions.map(s=>{
     const st = CRM_STATUS(s);
-    const eventIcons = [s.viewed?'👁':'', s.carted?'🛒':'', s.checkout?'💳':'', s.purchased?'✅':''].filter(Boolean).join(' ');
+    const score=leadScore(s);
+    const eventIcons = [s.viewed?'Produto':'', s.carted?'Carrinho':'', s.checkout?'Checkout':'', s.purchased?'Compra':''].filter(Boolean).join(' · ');
     const locLabel = [s.cidade, s.bairro].filter(Boolean).join(' · ') || '—';
-    const devIcon = s.dispositivo === 'mobile' ? '📱' : s.dispositivo === 'tablet' ? '📟' : '💻';
-    const origemLabel = s.utm_campaign ? `📣 ${s.utm_campaign}` : s.utm_source ? `🔗 ${s.utm_source}` : s.origem ? `↩ ${s.origem}` : '—';
+    const origemLabel = s.utm_campaign || s.utm_source || s.origem || '—';
     return `<tr data-sid="${s.sessionId}">
-      <td style="white-space:nowrap">${fmtDt(s.firstSeen)}</td>
-      <td>${s.clienteNome ? `<strong>${s.clienteNome}</strong><br><span style="font-size:11px;color:#64748b">#${s.clientId}</span>` : `<span style="color:#64748b">Anônimo</span>`}</td>
+      <td>${s.clienteNome ? `<strong>${s.clienteNome}</strong><br><span style="font-size:11px;color:#64748b">Cliente #${s.clientId}</span>` : `<strong>Anônimo</strong><br><span style="font-size:11px;color:#64748b">${fmtDt(s.firstSeen)}</span>`}</td>
+      <td><span class="crm-score">${score}</span><span style="margin-left:8px;font-size:12px;color:#64748b">${leadTier(score)}</span></td>
       <td style="font-size:12px">${locLabel}${s.regiao?`<br><span style="color:#64748b">${s.regiao}</span>`:''}</td>
-      <td style="font-size:12px;white-space:nowrap">${devIcon} ${s.browser||'—'}<br><span style="color:#64748b">${s.so||''}</span></td>
-      <td style="font-size:11px;color:#94a3b8;white-space:nowrap">${origemLabel}</td>
+      <td style="font-size:12px;color:#64748b;white-space:nowrap">${esc(origemLabel)}<br><span>${esc(s.dispositivo||'—')} · ${esc(s.browser||'—')}</span></td>
       <td><span class="crm-badge" style="color:${st.color}">${st.label}</span></td>
-      <td style="text-align:center">${eventIcons||'—'} <span style="font-size:11px;color:#64748b">(${s.eventCount})</span></td>
+      <td>${eventIcons||'—'} <span style="font-size:11px;color:#64748b">(${s.eventCount})</span></td>
       <td style="white-space:nowrap">${fmtTime(s.timeOnSite)}</td>
       <td><button class="btn" style="padding:3px 10px;font-size:11px" data-sid="${s.sessionId}">Ver</button></td>
     </tr>`;
   }).join('');
 }
 
+function renderHotLeads(leads){
+  const rows=[...leads].sort((a,b)=>leadScore(b)-leadScore(a)).slice(0,8);
+  if(!rows.length) return '<div style="color:#64748b;font-size:13px">Sem leads quentes no período.</div>';
+  return `<div class="crm-leads">${rows.map(s=>`
+    <div class="crm-lead">
+      <div>
+        <div class="crm-lead__name">${esc(s.clienteNome||'Visitante anônimo')}</div>
+        <div class="crm-lead__meta">${esc([s.cidade,s.bairro].filter(Boolean).join(' · ')||'Local não identificado')} · ${CRM_STATUS(s).label} · ${fmtTime(s.timeOnSite)}</div>
+      </div>
+      <button class="btn btn--secondary btn--sm" data-sid="${esc(s.sessionId)}">Ver</button>
+    </div>`).join('')}</div>`;
+}
+
 function bindCrmRows(){
-  document.querySelectorAll('#crmTbody button[data-sid]').forEach(btn=>{
+  document.querySelectorAll('#crmTbody button[data-sid], .crm-leads button[data-sid]').forEach(btn=>{
     btn.addEventListener('click', ()=> openCrmSession(btn.dataset.sid));
   });
 }
@@ -1873,17 +1963,17 @@ async function openCrmSession(sid){
   const s = data.session;
   const st = CRM_STATUS({ purchased: s.events.some(e=>e.type==='purchase'), carted: s.events.some(e=>e.type==='add_to_cart'), checkout: s.events.some(e=>e.type==='checkout_start'), viewed: s.events.some(e=>e.type==='product_view') });
   const evHtml = s.events.filter(e=>e.type!=='heartbeat').map(e=>`
-    <div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #1e293b;font-size:12px">
+    <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px">
       <span style="color:#64748b;white-space:nowrap">${fmtDt(e.ts)}</span>
-      <span style="color:#cbd5e1">${CRM_EVENT_LABELS[e.type]||e.type}${e.productName?` — <strong>${e.productName}</strong>`:''} ${e.orderId?`— Pedido #${e.orderId}`:''}${e.total?` (R$ ${Number(e.total).toFixed(2).replace('.',',')})`:''}</span>
+      <span style="color:#334155">${CRM_EVENT_LABELS[e.type]||e.type}${e.productName?` — <strong>${e.productName}</strong>`:''} ${e.orderId?`— Pedido #${e.orderId}`:''}${e.total?` (${fmtR(e.total)})`:''}</span>
     </div>`).join('') || '<p style="color:#64748b">Nenhum evento registrado.</p>';
 
   const dlg = document.createElement('dialog');
-  dlg.style.cssText = 'background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:12px;padding:24px;max-width:540px;width:90%;max-height:80vh;overflow-y:auto';
+  dlg.style.cssText = 'background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:620px;width:90%;max-height:82vh;overflow-y:auto;box-shadow:0 24px 64px rgba(15,23,42,.22)';
   dlg.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <strong>Sessão — ${s.clienteNome||'Anônimo'}</strong>
-      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>
+      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px">
       <div><span style="color:#64748b">Cidade:</span> ${s.cidade||'—'}${s.bairro?' · '+s.bairro:''}</div>
@@ -1902,8 +1992,8 @@ async function openCrmSession(sid){
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin-bottom:8px">Linha do tempo</div>
     ${evHtml}
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
-      <button id="btnCrmDel" style="background:#7f1d1d;border:none;color:#fca5a5;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">🗑 Excluir (LGPD)</button>
-      <button onclick="this.closest('dialog').close()" style="background:#1e293b;border:none;color:#f8fafc;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Fechar</button>
+      <button id="btnCrmDel" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Excluir (LGPD)</button>
+      <button onclick="this.closest('dialog').close()" style="background:#111827;border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Fechar</button>
     </div>`;
   document.body.appendChild(dlg);
   dlg.showModal();
