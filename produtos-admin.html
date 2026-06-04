@@ -344,9 +344,18 @@
         </div>
       </div>
       <div class="card stock-card stock-card--entry">
-        <div class="card-head"><h2>Operação de estoque</h2><span class="stock-head-sub">Entrada soma, inventário ajusta saldo final</span></div>
+        <div class="card-head"><h2>Operação de estoque</h2><span class="stock-head-sub">Entrada, ajustes e inventário</span></div>
         <div class="card-body">
           <div id="estoqueNotice" class="notice"></div>
+          <div class="fg">
+            <label class="fl">Tipo de operação</label>
+            <select class="fc" id="estoq_tipo">
+              <option value="entrada">Entrada de mercadoria</option>
+              <option value="ajuste_entrada">Ajuste para mais</option>
+              <option value="ajuste_saida">Ajuste para menos</option>
+              <option value="inventario">Inventário / saldo inicial</option>
+            </select>
+          </div>
           <div class="fg">
             <label class="fl">Produto</label>
             <select class="fc" id="estoq_prod"><option value="">— Selecione —</option></select>
@@ -357,10 +366,9 @@
           </div>
           <div id="estoq_sizes"></div>
           <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn--primary" id="btnEntrada">Registrar entrada</button>
-            <button class="btn btn--secondary" id="btnInventario">Aplicar inventário</button>
+            <button class="btn btn--primary" id="btnStockOperation">Registrar operação</button>
           </div>
-          <div style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.45">Entrada adiciona ao saldo atual. Inventário considera os campos preenchidos como contagem final e registra ajuste maior ou menor.</div>
+          <div id="stockOperationHelp" style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.45">Entrada adiciona ao saldo atual. Saídas de venda são geradas pelo checkout ou por pedido manual confirmado.</div>
         </div>
       </div>
       <div class="card stock-card stock-card--movement">
@@ -1180,6 +1188,9 @@ function renderStockProductResults(){
 function movementLabel(m){
   if(m.reason==='saldo_inicial') return 'Saldo inicial';
   if(m.reason==='entrada_manual') return 'Entrada manual';
+  if(m.reason==='ajuste_entrada') return 'Ajuste para mais';
+  if(m.reason==='ajuste_saida') return 'Ajuste para menos';
+  if(m.reason==='inventario_zerado') return 'Zeragem de inventário';
   if(m.reason==='inventario') return 'Inventário';
   if(m.reason==='devolucao') return 'Devolução ao estoque';
   if(m.reason==='venda') return 'Venda efetiva';
@@ -1195,7 +1206,8 @@ function renderStockMovements(){
     const quantity=Number(m.quantity)||0;
     const isOut=m.type==='saida'||quantity<0;
     const isAdjust=m.type==='ajuste';
-    const qty=(quantity<0?'':'+')+quantity;
+    const displayQty=isOut&&quantity>0?-quantity:quantity;
+    const qty=(displayQty>0?'+':'')+displayQty;
     const ref=m.orderNumber?` · Pedido #${esc(String(m.orderNumber))}`:'';
     return `<div class="stock-move">
       <div class="stock-move__type ${isOut?'out':'in'}">${isAdjust?'±':(isOut?'−':'+')}</div>
@@ -1231,48 +1243,61 @@ function renderSizes(prod,ci){
     </div>`;
 }
 
-$('btnEntrada').addEventListener('click',async()=>{
-  const prodId=$('estoq_prod').value, ci=Number($('estoq_cor').value)||0;
-  if(!prodId){showNotice($('estoqueNotice'),'Selecione um produto.','error');return}
-  const qtd={};
-  $$('#estoq_sizes [data-sz]').forEach(inp=>{const q=Number(inp.value)||0;if(q>0)qtd[inp.dataset.sz]=q});
-  const newSz=($('estoq_new_sz')?.value||'').trim().toUpperCase();
-  const newQty=Number($('estoq_new_qty')?.value)||0;
-  if(newSz&&newQty>0) qtd[newSz]=(qtd[newSz]||0)+newQty;
-  if(!Object.keys(qtd).length){showNotice($('estoqueNotice'),'Informe ao menos uma quantidade maior que zero.','error');return}
-  try{
-    const r=await fetch('/api/admin/entrada-estoque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({produtoId:Number(prodId),corIndex:ci,quantidades:qtd})});
-    if(r.status===401){redirect401();return}
-    const d=await r.json();
-    if(!d.ok) throw new Error(d.error||'Falha');
-    showNotice($('estoqueNotice'),'Estoque atualizado com sucesso!','success');
-    await loadProdutos();
-    await loadStockMovements();
-    const p=produtos.find(p=>String(p.id)===prodId);
-    if(p) renderSizes(p,ci);
-    renderStockPreview();
-  }catch(e){ showNotice($('estoqueNotice'),'Erro: '+e.message,'error') }
-});
+function stockOperationLabel(type){
+  return ({
+    entrada:'Entrada de mercadoria',
+    ajuste_entrada:'Ajuste para mais',
+    ajuste_saida:'Ajuste para menos',
+    inventario:'Inventário / saldo inicial'
+  })[type]||'Operação';
+}
 
-$('btnInventario').addEventListener('click',async()=>{
+function updateStockOperationHelp(){
+  const type=$('estoq_tipo')?.value||'entrada';
+  const help=$('stockOperationHelp');
+  const btn=$('btnStockOperation');
+  if(btn) btn.textContent=type==='inventario'?'Aplicar inventário':'Registrar operação';
+  if(!help) return;
+  help.textContent=({
+    entrada:'Entrada soma ao saldo atual. Use quando uma coleção ou reposição chegar fisicamente.',
+    ajuste_entrada:'Ajuste para mais corrige divergências aumentando o saldo atual e registra movimentação de ajuste.',
+    ajuste_saida:'Ajuste para menos corrige divergências reduzindo o saldo atual sem passar de zero.',
+    inventario:'Inventário zera primeiro o saldo da variação selecionada e recria o saldo inicial com as quantidades digitadas.'
+  })[type]||'Informe a operação.';
+}
+
+$('estoq_tipo')?.addEventListener('change',updateStockOperationHelp);
+updateStockOperationHelp();
+
+$('btnStockOperation').addEventListener('click',async()=>{
   const prodId=$('estoq_prod').value, ci=Number($('estoq_cor').value)||0;
+  const tipo=$('estoq_tipo')?.value||'entrada';
   if(!prodId){showNotice($('estoqueNotice'),'Selecione um produto.','error');return}
-  const contagem={};
+  const quantidades={};
   $$('#estoq_sizes [data-sz]').forEach(inp=>{
-    if(String(inp.value).trim()==='') return;
-    contagem[inp.dataset.sz]=Math.max(0,Number(inp.value)||0);
+    const raw=String(inp.value||'').trim();
+    if(tipo==='inventario') quantidades[inp.dataset.sz]=Math.max(0,Number(raw)||0);
+    else {
+      const q=Number(raw)||0;
+      if(q>0) quantidades[inp.dataset.sz]=q;
+    }
   });
   const newSz=($('estoq_new_sz')?.value||'').trim().toUpperCase();
   const newRaw=String($('estoq_new_qty')?.value||'').trim();
-  if(newSz&&newRaw!=='') contagem[newSz]=Math.max(0,Number(newRaw)||0);
-  if(!Object.keys(contagem).length){showNotice($('estoqueNotice'),'Preencha ao menos uma contagem final para inventário.','error');return}
-  if(!confirm('Aplicar inventário? Os campos preenchidos serão tratados como saldo final contado.')) return;
+  if(newSz){
+    const q=Math.max(0,Number(newRaw)||0);
+    if(tipo==='inventario' || q>0) quantidades[newSz]=q;
+  }
+  if(tipo!=='inventario'&&!Object.keys(quantidades).length){
+    showNotice($('estoqueNotice'),'Informe ao menos uma quantidade maior que zero.','error');return;
+  }
+  if(tipo==='inventario'&&!confirm('Aplicar inventário? O estoque atual desta variação será zerado e as quantidades digitadas virarão o novo saldo inicial.')) return;
   try{
-    const r=await fetch('/api/admin/inventario-estoque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({produtoId:Number(prodId),corIndex:ci,contagem})});
+    const r=await fetch('/api/admin/operacao-estoque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,produtoId:Number(prodId),corIndex:ci,quantidades})});
     if(r.status===401){redirect401();return}
     const d=await r.json();
     if(!d.ok) throw new Error(d.error||'Falha');
-    showNotice($('estoqueNotice'),`Inventário aplicado. ${d.movements||0} ajuste${d.movements===1?'':'s'} registrado${d.movements===1?'':'s'}.`,'success');
+    showNotice($('estoqueNotice'),`${stockOperationLabel(tipo)} registrada. ${d.movements||0} movimento${d.movements===1?'':'s'} gerado${d.movements===1?'':'s'}.`,'success');
     await loadProdutos();
     await loadStockMovements();
     const p=produtos.find(p=>String(p.id)===prodId);
@@ -2207,8 +2232,9 @@ document.querySelectorAll('.tab-btn[data-tab="crm"]').forEach(btn=>{
 <script>
 (function(){
   const CONSENT_VERSION = "v2";
-  function getConsent(){ try{ const r=localStorage.getItem("lemoovCookieConsent"); if(!r)return null; const o=JSON.parse(r); return o.v===CONSENT_VERSION?o.value:null; }catch(_){return null;} }
-  function setConsent(v){ try{ localStorage.setItem("lemoovCookieConsent",JSON.stringify({v:CONSENT_VERSION,value:v})); }catch(_){} }
+  let consentMemory = null;
+  function getConsent(){ return consentMemory; }
+  function setConsent(v){ consentMemory = v; }
   const banner = document.getElementById("cookieBanner");
   if(!banner) return;
   const c = getConsent();

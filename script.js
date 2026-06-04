@@ -5,7 +5,6 @@ const CARD_PAYMENT_LINK = "";        // opcional: link de pagamento p/ cartão. 
 // Entrega local via Moto Uber
 const ORIGIN_CEP = "60360760";
 const ORIGIN_COORDS = { lat: -3.7435155, lng: -38.5898999 };
-const ORDER_SEQ_STORAGE_KEY = "lemoovOrderSeq";
 
 const DELIVERY_MODE_LABEL = "Entrega via Moto Uber";
 const DELIVERY_FREE_RADIUS_KM = 2;
@@ -20,14 +19,12 @@ let freteModo = null;           // 'uber'
 let freteOpcoesCache = [];      // opções retornadas pelo Melhor Envio
 
 // ── CRM ──────────────────────────────────────────────────────────────────
-const CRM_SESSION_KEY = 'lemoov_crm_sid';
 let _crmSessionId = null;
 let _crmStartTime = Date.now();
 
 function getCrmSessionId() {
   if (_crmSessionId) return _crmSessionId;
-  let sid = localStorage.getItem(CRM_SESSION_KEY);
-  if (!sid) { sid = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2); localStorage.setItem(CRM_SESSION_KEY, sid); }
+  const sid = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
   _crmSessionId = sid;
   return sid;
 }
@@ -72,6 +69,8 @@ let selectedDeliveryAddress = null;
 let currentClientSession = null;
 let originCoordsCache = null;
 let checkoutDiscountState = { cpf: "", cupom: "", discounts: [], discountTotal: 0 };
+let cartCouponCode = "";
+const CHECKOUT_RESUME_KEY = "lemoovResumeCheckout";
 const FB_EVENT_MAP = {
   add_to_cart: "AddToCart",
   start_checkout: "InitiateCheckout",
@@ -152,7 +151,6 @@ const FILTER_CARDS = [
 ];
 const API_BASE = window.LEMOOV_API_BASE || "";
 const IMAGE_BASE = window.LEMOOV_IMAGE_BASE || "";
-const PAYMENT_ORIGIN_KEY = "lemoovPaymentOriginPath";
 
 /* ------------------------------------------------------------
    Estado & Helpers
@@ -160,37 +158,18 @@ const PAYMENT_ORIGIN_KEY = "lemoovPaymentOriginPath";
 let filtroAtual = "Todos";
 let ordenacaoAtual = "destaque";
 let buscaAtual = "";
-const CART_STORAGE_KEY = "lemoov_cart_v1";
 const CART_TTL_MS = 30 * 60 * 1000;
 let cartUpdatedAt = 0;
 let cartExpiryTimer = null;
+let paymentOriginPath = "";
+let visitorRegionMemory = null;
+let cookieConsentMemory = null;
 function _loadCart() {
-  try {
-    const raw = localStorage.getItem(CART_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    const items = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.items) ? parsed.items : []);
-    const updatedAt = Number(Array.isArray(parsed) ? Date.now() : parsed?.updatedAt) || Date.now();
-    if (items.length && Date.now() - updatedAt >= CART_TTL_MS) {
-      localStorage.removeItem(CART_STORAGE_KEY);
-      return [];
-    }
-    cartUpdatedAt = items.length ? updatedAt : 0;
-    return items;
-  } catch (_) {
-    return [];
-  }
+  return [];
 }
 function _saveCart({ touch = false } = {}) {
-  try {
-    if (!carrinho.length) {
-      cartUpdatedAt = 0;
-      localStorage.removeItem(CART_STORAGE_KEY);
-      return;
-    }
-    if (touch || !cartUpdatedAt) cartUpdatedAt = Date.now();
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({ items: carrinho, updatedAt: cartUpdatedAt }));
-  } catch (_) {}
+  if (!carrinho.length) { cartUpdatedAt = 0; return; }
+  if (touch || !cartUpdatedAt) cartUpdatedAt = Date.now();
 }
 function _scheduleCartExpiry() {
   if (cartExpiryTimer) window.clearTimeout(cartExpiryTimer);
@@ -249,54 +228,31 @@ function getCurrentStorePath() {
 }
 
 function rememberPaymentOrigin() {
-  try {
-    sessionStorage.setItem(PAYMENT_ORIGIN_KEY, getCurrentStorePath());
-  } catch (_e) {}
+  paymentOriginPath = getCurrentStorePath();
 }
 
 function restorePaymentOriginIfNeeded() {
-  try {
-    const originPath = sessionStorage.getItem(PAYMENT_ORIGIN_KEY);
-    if (!originPath || originPath === location.pathname) return false;
-    const isHome = location.pathname === "/" || /\/index\.html$/i.test(location.pathname);
-    const isFinal = /\/obrigado\.html$/i.test(location.pathname);
-    if (isHome && !isFinal && originPath === "/catalogo-produtos.html") {
-      sessionStorage.removeItem(PAYMENT_ORIGIN_KEY);
-      location.replace(originPath);
-      return true;
-    }
-  } catch (_e) {}
+  const originPath = paymentOriginPath;
+  if (!originPath || originPath === location.pathname) return false;
+  const isHome = location.pathname === "/" || /\/index\.html$/i.test(location.pathname);
+  const isFinal = /\/obrigado\.html$/i.test(location.pathname);
+  if (isHome && !isFinal && originPath === "/catalogo-produtos.html") {
+    paymentOriginPath = "";
+    location.replace(originPath);
+    return true;
+  }
   return false;
 }
 
 async function loadProdutos(){
-  const fetchList = async (url) => {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) return null;
+  let raw = [];
+  try {
+    const res = await fetch(`${API_BASE}/api/produtos`);
+    if (res.ok) {
       const data = await res.json();
-      return Array.isArray(data) ? data : null;
-    } catch (_e) {
-      return null;
+      raw = Array.isArray(data) ? data : [];
     }
-  };
-
-  const [apiList, localList] = await Promise.all([
-    fetchList(`${API_BASE}/api/produtos`),
-    fetchList("data/produtos.json")
-  ]);
-
-  // Always prefer the API: it applies ativo filtering and ordem sorting server-side.
-  // Fall back to local JSON only when the API failed or returned nothing.
-  const pickBest = (a, b) => {
-    if (Array.isArray(a) && a.length > 0) return a;
-    if (Array.isArray(b) && b.length > 0) return b;
-    return Array.isArray(a) ? a : [];
-  };
-
-  let raw = pickBest(apiList, localList);
-  // Belt-and-suspenders: apply ativo filtering and ordem sorting client-side
-  // so the local-JSON fallback still respects visibility and drag order.
+  } catch (_e) {}
   raw = raw
     .filter(p => p.ativo !== false)
     .map(p => ({ ...p, cores: Array.isArray(p.cores) ? p.cores.filter(c => c.ativo !== false) : p.cores }))
@@ -590,20 +546,11 @@ function initCookieBanner(){
 const CONSENT_VERSION = "v2";
 
 function getCookieConsent(){
-  try {
-    const raw = localStorage.getItem("lemoovCookieConsent");
-    if (!raw) return null;
-    // formato antigo (sem versão) → ignora, pede novamente
-    try { const obj = JSON.parse(raw); return obj.v === CONSENT_VERSION ? obj.value : null; } catch (_) { return null; }
-  } catch (_e) {
-    return null;
-  }
+  return cookieConsentMemory;
 }
 
 function setCookieConsent(value){
-  try {
-    localStorage.setItem("lemoovCookieConsent", JSON.stringify({ v: CONSENT_VERSION, value }));
-  } catch (_e) {}
+  cookieConsentMemory = value;
 }
 
 async function initTrackingIfConsented(){
@@ -658,7 +605,7 @@ function loadFacebookPixel(pixelId){
 }
 
 async function fetchVisitorRegion(){
-  if (sessionStorage.getItem("lemoovRegion")) return;
+  if (visitorRegionMemory) return;
   try {
     const res = await fetch("https://ipapi.co/json/");
     if (!res.ok) return;
@@ -686,18 +633,12 @@ async function fetchVisitorRegion(){
         }
       } catch (_) {}
     }
-    sessionStorage.setItem("lemoovRegion", JSON.stringify(region));
+    visitorRegionMemory = region;
     trackEvent("visit_location", region);
   } catch (_e) {}
 }
 function getVisitorRegion(){
-  try {
-    const raw = sessionStorage.getItem("lemoovRegion");
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (_e) {
-    return null;
-  }
+  return visitorRegionMemory;
 }
 document.addEventListener("DOMContentLoaded", ()=>{
   const span = document.getElementById("heroMicroCopy");
@@ -1230,6 +1171,32 @@ function computeColorPrice(prod, colorObj){
     background: #f8faff;
     border-top: 1px solid rgba(0,39,118,.08);
   }
+  #cart #btnCheckout{
+    order:-20;
+    width:100%;
+    position:sticky;
+    top:0;
+    z-index:2;
+    margin-bottom:8px;
+  }
+  #cart #btnCheckout:disabled{ opacity:.55; cursor:not-allowed; filter:saturate(.5); }
+  #cart .cart-coupon{
+    order:8;
+    border:1px solid rgba(0,39,118,.1);
+    background:#fff;
+    border-radius:14px;
+    padding:10px;
+    display:grid;
+    gap:7px;
+  }
+  #cart .cart-coupon__label{ font-size:.72rem; font-weight:800; color:#56677c; text-transform:uppercase; letter-spacing:.06em; }
+  #cart .cart-coupon__row{ display:flex; gap:8px; }
+  #cart .cart-coupon__input{ flex:1; min-width:0; border:1px solid #d8e1eb; border-radius:10px; padding:9px 10px; font:inherit; font-weight:700; text-transform:uppercase; }
+  #cart .cart-coupon__btn{ border:0; border-radius:10px; padding:0 14px; font:inherit; font-size:.78rem; font-weight:900; color:#FFDF00; background:linear-gradient(120deg,#009C3B,#002776); cursor:pointer; }
+  #cart .cart-coupon__btn:disabled{ opacity:.6; cursor:not-allowed; }
+  #cart .cart-coupon__msg{ min-height:16px; font-size:.74rem; font-weight:700; color:#64748b; }
+  #cart .cart-coupon__msg[data-status="ok"]{ color:#087a4d; }
+  #cart .cart-coupon__msg[data-status="warn"]{ color:#b45309; }
   @media (max-width: 420px){
     #cart .cart__list{ min-height: 120px; padding-left:12px; padding-right:12px; }
     #cart .cart__item{ grid-template-columns:56px minmax(0,1fr); gap:10px; }
@@ -2913,6 +2880,40 @@ function ensureFreteSubtotalRows() {
     rowFrete.innerHTML = `<span>Frete:</span><strong id="cartFrete">—</strong>`;
     footer.insertBefore(rowFrete, totalRow);
   }
+  if (!footer.querySelector("#cartDiscountRow")) {
+    const rowDiscount = document.createElement("div");
+    rowDiscount.className = "cart__total";
+    rowDiscount.id = "cartDiscountRow";
+    rowDiscount.style.display = "none";
+    rowDiscount.innerHTML = `<span>Desconto:</span><strong id="cartDiscount">R$ 0,00</strong>`;
+    footer.insertBefore(rowDiscount, totalRow);
+  }
+}
+
+function ensureCartCouponUI() {
+  const footer = document.querySelector(".cart__footer");
+  if (!footer || footer.querySelector("#cartCouponBox")) return;
+  const box = document.createElement("div");
+  box.id = "cartCouponBox";
+  box.className = "cart-coupon";
+  box.innerHTML = `
+    <label class="cart-coupon__label" for="cartCouponInput">Cupom de desconto</label>
+    <div class="cart-coupon__row">
+      <input id="cartCouponInput" class="cart-coupon__input" placeholder="Digite seu cupom" autocomplete="off" />
+      <button type="button" class="cart-coupon__btn" id="btnApplyCartCoupon">Aplicar</button>
+    </div>
+    <div class="cart-coupon__msg" id="cartCouponMsg" data-status="info"></div>
+  `;
+  const totalRow = footer.querySelector("#cartTotal")?.closest(".cart__total") || null;
+  footer.insertBefore(box, totalRow);
+  box.querySelector("#cartCouponInput").value = cartCouponCode || checkoutDiscountState.cupom || "";
+  box.querySelector("#btnApplyCartCoupon").addEventListener("click", applyCartCoupon);
+  box.querySelector("#cartCouponInput").addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      applyCartCoupon();
+    }
+  });
 }
 
 // Esconde UI antiga de frete (se existir no HTML)
@@ -3065,10 +3066,16 @@ async function checkClientSession() {
 async function initiateCheckout() {
   if (carrinho.length === 0) { showAppMessage("Seu carrinho está vazio."); return; }
   if (!validateWholeCartStock()) return;
+  if (!retiradaNaLoja && (!entregaDisponivel || !isFixedFreteMode())) {
+    openCart();
+    showAppMessage("Selecione uma opção de frete antes de ir para pagamento.");
+    return;
+  }
 
   // Sempre verifica sessão primeiro — sem exceção para modo offline
   const sessionResult = await checkClientSession();
   if (!sessionResult.ok) {
+    try { localStorage.setItem(CHECKOUT_RESUME_KEY, "1"); } catch (_) {}
     const redirectTarget = encodeURIComponent(window.location.pathname + '?initiateCheckout=1');
     window.location.href = `/cliente-login?redirect=${redirectTarget}`;
     return;
@@ -3312,8 +3319,18 @@ function ensureCheckoutButton(){
     btn.className = "btn btn--primary";
     btn.textContent = "Ir para pagamento";
     btn.addEventListener("click", initiateCheckout);
-    footer.appendChild(btn);
+    footer.insertBefore(btn, footer.firstChild);
   }
+  updateCheckoutButtonState();
+}
+
+function updateCheckoutButtonState(){
+  const btn = el("#btnCheckout");
+  if (!btn) return;
+  const hasItems = carrinho.length > 0;
+  const freightReady = retiradaNaLoja || (entregaDisponivel && isFixedFreteMode());
+  btn.disabled = !hasItems || !freightReady;
+  btn.textContent = freightReady ? "Ir para pagamento" : "Selecione o frete";
 }
 
 function ensureCartClientSummary() {
@@ -3848,10 +3865,13 @@ function atualizarCart(){
   ensureAddMoreButton();
   ensureFreteUI();
   ensureFreteSubtotalRows();
+  ensureCartCouponUI();
   ensureCheckoutButton();
 
   const totalProdutos = getCartSubtotal();
-  const totalComFrete = totalProdutos + (!retiradaNaLoja && entregaDisponivel ? (freteAtual || 0) : 0);
+  refreshDiscountAmountsForSubtotal();
+  const descontoCarrinho = getCartDiscountTotal();
+  const totalComFrete = Math.max(0, totalProdutos - descontoCarrinho) + (!retiradaNaLoja && entregaDisponivel ? (freteAtual || 0) : 0);
 
   const subtotalEl = el("#cartSubtotal");
   const freteEl = el("#cartFrete");
@@ -3870,12 +3890,14 @@ function atualizarCart(){
       freteEl.textContent = "Consultar via WhatsApp";
     }
   }
+  renderCartDiscountSummary();
 
   const fixedFrete = isFixedFreteMode();
   const totalLabel = !retiradaNaLoja && entregaDisponivel
     ? (fixedFrete ? formatBRL(totalComFrete) : `${formatBRL(totalComFrete)} + frete`)
     : formatBRL(totalComFrete);
   el("#cartTotal").textContent = totalLabel;
+  updateCheckoutButtonState();
 
   list.querySelectorAll("[data-del]").forEach(btn=>{
     btn.addEventListener("click", ()=> removerCarrinho(+btn.getAttribute("data-del")));
@@ -3985,9 +4007,16 @@ async function initCatalog(){
 if (!restorePaymentOriginIfNeeded()) {
   initCatalog().then(() => {
     const _qs = new URLSearchParams(location.search);
-    if (_qs.get('initiateCheckout') === '1') {
+    let shouldResumeCheckout = _qs.get('initiateCheckout') === '1';
+    try {
+      shouldResumeCheckout = shouldResumeCheckout || localStorage.getItem(CHECKOUT_RESUME_KEY) === "1";
+      localStorage.removeItem(CHECKOUT_RESUME_KEY);
+    } catch (_) {}
+    if (shouldResumeCheckout) {
       history.replaceState(null, '', location.pathname);
-      initiateCheckout();
+      atualizarCart();
+      openCart();
+      setTimeout(() => initiateCheckout(), 250);
     } else if (_qs.get('p')) {
       // link direto do Instagram Shopping / Meta Catalog
       const prodId = _qs.get('p');
@@ -4143,6 +4172,66 @@ function renderCheckoutTotals() {
     totalEl.textContent = totalLabel;
   }
 }
+function getCartDiscountTotal() {
+  return Math.min(getCartSubtotal(), Number(checkoutDiscountState.discountTotal) || 0);
+}
+function refreshDiscountAmountsForSubtotal() {
+  const subtotal = getCartSubtotal();
+  const discounts = Array.isArray(checkoutDiscountState.discounts) ? checkoutDiscountState.discounts : [];
+  if (!discounts.length) return;
+  const recalculated = discounts.map((item) => {
+    const percent = Number(item.percent) || 0;
+    if (percent > 0) return { ...item, amount: Math.round(subtotal * (percent / 100) * 100) / 100 };
+    return item;
+  });
+  checkoutDiscountState = {
+    ...checkoutDiscountState,
+    discounts: recalculated,
+    discountTotal: Math.min(subtotal, Math.round(recalculated.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100)
+  };
+}
+function renderCartDiscountSummary() {
+  const discountRow = el("#cartDiscountRow");
+  const discountEl = el("#cartDiscount");
+  const msg = el("#cartCouponMsg");
+  const discount = getCartDiscountTotal();
+  if (discountRow && discountEl) {
+    discountRow.style.display = discount > 0 ? "" : "none";
+    discountEl.textContent = discount > 0 ? `-${formatBRL(discount)}` : "R$ 0,00";
+  }
+  if (msg && checkoutDiscountState.cupom) {
+    msg.textContent = discount > 0 ? `Cupom ${checkoutDiscountState.cupom} aplicado.` : "";
+    msg.dataset.status = discount > 0 ? "ok" : "info";
+  }
+}
+async function applyCartCoupon() {
+  const input = el("#cartCouponInput");
+  const msg = el("#cartCouponMsg");
+  const btn = el("#btnApplyCartCoupon");
+  const code = String(input?.value || "").trim().toUpperCase();
+  cartCouponCode = code;
+  if (!code) {
+    checkoutDiscountState = { ...checkoutDiscountState, cupom: "", discounts: [], discountTotal: 0 };
+    renderCartDiscountSummary();
+    atualizarCart();
+    if (msg) { msg.textContent = "Informe um cupom para aplicar."; msg.dataset.status = "warn"; }
+    return;
+  }
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = "Aplicando..."; }
+    const state = await validateCheckoutDiscounts({ cpf: checkoutDiscountState.cpf || "", cupom: code, subtotal: getCartSubtotal() });
+    cartCouponCode = state.cupom || code;
+    if (input) input.value = cartCouponCode;
+    renderCartDiscountSummary();
+    atualizarCart();
+  } catch (err) {
+    checkoutDiscountState = { ...checkoutDiscountState, cupom: "", discounts: [], discountTotal: 0 };
+    renderCartDiscountSummary();
+    if (msg) { msg.textContent = err.message || "Cupom inválido."; msg.dataset.status = "warn"; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Aplicar"; }
+  }
+}
 function computeOrderNumber({ commit } = { commit: false }) {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -4150,26 +4239,9 @@ function computeOrderNumber({ commit } = { commit: false }) {
   const dd = String(now.getDate()).padStart(2, "0");
   const dateKey = `${yyyy}${mm}${dd}`;
   let seq = 1;
-  let data = null;
-  try {
-    const raw = localStorage.getItem(ORDER_SEQ_STORAGE_KEY);
-    data = raw ? JSON.parse(raw) : null;
-  } catch {
-    data = null;
-  }
-  if (data && data.date === dateKey && typeof data.seq === "number") {
-    seq = data.seq + 1;
-  }
+  const data = orderSeqFallback.date === dateKey ? orderSeqFallback : null;
+  if (data && typeof data.seq === "number") seq = data.seq + 1;
   if (commit) {
-    try {
-      localStorage.setItem(ORDER_SEQ_STORAGE_KEY, JSON.stringify({ date: dateKey, seq }));
-    } catch {
-      orderSeqFallback = { date: dateKey, seq };
-    }
-  } else if (!data && orderSeqFallback.date === dateKey) {
-    seq = orderSeqFallback.seq + 1;
-  }
-  if (commit && (!data || data.date !== dateKey)) {
     orderSeqFallback = { date: dateKey, seq };
   }
   return `${dateKey}${seq}`;
@@ -4816,7 +4888,13 @@ function openCheckoutModal(){
   const previewOrder = peekNextOrderNumber();
   const pedidoEl = el("#ckPedido");
   if (pedidoEl) pedidoEl.textContent = previewOrder || "—";
-  checkoutDiscountState = { cpf: "", cupom: "", discounts: [], discountTotal: 0 };
+  checkoutDiscountState = {
+    ...checkoutDiscountState,
+    cpf: checkoutDiscountState.cpf || "",
+    cupom: cartCouponCode || checkoutDiscountState.cupom || ""
+  };
+  const ckCupomInput = dlg.querySelector("#ckCupom");
+  if (ckCupomInput && checkoutDiscountState.cupom) ckCupomInput.value = checkoutDiscountState.cupom;
 
   // Preencher resumo
   const itemsDiv = el("#checkoutItems");
@@ -4891,9 +4969,10 @@ function openCheckoutModal(){
   }
 
   const checkoutItemsPayload = buildCartItems();
+  const checkoutValue = Math.max(0, subtotal - getCartDiscountTotal()) + (!retiradaNaLoja && entregaDisponivel ? (freteAtual || 0) : 0);
   trackEvent("start_checkout", {
     currency: "BRL",
-    value: total,
+    value: checkoutValue,
     items: checkoutItemsPayload,
     item_count: getCartCount()
   });

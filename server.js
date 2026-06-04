@@ -27,7 +27,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const PROD_PATH = path.join(__dirname, 'data', 'produtos.json');
 const ADMIN_USER = process.env.REPORT_USER || 'lemoov';
 const ADMIN_PASS = process.env.REPORT_PASS || 'L3moov@';
 const MYSQL_CONFIG = {
@@ -71,13 +70,6 @@ const INFINITEPAY_API_URL = process.env.INFINITEPAY_API_URL || 'https://api.chec
 const INFINITEPAY_HANDLE = (process.env.INFINITEPAY_HANDLE || process.env.INFINITYPAY_HANDLE || '').replace(/^\$/, '');
 const PUBLIC_SITE_URL = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
 
-function readProdutos() {
-  try {
-    return JSON.parse(fs.readFileSync(PROD_PATH, 'utf-8'));
-  } catch (_e) {
-    return [];
-  }
-}
 function requireMysqlStorage() {
   if (!MYSQL_ENABLED) throw new Error('Banco de dados MySQL obrigatório. Persistência local/JSON desativada.');
 }
@@ -199,16 +191,6 @@ async function initDatabase() {
         INDEX idx_crm_ts (ts)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
-    const [rows] = await mysqlPool.execute('SELECT COUNT(*) AS total FROM lemoov_products');
-    if (Number(rows?.[0]?.total || 0) === 0) {
-      const localProducts = ensureProductIds(readProdutos());
-      for (const item of localProducts) {
-        await mysqlPool.execute(
-          'INSERT INTO lemoov_products (id, data) VALUES (?, ?)',
-          [Number(item.id), JSON.stringify(item)]
-        );
-      }
-    }
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto.scryptSync(ADMIN_PASS, salt, 64).toString('hex');
     await mysqlPool.execute('DELETE FROM lemoov_users WHERE username = ?', [ADMIN_USER]);
@@ -630,6 +612,137 @@ function restoreStock(produtos, itens = []) {
   return movements;
 }
 
+function refreshProductStockFlags(prod) {
+  if (!prod || !Array.isArray(prod.cores)) return;
+  prod.cores.forEach((cor) => {
+    const stock = getColorStock(cor);
+    if (!stock) return;
+    cor.tamanhos = Object.keys(stock).filter((size) => Number(stock[size]) > 0);
+    cor.soldOut = cor.tamanhos.length === 0;
+  });
+  const allManaged = prod.cores.every((cor) => Boolean(getColorStock(cor)));
+  if (allManaged) {
+    prod.soldOut = prod.cores.every((cor) => {
+      const stock = getColorStock(cor);
+      return !stock || Object.values(stock).every((q) => Number(q) <= 0);
+    });
+  }
+  prod.updatedAt = new Date().toISOString();
+}
+
+function normalizeStockQuantityMap(value = {}, { includeZero = false } = {}) {
+  const result = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return result;
+  Object.entries(value).forEach(([size, qty]) => {
+    const s = normalizeKey(size || 'UNICO');
+    if (!s) return;
+    const q = Math.max(0, Number(qty) || 0);
+    if (q > 0 || includeZero) result[s] = q;
+  });
+  return result;
+}
+
+function applyStockOperation(produtos, { tipo, produtoId, corIndex = 0, quantidades = {} } = {}) {
+  const op = String(tipo || 'entrada').trim().toLowerCase();
+  const productId = Number(produtoId);
+  const colorIndex = Number(corIndex) || 0;
+  const prod = produtos.find((p) => Number(p.id) === productId);
+  if (!prod) {
+    const err = new Error('Produto não encontrado');
+    err.status = 404;
+    throw err;
+  }
+  const cor = Array.isArray(prod.cores) ? prod.cores[colorIndex] : null;
+  if (!cor) {
+    const err = new Error('Cor não encontrada');
+    err.status = 404;
+    throw err;
+  }
+  if (!cor.estoque || typeof cor.estoque !== 'object' || Array.isArray(cor.estoque)) cor.estoque = {};
+  const stock = cor.estoque;
+  const now = new Date().toISOString();
+  const movements = [];
+  const pushMovement = ({ type, reason, size, quantity, before, after }) => {
+    movements.push({
+      id: crypto.randomUUID(),
+      type,
+      reason,
+      productId,
+      productName: prod.nome || '',
+      colorIndex,
+      colorName: cor.nome || '',
+      size,
+      quantity,
+      before,
+      after,
+      source: 'admin',
+      createdAt: now
+    });
+  };
+
+  if (op === 'inventario') {
+    const counted = normalizeStockQuantityMap(quantidades, { includeZero: true });
+    const sizes = Array.from(new Set([...Object.keys(stock), ...Object.keys(counted)]));
+    sizes.forEach((size) => {
+      const before = Math.max(0, Number(stock[size]) || 0);
+      if (before > 0) {
+        stock[size] = 0;
+        pushMovement({ type: 'saida', reason: 'inventario_zerado', size, quantity: -before, before, after: 0 });
+      } else {
+        stock[size] = 0;
+      }
+    });
+    Object.entries(counted).forEach(([size, qty]) => {
+      if (qty <= 0) return;
+      stock[size] = qty;
+      pushMovement({ type: 'entrada', reason: 'saldo_inicial', size, quantity: qty, before: 0, after: qty });
+    });
+    Object.keys(stock).forEach((size) => { if (Number(stock[size]) <= 0) delete stock[size]; });
+    refreshProductStockFlags(prod);
+    return movements;
+  }
+
+  const quantities = normalizeStockQuantityMap(quantidades);
+  if (!Object.keys(quantities).length) {
+    const err = new Error('Informe ao menos uma quantidade maior que zero.');
+    err.status = 400;
+    throw err;
+  }
+  Object.entries(quantities).forEach(([size, qty]) => {
+    const before = Math.max(0, Number(stock[size]) || 0);
+    if (op === 'entrada' || op === 'ajuste_entrada') {
+      const after = before + qty;
+      stock[size] = after;
+      pushMovement({
+        type: op === 'entrada' ? 'entrada' : 'ajuste',
+        reason: op === 'entrada' ? 'entrada_manual' : 'ajuste_entrada',
+        size,
+        quantity: qty,
+        before,
+        after
+      });
+      return;
+    }
+    if (op === 'ajuste_saida') {
+      if (qty > before) {
+        const err = new Error(`Ajuste para menos maior que o saldo atual em ${size}. Saldo atual: ${before}.`);
+        err.status = 409;
+        throw err;
+      }
+      const after = before - qty;
+      if (after > 0) stock[size] = after;
+      else delete stock[size];
+      pushMovement({ type: 'ajuste', reason: 'ajuste_saida', size, quantity: -qty, before, after });
+      return;
+    }
+    const err = new Error('Tipo de operação inválido.');
+    err.status = 400;
+    throw err;
+  });
+  refreshProductStockFlags(prod);
+  return movements;
+}
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
@@ -733,18 +846,17 @@ app.put('/api/client/me', clientAuthRequired, async (req, res) => {
   if (telefone && (telefone.length < 10 || telefone.length > 11)) return res.status(400).json({ ok: false, error: 'Telefone inválido.' });
 
   try {
-    if (MYSQL_ENABLED) {
-      await initDatabase();
-      const [existing] = await mysqlPool.execute(
-        'SELECT id FROM lemoov_clients WHERE email = ? AND id <> ?',
-        [email, req.clientSession.clientId]
-      );
-      if (existing.length) return res.status(409).json({ ok: false, error: 'Este e-mail já está em uso.' });
-      await mysqlPool.execute(
-        'UPDATE lemoov_clients SET nome = ?, email = ?, telefone = ? WHERE id = ?',
-        [nome, email, telefone || null, req.clientSession.clientId]
-      );
-    }
+    requireMysqlStorage();
+    await initDatabase();
+    const [existing] = await mysqlPool.execute(
+      'SELECT id FROM lemoov_clients WHERE email = ? AND id <> ?',
+      [email, req.clientSession.clientId]
+    );
+    if (existing.length) return res.status(409).json({ ok: false, error: 'Este e-mail já está em uso.' });
+    await mysqlPool.execute(
+      'UPDATE lemoov_clients SET nome = ?, email = ?, telefone = ? WHERE id = ?',
+      [nome, email, telefone || null, req.clientSession.clientId]
+    );
     req.clientSession.nome = nome;
     req.clientSession.email = email;
     req.clientSession.telefone = telefone;
@@ -1153,10 +1265,7 @@ app.post('/api/client/forgot-password', async (req, res) => {
   const email = String(req.body?.email || '').toLowerCase().trim();
   if (!email) return res.status(400).json({ ok: false, error: 'E-mail obrigatório.' });
   try {
-    if (!MYSQL_ENABLED) {
-      console.warn('[forgot-password] MySQL desabilitado — não é possível buscar cliente.');
-      return res.json({ ok: true });
-    }
+    requireMysqlStorage();
     await initDatabase();
     const [rows] = await mysqlPool.execute('SELECT id, nome FROM lemoov_clients WHERE email = ?', [email]);
     if (!rows.length) {
@@ -1204,19 +1313,7 @@ app.post('/api/client/reset-password', async (req, res) => {
 });
 
 app.get('/api/client/addresses', clientAuthRequired, async (req, res) => {
-  if (!MYSQL_ENABLED) {
-    // Modo offline: retorna endereço fictício para testes
-    return res.json({ ok: true, addresses: [{
-      id: 1,
-      cep: '60360760',
-      logradouro: 'Rua das Esmeraldas',
-      numero: '42',
-      complemento: 'Apto 3',
-      bairro: 'Maraponga',
-      cidade: 'Fortaleza',
-      uf: 'CE'
-    }]});
-  }
+  if (!MYSQL_ENABLED) return res.status(503).json({ ok: false, error: 'Banco de dados não disponível.' });
   try {
     await initDatabase();
     const [rows] = await mysqlPool.execute(
@@ -1941,8 +2038,8 @@ ${items.join('\n')}
 
 app.get('/api/health', (_req, res) => {
   res.json({
-    ok: true,
-    storage: MYSQL_ENABLED ? 'mysql' : 'json',
+    ok: MYSQL_ENABLED,
+    storage: MYSQL_ENABLED ? 'mysql' : 'unavailable',
     mysqlEnabled: MYSQL_ENABLED
   });
 });
@@ -2511,12 +2608,6 @@ async function ensureCrmTables() {
   console.log('[crm] tabelas prontas');
 }
 
-function readCrmJson() { try { return JSON.parse(fs.readFileSync(CRM_PATH, 'utf-8')); } catch (_) { return []; } }
-function writeCrmJson(list) {
-  const cutoff = Date.now() - CRM_RETENTION_DAYS * 86400000;
-  const pruned = list.filter(s => new Date(s.lastSeen).getTime() > cutoff).slice(-CRM_MAX_SESSIONS);
-  fs.writeFileSync(CRM_PATH, JSON.stringify(pruned), 'utf-8');
-}
 function anonIp(ip) {
   if (!ip) return '';
   if (ip.includes(':')) return ip.split(':').slice(0, 4).join(':') + '::';
@@ -2580,69 +2671,48 @@ app.post('/api/crm/event', async (req, res) => {
     const ip = anonIp(rawIp);
     const ua = parseUserAgent(req.headers['user-agent'] || '');
 
-    if (MYSQL_ENABLED) {
-      await ensureCrmTables();
-      const [existing] = await mysqlPool.execute(
-        'SELECT id, client_id FROM lemoov_crm_sessions WHERE session_id = ?', [sessionId]
+    requireMysqlStorage();
+    await ensureCrmTables();
+    const [existing] = await mysqlPool.execute(
+      'SELECT id, client_id FROM lemoov_crm_sessions WHERE session_id = ?', [sessionId]
+    );
+    if (!existing.length) {
+      // geolocalização server-side — mais confiável que a do browser
+      const geo = await geolocateIp(rawIp);
+      const finalCidade = geo.cidade || cidade || '';
+      const finalBairro = geo.bairro || bairro || '';
+      const finalRegiao = geo.regiao || regiao || '';
+      const finalPais   = geo.pais   || pais   || '';
+      const finalCep    = geo.cep    || cep    || '';
+      await mysqlPool.execute(
+        `INSERT INTO lemoov_crm_sessions
+          (session_id, ip, cidade, bairro, regiao, pais, cep, client_id, cliente_nome,
+           dispositivo, browser, so, origem, utm_source, utm_medium, utm_campaign)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [sessionId, ip, finalCidade, finalBairro, finalRegiao, finalPais, finalCep,
+         clientId||null, clienteNome||'',
+         ua.dispositivo, ua.browser, ua.so,
+         origem||'', utm_source||'', utm_medium||'', utm_campaign||'']
       );
-      if (!existing.length) {
-        // geolocalização server-side — mais confiável que a do browser
-        const geo = await geolocateIp(rawIp);
-        const finalCidade = geo.cidade || cidade || '';
-        const finalBairro = geo.bairro || bairro || '';
-        const finalRegiao = geo.regiao || regiao || '';
-        const finalPais   = geo.pais   || pais   || '';
-        const finalCep    = geo.cep    || cep    || '';
-        await mysqlPool.execute(
-          `INSERT INTO lemoov_crm_sessions
-            (session_id, ip, cidade, bairro, regiao, pais, cep, client_id, cliente_nome,
-             dispositivo, browser, so, origem, utm_source, utm_medium, utm_campaign)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [sessionId, ip, finalCidade, finalBairro, finalRegiao, finalPais, finalCep,
-           clientId||null, clienteNome||'',
-           ua.dispositivo, ua.browser, ua.so,
-           origem||'', utm_source||'', utm_medium||'', utm_campaign||'']
-        );
-        console.log(`[crm] nova sessão: ${sessionId.slice(0,8)}… | ${cidade||'?'}/${bairro||'?'} | ${ua.dispositivo} ${ua.browser} | origem: ${origem||'direto'}`);
-      } else {
-        const updates = ['last_seen = NOW()'];
-        const params = [];
-        if (clientId && !existing[0].client_id) { updates.push('client_id = ?', 'cliente_nome = ?'); params.push(clientId, clienteNome||''); }
-        if (cidade)      { updates.push('cidade = COALESCE(NULLIF(cidade,""), ?)');  params.push(cidade); }
-        if (bairro)      { updates.push('bairro = COALESCE(NULLIF(bairro,""), ?)');  params.push(bairro); }
-        if (cep)         { updates.push('cep = COALESCE(NULLIF(cep,""), ?)');         params.push(cep); }
-        if (timeOnSite)  { updates.push('time_on_site = ?');  params.push(Number(timeOnSite)); }
-        params.push(sessionId);
-        await mysqlPool.execute(`UPDATE lemoov_crm_sessions SET ${updates.join(', ')} WHERE session_id = ?`, params);
-      }
-      if (type !== 'heartbeat') {
-        await mysqlPool.execute(
-          'INSERT INTO lemoov_crm_events (session_id, type, product_id, product_name, order_id, total, page) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [sessionId, type, productId||null, productName||null, orderId||null, total||null, page||null]
-        );
-      }
-      return res.json({ ok: true });
-    }
-
-    // fallback JSON
-    const sessions = readCrmJson();
-    let session = sessions.find(s => s.sessionId === sessionId);
-    const now = new Date().toISOString();
-    if (!session) {
-      session = { sessionId, ip, cidade: cidade||'', regiao: regiao||'', pais: pais||'', clientId: clientId||null, clienteNome: clienteNome||'', firstSeen: now, lastSeen: now, timeOnSite: 0, events: [] };
-      sessions.push(session);
+      console.log(`[crm] nova sessão: ${sessionId.slice(0,8)}… | ${cidade||'?'}/${bairro||'?'} | ${ua.dispositivo} ${ua.browser} | origem: ${origem||'direto'}`);
     } else {
-      session.lastSeen = now;
-      if (clientId && !session.clientId) { session.clientId = clientId; session.clienteNome = clienteNome||''; }
-      if (cidade && !session.cidade) session.cidade = cidade;
+      const updates = ['last_seen = NOW()'];
+      const params = [];
+      if (clientId && !existing[0].client_id) { updates.push('client_id = ?', 'cliente_nome = ?'); params.push(clientId, clienteNome||''); }
+      if (cidade)      { updates.push('cidade = COALESCE(NULLIF(cidade,""), ?)');  params.push(cidade); }
+      if (bairro)      { updates.push('bairro = COALESCE(NULLIF(bairro,""), ?)');  params.push(bairro); }
+      if (cep)         { updates.push('cep = COALESCE(NULLIF(cep,""), ?)');         params.push(cep); }
+      if (timeOnSite)  { updates.push('time_on_site = ?');  params.push(Number(timeOnSite)); }
+      params.push(sessionId);
+      await mysqlPool.execute(`UPDATE lemoov_crm_sessions SET ${updates.join(', ')} WHERE session_id = ?`, params);
     }
-    if (timeOnSite) session.timeOnSite = Number(timeOnSite);
     if (type !== 'heartbeat') {
-      session.events.push({ type, productId, productName, orderId, total, page, ts: now });
-      if (session.events.length > 200) session.events = session.events.slice(-200);
+      await mysqlPool.execute(
+        'INSERT INTO lemoov_crm_events (session_id, type, product_id, product_name, order_id, total, page) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [sessionId, type, productId||null, productName||null, orderId||null, total||null, page||null]
+      );
     }
-    writeCrmJson(sessions);
-    res.json({ ok: true });
+    return res.json({ ok: true });
   } catch (e) {
     console.error('[crm/event]', e.message);
     res.json({ ok: false });
@@ -2652,31 +2722,26 @@ app.post('/api/crm/event', async (req, res) => {
 app.get('/api/crm/sessions', authRequired, async (req, res) => {
   try {
     const days = Number(req.query.days || 30);
-    if (MYSQL_ENABLED) {
-      await initDatabase();
-      const [rows] = await mysqlPool.execute(`
-        SELECT s.session_id AS sessionId, s.cidade, s.bairro, s.regiao, s.pais, s.cep,
-               s.client_id AS clientId, s.cliente_nome AS clienteNome,
-               s.dispositivo, s.browser, s.so, s.origem, s.utm_source, s.utm_medium, s.utm_campaign,
-               s.first_seen AS firstSeen, s.last_seen AS lastSeen, s.time_on_site AS timeOnSite,
-               COUNT(e.id) AS eventCount,
-               MAX(CASE WHEN e.type='product_view'   THEN 1 ELSE 0 END) AS viewed,
-               MAX(CASE WHEN e.type='add_to_cart'    THEN 1 ELSE 0 END) AS carted,
-               MAX(CASE WHEN e.type='checkout_start' THEN 1 ELSE 0 END) AS \`checkout\`,
-               MAX(CASE WHEN e.type='purchase'       THEN 1 ELSE 0 END) AS purchased
-        FROM lemoov_crm_sessions s
-        LEFT JOIN lemoov_crm_events e ON e.session_id = s.session_id
-        WHERE s.first_seen >= NOW() - INTERVAL ? DAY
-        GROUP BY s.session_id
-        ORDER BY s.last_seen DESC
-        LIMIT 2000
-      `, [days]);
-      return res.json({ ok: true, sessions: rows.map(r => ({ ...r, viewed: !!r.viewed, carted: !!r.carted, checkout: !!r.checkout, purchased: !!r.purchased })) });
-    }
-    const cutoff = Date.now() - days * 86400000;
-    const sessions = readCrmJson().filter(s => new Date(s.firstSeen).getTime() > cutoff)
-      .map(s => ({ sessionId: s.sessionId, cidade: s.cidade, regiao: s.regiao, clientId: s.clientId, clienteNome: s.clienteNome, firstSeen: s.firstSeen, lastSeen: s.lastSeen, timeOnSite: s.timeOnSite, eventCount: s.events.length, viewed: s.events.some(e => e.type==='product_view'), carted: s.events.some(e => e.type==='add_to_cart'), checkout: s.events.some(e => e.type==='checkout_start'), purchased: s.events.some(e => e.type==='purchase') })).reverse();
-    res.json({ ok: true, sessions });
+    requireMysqlStorage();
+    await initDatabase();
+    const [rows] = await mysqlPool.execute(`
+      SELECT s.session_id AS sessionId, s.cidade, s.bairro, s.regiao, s.pais, s.cep,
+             s.client_id AS clientId, s.cliente_nome AS clienteNome,
+             s.dispositivo, s.browser, s.so, s.origem, s.utm_source, s.utm_medium, s.utm_campaign,
+             s.first_seen AS firstSeen, s.last_seen AS lastSeen, s.time_on_site AS timeOnSite,
+             COUNT(e.id) AS eventCount,
+             MAX(CASE WHEN e.type='product_view'   THEN 1 ELSE 0 END) AS viewed,
+             MAX(CASE WHEN e.type='add_to_cart'    THEN 1 ELSE 0 END) AS carted,
+             MAX(CASE WHEN e.type='checkout_start' THEN 1 ELSE 0 END) AS \`checkout\`,
+             MAX(CASE WHEN e.type='purchase'       THEN 1 ELSE 0 END) AS purchased
+      FROM lemoov_crm_sessions s
+      LEFT JOIN lemoov_crm_events e ON e.session_id = s.session_id
+      WHERE s.first_seen >= NOW() - INTERVAL ? DAY
+      GROUP BY s.session_id
+      ORDER BY s.last_seen DESC
+      LIMIT 2000
+    `, [days]);
+    return res.json({ ok: true, sessions: rows.map(r => ({ ...r, viewed: !!r.viewed, carted: !!r.carted, checkout: !!r.checkout, purchased: !!r.purchased })) });
   } catch (e) {
     console.error('[crm/sessions]', e.message);
     res.status(500).json({ ok: false });
@@ -2686,37 +2751,33 @@ app.get('/api/crm/sessions', authRequired, async (req, res) => {
 app.get('/api/crm/sessions/:id', authRequired, async (req, res) => {
   try {
     const sid = req.params.id;
-    if (MYSQL_ENABLED) {
-      await initDatabase();
-      const [[session]] = await mysqlPool.execute('SELECT * FROM lemoov_crm_sessions WHERE session_id = ?', [sid]);
-      if (!session) return res.status(404).json({ ok: false });
-      const [events] = await mysqlPool.execute('SELECT * FROM lemoov_crm_events WHERE session_id = ? ORDER BY ts ASC', [sid]);
-      return res.json({ ok: true, session: {
-        sessionId:    session.session_id,
-        ip:           session.ip,
-        cidade:       session.cidade,
-        bairro:       session.bairro,
-        regiao:       session.regiao,
-        pais:         session.pais,
-        cep:          session.cep,
-        clientId:     session.client_id,
-        clienteNome:  session.cliente_nome,
-        dispositivo:  session.dispositivo,
-        browser:      session.browser,
-        so:           session.so,
-        origem:       session.origem,
-        utm_source:   session.utm_source,
-        utm_medium:   session.utm_medium,
-        utm_campaign: session.utm_campaign,
-        firstSeen:    session.first_seen,
-        lastSeen:     session.last_seen,
-        timeOnSite:   session.time_on_site,
-        events: events.map(e => ({ type: e.type, productId: e.product_id, productName: e.product_name, orderId: e.order_id, total: e.total, page: e.page, ts: e.ts }))
-      } });
-    }
-    const session = readCrmJson().find(s => s.sessionId === sid);
+    requireMysqlStorage();
+    await initDatabase();
+    const [[session]] = await mysqlPool.execute('SELECT * FROM lemoov_crm_sessions WHERE session_id = ?', [sid]);
     if (!session) return res.status(404).json({ ok: false });
-    res.json({ ok: true, session });
+    const [events] = await mysqlPool.execute('SELECT * FROM lemoov_crm_events WHERE session_id = ? ORDER BY ts ASC', [sid]);
+    return res.json({ ok: true, session: {
+      sessionId:    session.session_id,
+      ip:           session.ip,
+      cidade:       session.cidade,
+      bairro:       session.bairro,
+      regiao:       session.regiao,
+      pais:         session.pais,
+      cep:          session.cep,
+      clientId:     session.client_id,
+      clienteNome:  session.cliente_nome,
+      dispositivo:  session.dispositivo,
+      browser:      session.browser,
+      so:           session.so,
+      origem:       session.origem,
+      utm_source:   session.utm_source,
+      utm_medium:   session.utm_medium,
+      utm_campaign: session.utm_campaign,
+      firstSeen:    session.first_seen,
+      lastSeen:     session.last_seen,
+      timeOnSite:   session.time_on_site,
+      events: events.map(e => ({ type: e.type, productId: e.product_id, productName: e.product_name, orderId: e.order_id, total: e.total, page: e.page, ts: e.ts }))
+    } });
   } catch (e) {
     res.status(500).json({ ok: false });
   }
@@ -2725,24 +2786,20 @@ app.get('/api/crm/sessions/:id', authRequired, async (req, res) => {
 app.get('/api/crm/funnel', authRequired, async (req, res) => {
   try {
     const days = Number(req.query.days || 30);
-    if (MYSQL_ENABLED) {
-      await initDatabase();
-      const [[counts]] = await mysqlPool.execute(`
-        SELECT
-          COUNT(DISTINCT s.session_id)                                                  AS total,
-          COUNT(DISTINCT CASE WHEN e.type='product_view'   THEN s.session_id END)      AS viewed,
-          COUNT(DISTINCT CASE WHEN e.type='add_to_cart'    THEN s.session_id END)      AS carted,
-          COUNT(DISTINCT CASE WHEN e.type='checkout_start' THEN s.session_id END)      AS \`checkout\`,
-          COUNT(DISTINCT CASE WHEN e.type='purchase'       THEN s.session_id END)      AS purchased
-        FROM lemoov_crm_sessions s
-        LEFT JOIN lemoov_crm_events e ON e.session_id = s.session_id
-        WHERE s.first_seen >= NOW() - INTERVAL ? DAY
-      `, [days]);
-      return res.json({ ok: true, ...counts });
-    }
-    const cutoff = Date.now() - days * 86400000;
-    const period = readCrmJson().filter(s => new Date(s.firstSeen).getTime() > cutoff);
-    res.json({ ok: true, total: period.length, viewed: period.filter(s => s.events.some(e => e.type==='product_view')).length, carted: period.filter(s => s.events.some(e => e.type==='add_to_cart')).length, checkout: period.filter(s => s.events.some(e => e.type==='checkout_start')).length, purchased: period.filter(s => s.events.some(e => e.type==='purchase')).length });
+    requireMysqlStorage();
+    await initDatabase();
+    const [[counts]] = await mysqlPool.execute(`
+      SELECT
+        COUNT(DISTINCT s.session_id)                                                  AS total,
+        COUNT(DISTINCT CASE WHEN e.type='product_view'   THEN s.session_id END)      AS viewed,
+        COUNT(DISTINCT CASE WHEN e.type='add_to_cart'    THEN s.session_id END)      AS carted,
+        COUNT(DISTINCT CASE WHEN e.type='checkout_start' THEN s.session_id END)      AS \`checkout\`,
+        COUNT(DISTINCT CASE WHEN e.type='purchase'       THEN s.session_id END)      AS purchased
+      FROM lemoov_crm_sessions s
+      LEFT JOIN lemoov_crm_events e ON e.session_id = s.session_id
+      WHERE s.first_seen >= NOW() - INTERVAL ? DAY
+    `, [days]);
+    return res.json({ ok: true, ...counts });
   } catch (e) {
     res.status(500).json({ ok: false });
   }
@@ -2751,14 +2808,11 @@ app.get('/api/crm/funnel', authRequired, async (req, res) => {
 app.delete('/api/crm/sessions/:id', authRequired, async (req, res) => {
   try {
     const sid = req.params.id;
-    if (MYSQL_ENABLED) {
-      await initDatabase();
-      await mysqlPool.execute('DELETE FROM lemoov_crm_events WHERE session_id = ?', [sid]);
-      await mysqlPool.execute('DELETE FROM lemoov_crm_sessions WHERE session_id = ?', [sid]);
-      return res.json({ ok: true });
-    }
-    writeCrmJson(readCrmJson().filter(s => s.sessionId !== sid));
-    res.json({ ok: true });
+    requireMysqlStorage();
+    await initDatabase();
+    await mysqlPool.execute('DELETE FROM lemoov_crm_events WHERE session_id = ?', [sid]);
+    await mysqlPool.execute('DELETE FROM lemoov_crm_sessions WHERE session_id = ?', [sid]);
+    return res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false });
   }
@@ -2772,12 +2826,12 @@ if (path.resolve(UPLOAD_DIR) !== path.resolve(path.join(__dirname, UPLOAD_PUBLIC
 
 const PORT = process.env.PORT || 3000;
 initDatabase()
-  .catch((err) => {
-    console.error('Falha ao inicializar banco de dados. O site vai subir, mas APIs com MySQL podem falhar:', err);
-  })
   .then(() => {
     app.listen(PORT, () => {
-      const storage = MYSQL_ENABLED ? 'MySQL' : 'JSON local';
-      console.log(`Servidor no ar http://localhost:${PORT} (${storage})`);
+      console.log(`Servidor no ar http://localhost:${PORT} (MySQL)`);
     });
+  })
+  .catch((err) => {
+    console.error('Falha ao inicializar banco de dados. Servidor não iniciado; persistência local/JSON está desativada:', err.message);
+    process.exitCode = 1;
   });
