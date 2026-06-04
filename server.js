@@ -367,6 +367,12 @@ async function calculateDiscounts({ subtotal = 0, cpf = '', couponCode = '', ped
       err.status = 400;
       throw err;
     }
+    // PRIMEIRA20 é exclusivo para primeira compra — bloqueia se CPF já tem pedido pago
+    if (normalizedCoupon === 'PRIMEIRA20' && cleanCpf.length === 11 && hasCpfPurchase(currentPedidos, cleanCpf)) {
+      const err = new Error('O cupom PRIMEIRA20 é válido somente na primeira compra. Seu CPF já possui um pedido confirmado.');
+      err.status = 400;
+      throw err;
+    }
     discounts.push({ type: 'coupon', label: `Cupom ${coupon.code}`, code: coupon.code, percent: coupon.percent, amount: roundMoney(base * (coupon.percent / 100)) });
   }
   let discountTotal = roundMoney(discounts.reduce((sum, item) => sum + Number(item.amount || 0), 0));
@@ -1966,6 +1972,7 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
           subtotal: Number(basePedido.subtotal || 0),
           taxa: Number(basePedido.taxa || 0),
           frete_modo: basePedido.frete_modo || pending.frete_modo || '',
+          frete_prazo_dias: basePedido.frete_prazo_dias || pending.frete_prazo_dias || null,
           retirada: Boolean(basePedido.retirada || pending.retirada),
           cep: basePedido.cep || pending.endereco?.cep || '',
           cidade: basePedido.cidade || pending.endereco?.cidade || '',
