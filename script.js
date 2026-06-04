@@ -1258,8 +1258,7 @@ function computeColorPrice(prod, colorObj){
 
   .frete__ui{ order:12; margin:4px 0 0; }
   .frete__ui[data-auth="logged-out"] #cartAddressSummary{ display:none !important; }
-  .frete__ui[data-auth="logged-in"] .frete__row,
-  .frete__ui[data-auth="logged-in"] .checkout__link{ display:none !important; }
+  /* CEP manual e link dos Correios sempre visíveis, antes e depois do login */
   #cart[data-cart-auth="logged-out"] .cart-coupon{ display:none !important; }
   .cart-address-summary{
     display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -3114,14 +3113,10 @@ function renderCartDeliveryState() {
     return;
   }
   if (addrBox) {
-    addrBox.style.display = "";
-    addrBox.innerHTML = `<div><strong>Endereço de entrega</strong><span>Nenhum endereço cadastrado para calcular o frete.</span></div><button type="button" id="btnCartAddAddr">Cadastrar</button>`;
-    addrBox.querySelector("#btnCartAddAddr")?.addEventListener("click", async () => {
-      const addresses = await fetchClientAddresses();
-      openAddressSelectionModal(addresses);
-    });
+    addrBox.style.display = "none";
+    addrBox.innerHTML = "";
   }
-  if (msg) msg.textContent = "Cadastre ou selecione um endereço para calcular o frete.";
+  if (msg) msg.textContent = "Digite o CEP acima para calcular o frete.";
 }
 
 async function autoLoadDeliveryFromClient() {
@@ -3469,12 +3464,8 @@ function ensureCheckoutButton(){
 function updateCheckoutButtonState(){
   const btn = el("#btnCheckout");
   if (!btn) return;
-  const hasItems = carrinho.length > 0;
-  const freightReady = retiradaNaLoja || (entregaDisponivel && isFixedFreteMode());
-  btn.disabled = !hasItems;
-  btn.textContent = (currentClientSession && !freightReady && !retiradaNaLoja)
-    ? "Selecionar endereço"
-    : "Ir para pagamento";
+  btn.disabled = carrinho.length === 0;
+  btn.textContent = "Ir para pagamento";
 }
 
 function ensureCartClientSummary() {

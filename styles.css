@@ -3017,15 +3017,11 @@ legend {
     padding: 14px 18px;
     color: #0b1f2a;
 }
-/* Quando não logado: esconde só o endereço cadastrado */
+/* Quando não logado: esconde só o resumo de endereço cadastrado */
 .frete__ui[data-auth="logged-out"] #cartAddressSummary {
     display: none !important;
 }
-/* Quando logado: o endereço vem da conta; esconde CEP manual */
-.frete__ui[data-auth="logged-in"] .frete__row,
-.frete__ui[data-auth="logged-in"] .checkout__link {
-    display: none !important;
-}
+/* Quando logado: o CEP manual e link dos Correios ficam visíveis para o cliente consultar */
 .cart-address-summary {
     display: flex;
     align-items: center;
