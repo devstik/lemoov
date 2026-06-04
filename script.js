@@ -83,6 +83,9 @@ let enderecoAutofill = null;
 let selectedDeliveryAddress = null;
 let currentClientSession = null;
 let originCoordsCache = null;
+let freteCepRequestSeq = 0;
+let freteCepDebounceTimer = null;
+let freteCepLoading = false;
 let checkoutDiscountState = { cpf: "", cupom: "", discounts: [], discountTotal: 0 };
 let cartCouponCode = "";
 const FB_EVENT_MAP = {
@@ -1310,6 +1313,9 @@ function computeColorPrice(prod, colorObj){
   .pickup-toggle__text span{display:block;color:#5d6b76;font-size:.72rem;line-height:1.25;margin-top:2px}
   .frete__row{ display:flex; gap:8px; align-items:center; flex-wrap:nowrap; }
   .frete__msg{ font-size:0.78rem; color:#5d6b76; margin-top:6px; text-align:left; }
+  .frete__ui[data-loading="true"] .frete__msg{ color:#0f766e; font-weight:700; }
+  .frete__ui[data-loading="true"] .frete__msg::after{ content:""; display:inline-block; width:12px; height:12px; margin-left:7px; border:2px solid rgba(15,118,110,.25); border-top-color:#0f766e; border-radius:50%; vertical-align:-2px; animation:freteSpin .75s linear infinite; }
+  @keyframes freteSpin{ to{ transform:rotate(360deg); } }
   .frete__opcoes{ margin-top:8px; display:flex; flex-direction:column; gap:6px; }
   .frete__opcao{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1.5px solid #dde3ea; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:border-color .15s,background .15s; }
   .frete__opcao:hover{ border-color:#009C3B; background:#f5fff8; }
@@ -3151,7 +3157,10 @@ function renderCartDeliveryState() {
     addrBox.style.display = "none";
     addrBox.innerHTML = "";
   }
-  if (msg) msg.textContent = "Digite o CEP acima para calcular o frete.";
+  if (msg) {
+    if (entregaDisponivel && cepAtual) msg.textContent = getFreteResumoLabel({ includeCep: true });
+    else if (!freteCepLoading) msg.textContent = "Digite o CEP acima para calcular o frete.";
+  }
 }
 
 async function autoLoadDeliveryFromClient() {
@@ -3185,17 +3194,21 @@ async function autoLoadDeliveryFromClient() {
   atualizarCart();
 }
 
-async function calcularFreteBackend(addr) {
+async function calcularFreteBackend(addr, options = {}) {
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), Number(options.timeoutMs) || 12000);
   try {
     const r = await fetch('/api/frete', {
       method: 'POST',
       credentials: 'same-origin',
+      signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cidade: addr.cidade, cep: addr.cep })
     });
     if (!r.ok) return false;
     const d = await r.json();
     if (!d.ok) return false;
+    if (options.seq && !isCurrentFreteCepRequest(options.seq, options.cep || addr.cep)) return false;
     cepAtual = String(addr.cep).replace(/\D/g, '');
 
     if (d.tipo === 'opcoes' && Array.isArray(d.opcoes) && d.opcoes.length) {
@@ -3219,6 +3232,8 @@ async function calcularFreteBackend(addr) {
     return true;
   } catch (_) {
     return false;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -4788,6 +4803,50 @@ async function fetchJSON(url, opts = {}, timeoutMs = 10000) {
     clearTimeout(t);
   }
 }
+function withTimeout(promise, timeoutMs, fallback = null) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((resolve) => {
+      timer = setTimeout(() => resolve(fallback), timeoutMs);
+    })
+  ]).finally(() => clearTimeout(timer));
+}
+function isCurrentFreteCepRequest(seq, cep) {
+  const currentCep = normalizeCEP(el("#cepInput")?.value || cepAtual || "");
+  return seq === freteCepRequestSeq && currentCep === normalizeCEP(cep);
+}
+function setFreteLoading(isLoading, message = "") {
+  freteCepLoading = Boolean(isLoading);
+  const wrap = document.querySelector(".frete__ui");
+  const msg = el("#freteMsg");
+  const btnUseLocation = el("#btnUseLocation");
+  if (wrap) wrap.dataset.loading = freteCepLoading ? "true" : "false";
+  if (msg && message) msg.textContent = message;
+  if (btnUseLocation) btnUseLocation.disabled = freteCepLoading || retiradaNaLoja;
+}
+function cancelPendingFreteCep(message = "") {
+  freteCepRequestSeq += 1;
+  if (freteCepDebounceTimer) {
+    clearTimeout(freteCepDebounceTimer);
+    freteCepDebounceTimer = null;
+  }
+  setFreteLoading(false, message);
+}
+function scheduleFreteCepCalculation(cepRaw, delay = 450) {
+  const cep = normalizeCEP(cepRaw);
+  if (freteCepDebounceTimer) clearTimeout(freteCepDebounceTimer);
+  const seq = ++freteCepRequestSeq;
+  setFreteLoading(false, "Preparando consulta do CEP...");
+  freteCepDebounceTimer = setTimeout(() => {
+    freteCepDebounceTimer = null;
+    calcularEntregaPorCEP(cep, { seq }).catch(() => {
+      if (isCurrentFreteCepRequest(seq, cep)) {
+        resetFreteUI("Não foi possível consultar o CEP agora. Verifique sua conexão e tente novamente.");
+      }
+    });
+  }, delay);
+}
 const UF_NAME_TO_SIGLA = {
   "acre": "AC",
   "alagoas": "AL",
@@ -4937,6 +4996,7 @@ async function getOriginCoords() {
 }
 
 function resetFreteUI(message = "Informe o CEP para calcular a entrega.") {
+  setFreteLoading(false);
   freteAtual = 0;
   cepAtual = "";
   entregaDisponivel = false;
@@ -5021,23 +5081,31 @@ function applyPickupUIState() {
   }
 }
 
-async function calcularEntregaPorCEP(cepRaw) {
+async function calcularEntregaPorCEP(cepRaw, options = {}) {
   const cep = normalizeCEP(cepRaw);
+  const requestSeq = Number(options.seq) || ++freteCepRequestSeq;
   const freteMsg = el("#freteMsg");
   if (!cep || cep.length !== 8) {
     resetFreteUI("CEP inválido. Digite 8 números.");
     return;
   }
-  if (freteMsg) freteMsg.textContent = "Verificando entrega…";
+  setFreteLoading(true, "Verificando entrega...");
   cepAtual = cep;
   freteAtual = 0;
-  entregaDisponivel = true;
+  entregaDisponivel = false;
+  esconderOpcoesTransportadora();
 
-  const [addr, coords, origin] = await Promise.all([
+  const lookup = await withTimeout(Promise.all([
     getAddressByCEP(cep),
     geocodeByCEP(cep),
     getOriginCoords()
-  ]);
+  ]), 12000, null);
+  if (!isCurrentFreteCepRequest(requestSeq, cep)) return;
+  if (!lookup) {
+    resetFreteUI("Consulta demorou demais. Verifique sua conexão e tente novamente.");
+    return;
+  }
+  const [addr, coords, origin] = lookup;
   enderecoAutofill = addr || null;
   const hasCoords = coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng);
   const city = addr?.cidade || coords?.city;
@@ -5054,7 +5122,9 @@ async function calcularEntregaPorCEP(cepRaw) {
     if (km <= DELIVERY_FREE_RADIUS_KM) {
       freteModo = "uber_free";
       freteAtual = 0;
+      entregaDisponivel = true;
       if (freteMsg) freteMsg.textContent = `Entrega grátis (até ${DELIVERY_FREE_RADIUS_KM} km da loja).`;
+      setFreteLoading(false);
       atualizarCart();
       return;
     }
@@ -5065,6 +5135,8 @@ async function calcularEntregaPorCEP(cepRaw) {
     freteModo = "local_12";
     freteAtual = DELIVERY_FORTALEZA_CAUCAIA_PRICE;
     if (freteMsg) freteMsg.textContent = `Entrega em ${city || "Fortaleza/Caucaia"} — R$ ${DELIVERY_FORTALEZA_CAUCAIA_PRICE},00.`;
+    entregaDisponivel = true;
+    setFreteLoading(false);
     atualizarCart();
     return;
   }
@@ -5072,6 +5144,8 @@ async function calcularEntregaPorCEP(cepRaw) {
     freteModo = "local_15";
     freteAtual = DELIVERY_MARACANAU_PRICE;
     if (freteMsg) freteMsg.textContent = `Entrega em Maracanaú — R$ ${DELIVERY_MARACANAU_PRICE},00.`;
+    entregaDisponivel = true;
+    setFreteLoading(false);
     atualizarCart();
     return;
   }
@@ -5079,21 +5153,26 @@ async function calcularEntregaPorCEP(cepRaw) {
     freteModo = "local_25";
     freteAtual = DELIVERY_EUSEBIO_PRICE;
     if (freteMsg) freteMsg.textContent = `Entrega em ${city} — R$ ${DELIVERY_EUSEBIO_PRICE},00.`;
+    entregaDisponivel = true;
+    setFreteLoading(false);
     atualizarCart();
     return;
   }
 
   // Fora da RMF → múltiplas opções via Melhor Envio
-  if (freteMsg) freteMsg.textContent = "Consultando opções de frete…";
+  setFreteLoading(true, "Consultando opções de frete...");
   esconderOpcoesTransportadora();
-  const freteOk = await calcularFreteBackend({ cidade: city || '', cep });
+  const freteOk = await calcularFreteBackend({ cidade: city || '', cep }, { seq: requestSeq, cep });
+  if (!isCurrentFreteCepRequest(requestSeq, cep)) return;
   if (!freteOk) {
     freteModo = "whatsapp";
     freteAtual = 0;
     if (freteMsg) freteMsg.textContent = "Não foi possível calcular o frete. Consulte via WhatsApp.";
+    setFreteLoading(false);
     atualizarCart();
   } else {
     if (freteMsg) freteMsg.textContent = freteOpcoesCache.length > 1 ? "Escolha a transportadora:" : "";
+    setFreteLoading(false);
     showFreteNumeroForm(cep);
   }
 }
@@ -5217,17 +5296,25 @@ function bindFreteUIEvents() {
       if (retiradaNaLoja) return;
       cepInput.value = normalizeCEP(cepInput.value);
       if (cepInput.value.length === 0) {
+        cancelPendingFreteCep();
         resetFreteUI();
       } else if (cepInput.value.length < 8) {
+        cancelPendingFreteCep();
         if (freteMsg) freteMsg.textContent = "CEP inválido. Digite 8 números.";
         freteAtual = 0;
         entregaDisponivel = false;
         cepAtual = "";
+        esconderOpcoesTransportadora();
         atualizarCart();
       } else if (cepInput.value.length === 8) {
-        if (cepInput._lastCep === cepInput.value) return;
-        cepInput._lastCep = cepInput.value;
-        calcularEntregaPorCEP(cepInput.value);
+        scheduleFreteCepCalculation(cepInput.value);
+      }
+    });
+    cepInput.addEventListener("blur", () => {
+      if (retiradaNaLoja) return;
+      const cep = normalizeCEP(cepInput.value);
+      if (cep.length === 8 && !freteCepLoading && (!entregaDisponivel || cep !== cepAtual)) {
+        scheduleFreteCepCalculation(cep, 0);
       }
     });
   }
