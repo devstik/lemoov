@@ -1257,7 +1257,6 @@ function computeColorPrice(prod, colorObj){
   #cart .cart__total strong{ color: #002776; }
 
   .frete__ui{ order:12; margin:4px 0 0; }
-  .frete__ui[data-auth="logged-out"] .checkout__link,
   .frete__ui[data-auth="logged-out"] #cartAddressSummary{ display:none !important; }
   .frete__ui[data-auth="logged-in"] .frete__row,
   .frete__ui[data-auth="logged-in"] .checkout__link{ display:none !important; }
