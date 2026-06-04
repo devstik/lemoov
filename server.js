@@ -1896,7 +1896,7 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
       provider: 'infinitepay',
       paymentId: orderNsu,
       method: metodo || 'pix',
-      amount: Number(total || 0),
+      amount: Number(finalTotal || 0),
       checkoutUrl,
       checkout: data
     });
