@@ -2494,6 +2494,19 @@ app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
     }
     const existing = await readPedidoStore(req.params.numero, conn);
     if (!existing) throw new Error('Pedido não encontrado');
+    const existingStatus = String(existing.status || 'reservado').toLowerCase();
+    const newStatus = String(req.body.status || existingStatus).toLowerCase();
+    if (existingStatus === 'cancelado') {
+      const err = new Error('Este pedido está cancelado e não pode ser alterado.');
+      err.status = 409;
+      throw err;
+    }
+    // Não permite retroceder para reservado após confirmado/enviado/entregue
+    if (newStatus === 'reservado' && ['confirmado','enviado','entregue'].includes(existingStatus)) {
+      const err = new Error('Pedido já confirmado não pode ser retornado para reservado.');
+      err.status = 409;
+      throw err;
+    }
     const nextOrder = { ...existing, ...req.body, pedido: req.params.numero };
     const shouldDebitStock = !existing.estoqueBaixado && !shouldHoldStock(existing) && shouldHoldStock(nextOrder);
     const shouldRestoreStock = Boolean(existing.estoqueBaixado) && !shouldHoldStock(nextOrder);
@@ -2552,10 +2565,17 @@ app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
 
 app.delete('/api/admin/pedido/:numero', authRequired, async (req, res) => {
   try {
+    const existing = await readPedidoStore(req.params.numero);
+    if (existing) {
+      const st = String(existing.status || '').toLowerCase();
+      if (['confirmado','enviado','entregue'].includes(st)) {
+        return res.status(409).json({ ok: false, error: `Pedido com status "${st}" não pode ser excluído. Cancele o pedido primeiro para devolver o estoque.` });
+      }
+    }
     await deletePedidoStore(req.params.numero);
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: e.message });
   }
 });
 
@@ -2843,6 +2863,7 @@ app.get('/api/crm/sessions', authRequired, async (req, res) => {
     const days = Number(req.query.days || 30);
     requireMysqlStorage();
     await initDatabase();
+    await ensureCrmTables(); // garante que colunas novas existam antes do SELECT
     const [rows] = await mysqlPool.execute(`
       SELECT s.session_id AS sessionId, s.cidade, s.bairro, s.regiao, s.pais, s.cep,
              s.logradouro, s.lat, s.lng, s.cep_source,
@@ -2873,6 +2894,7 @@ app.get('/api/crm/sessions/:id', authRequired, async (req, res) => {
     const sid = req.params.id;
     requireMysqlStorage();
     await initDatabase();
+    await ensureCrmTables();
     const [[session]] = await mysqlPool.execute('SELECT * FROM lemoov_crm_sessions WHERE session_id = ?', [sid]);
     if (!session) return res.status(404).json({ ok: false });
     const [events] = await mysqlPool.execute('SELECT * FROM lemoov_crm_events WHERE session_id = ? ORDER BY ts ASC', [sid]);
@@ -2908,6 +2930,7 @@ app.get('/api/crm/funnel', authRequired, async (req, res) => {
     const days = Number(req.query.days || 30);
     requireMysqlStorage();
     await initDatabase();
+    await ensureCrmTables();
     const [[counts]] = await mysqlPool.execute(`
       SELECT
         COUNT(DISTINCT s.session_id)                                                  AS total,

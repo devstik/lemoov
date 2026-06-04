@@ -281,10 +281,10 @@
   <nav class="tab-nav">
     <button class="tab-btn active" data-tab="produtos">Produtos</button>
     <button class="tab-btn" data-tab="estoque">Estoque</button>
+    <button class="tab-btn" data-tab="clientes">Clientes</button>
     <button class="tab-btn" data-tab="pedidos">Pedidos</button>
     <button class="tab-btn" data-tab="cupons">Cupons</button>
     <button class="tab-btn" data-tab="relatorio">Relatório</button>
-    <button class="tab-btn" data-tab="clientes">Clientes</button>
     <button class="tab-btn" data-tab="crm">CRM</button>
   </nav>
   <div class="adm-header-right">
@@ -1554,10 +1554,14 @@ function renderOrderDetail(ped){
         <div><span>Itens</span><strong>${itens.reduce((s,it)=>s+it.quantidade,0)} un.</strong></div>
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:16px">
-        ${['confirmado','enviado','entregue','cancelado'].map(s=>
-          `<button class="filter-btn ${(ped.status||'reservado')===s?'active':''}" data-set="${esc(s)}">${sLabel(s)}</button>`
-        ).join('')}
-	      </div>
+        ${['reservado','confirmado','enviado','entregue','cancelado'].map(s=>{
+          const atual=ped.status||'reservado';
+          const isAtual=atual===s;
+          // Bloqueia voltar para reservado se já confirmado ou além
+          const bloqueado = s==='reservado' && ['confirmado','enviado','entregue'].includes(atual);
+          return `<button class="filter-btn ${isAtual?'active':''} ${bloqueado?'disabled':''}" data-set="${esc(s)}" ${bloqueado?'disabled title="Não é possível retornar para Reservado após confirmação"':''}>${sLabel(s)}</button>`;
+        }).join('')}
+      </div>
 	      ${ped.cancellation_requested?`
 	        <div class="cancel-alert">
 	          <strong>Cliente solicitou cancelamento</strong>
@@ -1600,23 +1604,46 @@ function renderOrderDetail(ped){
     </div>`;
 
   $$('#orderSide [data-set]').forEach(btn=>btn.addEventListener('click',async()=>{
+    const novoStatus = btn.dataset.set;
+    const atualStatus = String(ped.status||'reservado').toLowerCase();
+    if(novoStatus === atualStatus) return;
+
+    // Pedido cancelado é imutável
+    if(atualStatus === 'cancelado'){
+      adminPopup('⛔ Pedido cancelado','Este pedido já foi cancelado e não pode ter o status alterado. O estoque já foi restaurado.','error');
+      return;
+    }
+    // Confirmar cancelamento (com alerta de que retorna estoque)
+    if(novoStatus === 'cancelado'){
+      const ok = await adminConfirm('Cancelar pedido','Tem certeza? O estoque dos itens será devolvido automaticamente e o status não poderá ser alterado depois.','Cancelar pedido','Não cancelar');
+      if(!ok) return;
+    }
     try{
-      const r=await fetch(`/api/admin/pedido/${encodeURIComponent(ped.pedido)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:btn.dataset.set})});
-      if(!r.ok) throw new Error('Falha');
-      const d=await r.json();
+      const r=await fetch(`/api/admin/pedido/${encodeURIComponent(ped.pedido)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:novoStatus})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||d.ok===false) throw new Error(d.error||'Falha ao atualizar status');
       const idx=pedidos.findIndex(p=>String(p.pedido)===String(ped.pedido));
-      if(idx!==-1){pedidos[idx]=d.item;ped.status=btn.dataset.set}
+      if(idx!==-1){pedidos[idx]=d.item; ped.status=novoStatus;}
+      toast(`Status alterado para ${sLabel(novoStatus)}`,'success');
       renderOrdersTable();
       renderOrderDetail(pedidos.find(p=>String(p.pedido)===String(activePedNum)));
-    }catch(e){alert('Erro: '+e.message)}
+    }catch(e){adminPopup('Erro ao alterar status',e.message,'error');}
   }));
   $('btnDelPed').addEventListener('click',async()=>{
-    if(!confirm('Excluir este pedido?')) return;
+    const atualStatus = String(ped.status||'reservado').toLowerCase();
+    if(['confirmado','enviado','entregue'].includes(atualStatus)){
+      adminPopup('🚫 Exclusão não permitida',`Pedidos com status "${sLabel(atualStatus)}" não podem ser excluídos.\nPara remover, primeiro cancele o pedido (o estoque será restaurado automaticamente).`,'error');
+      return;
+    }
+    const ok = await adminConfirm('Excluir pedido','Deseja excluir este pedido permanentemente? Esta ação não pode ser desfeita.','Excluir','Cancelar');
+    if(!ok) return;
     const r=await fetch(`/api/admin/pedido/${encodeURIComponent(ped.pedido)}`,{method:'DELETE'});
-    if(!r.ok){alert('Falha ao excluir.');return}
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||d.ok===false){adminPopup('Erro ao excluir',d.error||'Falha ao excluir.','error');return;}
     pedidos=pedidos.filter(p=>String(p.pedido)!==String(ped.pedido));
     activePedNum=null; renderOrdersTable();
-    $('orderSide').innerHTML='<div class="form-empty">Pedido excluído.</div>';
+    $('orderSide').innerHTML='<div class="form-empty">Selecione um pedido.</div>';
+    toast('Pedido excluído','success');
   });
 }
 
@@ -1648,7 +1675,8 @@ function renderNewOrderForm(){
           </div>
           <div class="fg"><label class="fl">Status</label>
             <select class="fc" id="np_st">
-              <option value="confirmado" selected>Confirmado</option>
+              <option value="reservado" selected>Reservado — aguardando pagamento (não baixa estoque)</option>
+              <option value="confirmado">Confirmado — pagamento recebido (baixa estoque)</option>
               <option value="enviado">Enviado</option>
               <option value="entregue">Entregue</option>
             </select>
@@ -2463,6 +2491,55 @@ function openWppMassa(){
   dlg.addEventListener('close',()=>dlg.remove());
 }
 
+// ── Popups personalizados admin ──────────────────────────────────────────────
+function adminPopup(titulo, mensagem, tipo='warn'){
+  const existing=document.getElementById('adminPopupDlg');
+  if(existing) existing.remove();
+  const icon={'error':'⛔','warn':'⚠️','success':'✅','info':'ℹ️'}[tipo]||'ℹ️';
+  const color={'error':'#dc2626','warn':'#d97706','success':'#16a34a','info':'#2563eb'}[tipo]||'#0f172a';
+  const dlg=document.createElement('dialog');
+  dlg.id='adminPopupDlg';
+  dlg.style.cssText='background:#fff;border:none;border-radius:16px;padding:0;max-width:420px;width:92%;box-shadow:0 24px 64px rgba(15,23,42,.28);overflow:hidden';
+  dlg.innerHTML=`
+    <div style="background:${color};padding:16px 20px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.4rem">${icon}</span>
+      <strong style="color:#fff;font-size:1rem">${esc(titulo)}</strong>
+    </div>
+    <div style="padding:20px;font-size:.9rem;color:#1e293b;white-space:pre-line">${esc(mensagem)}</div>
+    <div style="padding:0 20px 20px;text-align:right">
+      <button id="adminPopupOk" style="background:${color};color:#fff;border:none;border-radius:10px;padding:9px 24px;font:inherit;font-weight:700;cursor:pointer">OK</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  dlg.querySelector('#adminPopupOk').addEventListener('click',()=>dlg.close());
+  dlg.addEventListener('close',()=>dlg.remove());
+}
+
+function adminConfirm(titulo, mensagem, btnConfirmar='Confirmar', btnCancelar='Cancelar'){
+  return new Promise(resolve=>{
+    const existing=document.getElementById('adminConfirmDlg');
+    if(existing) existing.remove();
+    const dlg=document.createElement('dialog');
+    dlg.id='adminConfirmDlg';
+    dlg.style.cssText='background:#fff;border:none;border-radius:16px;padding:0;max-width:420px;width:92%;box-shadow:0 24px 64px rgba(15,23,42,.28);overflow:hidden';
+    dlg.innerHTML=`
+      <div style="background:#0f172a;padding:16px 20px">
+        <strong style="color:#fff;font-size:1rem">⚠️ ${esc(titulo)}</strong>
+      </div>
+      <div style="padding:20px;font-size:.9rem;color:#1e293b;white-space:pre-line">${esc(mensagem)}</div>
+      <div style="padding:0 20px 20px;display:flex;justify-content:flex-end;gap:10px">
+        <button id="adminConfirmNo" style="background:#f1f5f9;color:#475569;border:none;border-radius:10px;padding:9px 18px;font:inherit;font-weight:600;cursor:pointer">${esc(btnCancelar)}</button>
+        <button id="adminConfirmYes" style="background:#dc2626;color:#fff;border:none;border-radius:10px;padding:9px 20px;font:inherit;font-weight:700;cursor:pointer">${esc(btnConfirmar)}</button>
+      </div>`;
+    document.body.appendChild(dlg);
+    dlg.showModal();
+    dlg.querySelector('#adminConfirmYes').addEventListener('click',()=>{dlg.close();resolve(true);});
+    dlg.querySelector('#adminConfirmNo').addEventListener('click',()=>{dlg.close();resolve(false);});
+    dlg.addEventListener('close',()=>{dlg.remove();resolve(false);});
+  });
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 document.querySelectorAll('.tab-btn[data-tab="clientes"]').forEach(btn=>{
   btn.addEventListener('click', ()=>{ loadClientes(); });
 });
@@ -2471,6 +2548,29 @@ document.querySelectorAll('.tab-btn[data-tab="clientes"]').forEach(btn=>{
   document.getElementById(id)?.addEventListener('change', renderClientesList);
 });
 document.getElementById('btnWppTodos')?.addEventListener('click', openWppMassa);
+
+// Cadastrar novo cliente (admin)
+document.getElementById('btnNovoCliente')?.addEventListener('click', async ()=>{
+  const nome   = ($('nc_nome')?.value||'').trim();
+  const email  = ($('nc_email')?.value||'').trim();
+  const tel    = ($('nc_tel')?.value||'').trim();
+  const cpf    = ($('nc_cpf')?.value||'').replace(/\D/g,'');
+  const senha  = ($('nc_senha')?.value||'');
+  const msg    = $('ncMsg');
+  if(!nome||!email||!tel){ if(msg){ msg.textContent='Nome, e-mail e telefone são obrigatórios.'; msg.style.color='#dc2626'; } return; }
+  if(senha && senha.length < 8){ if(msg){ msg.textContent='Senha deve ter pelo menos 8 caracteres.'; msg.style.color='#dc2626'; } return; }
+  const btn = $('btnNovoCliente'); btn.disabled=true; btn.textContent='Cadastrando…';
+  try{
+    const payload = { nome, email, cpf: cpf||undefined, telefone: tel.replace(/\D/g,''), senha: senha||'Lemoov@'+Math.floor(1000+Math.random()*9000), endereco:{numero:'S/N'} };
+    const r=await fetch('/api/client/register',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok&&r.status!==201){ if(msg){msg.textContent=d.error||'Erro ao cadastrar.';msg.style.color='#dc2626';} return; }
+    if(msg){ msg.textContent=`✅ Cliente ${nome} cadastrado com sucesso!`; msg.style.color='#16a34a'; }
+    ['nc_nome','nc_email','nc_tel','nc_cpf','nc_senha'].forEach(id=>{ const el=$(`${id}`); if(el) el.value=''; });
+    await loadClientes();
+  }catch(e){ if(msg){msg.textContent='Erro de conexão.';msg.style.color='#dc2626';} }
+  finally{ btn.disabled=false; btn.textContent='Cadastrar cliente'; }
+});
 </script>
 
 <!-- ── CLIENTES ── -->
@@ -2478,14 +2578,36 @@ document.getElementById('btnWppTodos')?.addEventListener('click', openWppMassa);
   <div class="screen-hero">
     <div>
       <div class="screen-kicker">Gestão de clientes</div>
-      <h1 class="screen-title">Clientes cadastrados</h1>
-      <p class="screen-copy">Visualize, pesquise e entre em contato com seus clientes via WhatsApp.</p>
+      <h1 class="screen-title">Clientes</h1>
+      <p class="screen-copy">Cadastre, busque e entre em contato via WhatsApp.</p>
     </div>
   </div>
+
+  <!-- Formulário de cadastro manual -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-head"><h2>Cadastrar cliente</h2></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px">
+        <div><label class="fl">Nome completo *</label><input class="fc" id="nc_nome" placeholder="Maria da Silva"></div>
+        <div><label class="fl">E-mail *</label><input class="fc" id="nc_email" type="email" placeholder="maria@email.com"></div>
+        <div><label class="fl">Telefone (WhatsApp) *</label><input class="fc" id="nc_tel" placeholder="(85) 99999-0000" inputmode="tel"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:10px">
+        <div><label class="fl">CPF</label><input class="fc" id="nc_cpf" placeholder="000.000.000-00" inputmode="numeric" maxlength="14"></div>
+        <div><label class="fl">Senha (acesso à plataforma)</label><input class="fc" id="nc_senha" type="password" placeholder="Mín. 8 caracteres" autocomplete="new-password"></div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn--primary" id="btnNovoCliente" style="width:100%">Cadastrar cliente</button>
+        </div>
+      </div>
+      <div id="ncMsg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
+    </div>
+  </div>
+
+  <!-- Busca + WhatsApp em massa -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-body">
-      <div style="display:grid;grid-template-columns:1fr 160px;gap:12px;align-items:end">
-        <div>
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
           <label class="fl">Buscar</label>
           <input class="fc" id="clienteSearch" placeholder="Nome, e-mail, telefone ou CPF…" autocomplete="off">
         </div>
@@ -2497,17 +2619,11 @@ document.getElementById('btnWppTodos')?.addEventListener('click', openWppMassa);
             <option value="name">Nome A–Z</option>
           </select>
         </div>
+        <button class="btn btn--primary btn--sm" id="btnWppTodos" style="white-space:nowrap;margin-bottom:1px">📲 WhatsApp em massa</button>
       </div>
     </div>
   </div>
-  <div class="card" style="margin-bottom:16px;background:#f0fdf4;border:1px solid #bbf7d0">
-    <div class="card-body" style="padding:10px 16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-        <span style="font-size:13px;color:#166534">📲 <strong>WhatsApp em massa</strong> — envie mensagem para todos os clientes filtrados com telefone</span>
-        <button class="btn btn--primary btn--sm" id="btnWppTodos">Enviar</button>
-      </div>
-    </div>
-  </div>
+
   <div class="card">
     <div class="card-body" id="clientesBody">
       <div class="form-empty">Carregando clientes…</div>
