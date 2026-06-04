@@ -10,21 +10,23 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --primary:      #1ec28b;
-      --primary-dark: #0f9b68;
-      --primary-glow: rgba(30,194,139,.18);
-      --navy:         #141b2b;
-      --text:         #1a2a35;
-      --muted:        #7f8ba4;
+      --green:        #009C3B;
+      --navy:         #002776;
+      --yellow:       #FFDF00;
+      --primary:      #009C3B;
+      --primary-dark: #007a2e;
+      --primary-glow: rgba(0,156,59,.18);
+      --text:         #0a1628;
+      --muted:        #5a6a80;
       --surface:      #ffffff;
-      --border:       rgba(20,27,43,.1);
-      --border-focus: rgba(30,194,139,.55);
-      --bg:           #f1f6fb;
+      --border:       rgba(0,39,118,.1);
+      --border-focus: rgba(0,156,59,.45);
+      --bg:           #0d1b2a;
       --danger:       #e8445a;
       --danger-bg:    rgba(232,68,90,.08);
-      --radius:       16px;
-      --radius-sm:    10px;
-      --shadow:       0 20px 50px rgba(17,23,34,.12);
+      --radius:       20px;
+      --radius-sm:    12px;
+      --shadow:       0 28px 80px rgba(0,20,80,.35);
     }
 
     html { scroll-behavior: smooth; }
@@ -32,10 +34,7 @@
     body {
       font-family: 'Inter', sans-serif;
       min-height: 100dvh;
-      background:
-        radial-gradient(circle at top left,  rgba(103,255,196,.14), transparent 42%),
-        radial-gradient(circle at bottom right, rgba(121,196,255,.18), transparent 55%),
-        var(--bg);
+      background: linear-gradient(145deg, #071a10 0%, #0a1628 50%, #071020 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -43,77 +42,81 @@
       padding: 28px 16px 52px;
     }
 
-    /* ── Brand ── */
-    .brand {
-      text-align: center;
-      margin-bottom: 28px;
-    }
-    .brand-logo {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: -1.5px;
-      color: var(--navy);
-      line-height: 1;
-    }
-    .brand-logo em { color: var(--primary); font-style: normal; }
-    .brand-sub {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .18em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-top: 6px;
-    }
+    /* ── Brand (oculta — vai para o header do card) ── */
+    .brand { display: none; }
 
     /* ── Card ── */
     .card {
       width: 100%;
-      max-width: 500px;
+      max-width: 480px;
       background: var(--surface);
-      border: 1px solid var(--border);
+      border: 1.5px solid rgba(0,156,59,.25);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       overflow: hidden;
     }
 
-    /* ── Tabs ── */
+    /* ── Header do card (igual ao modal) ── */
+    .card-header {
+      background: linear-gradient(135deg, #009C3B 0%, #002776 100%);
+      padding: 22px 26px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-header-brand {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .card-header-logo {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--yellow);
+      line-height: 1;
+    }
+    .card-header-sub {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.65);
+    }
+    .card-header-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255,255,255,.75);
+      letter-spacing: .04em;
+    }
+
+    /* ── Tabs (igual ao modal) ── */
     .tabs {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      border-bottom: 1px solid var(--border);
-      background: #f8fafd;
+      border-bottom: 2px solid #e8eef5;
+      background: #fff;
+      padding: 0 24px;
     }
     .tab-btn {
-      padding: 17px 10px;
+      padding: 14px 8px;
       background: none;
       border: none;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 11.5px;
+      border-bottom: 2.5px solid transparent;
+      margin-bottom: -2px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
       font-weight: 700;
-      letter-spacing: .07em;
-      text-transform: uppercase;
       color: var(--muted);
       cursor: pointer;
-      position: relative;
-      transition: color .2s, background .2s;
-    }
-    .tab-btn::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 16px; right: 16px;
-      height: 2.5px;
-      background: linear-gradient(90deg, var(--primary), var(--primary-dark));
-      border-radius: 2px 2px 0 0;
-      opacity: 0;
-      transition: opacity .2s;
+      transition: color .15s, border-color .15s;
     }
     .tab-btn.active {
       color: var(--navy);
-      background: var(--surface);
+      border-bottom-color: var(--green);
     }
-    .tab-btn.active::after { opacity: 1; }
     .tab-btn:hover:not(.active) { color: #3d4f60; }
 
     /* ── Panels ── */
@@ -150,24 +153,24 @@
 
     .field input {
       width: 100%;
-      padding: 12px 14px;
-      background: #f8fafd;
-      border: 1.5px solid var(--border);
+      padding: 11px 14px;
+      background: #f8faff;
+      border: 1.5px solid #dbe3ea;
       border-radius: var(--radius-sm);
       font-family: 'Inter', sans-serif;
       font-size: 14px;
       font-weight: 500;
       color: var(--text);
       outline: none;
-      transition: border-color .2s, background .2s, box-shadow .2s;
-      caret-color: var(--primary);
+      transition: border-color .15s, background .15s, box-shadow .15s;
+      caret-color: var(--green);
       -webkit-appearance: none;
     }
-    .field input::placeholder { color: #b0bbc8; font-weight: 400; }
+    .field input::placeholder { color: #94a3b8; font-weight: 400; }
     .field input:focus {
-      border-color: var(--border-focus);
+      border-color: var(--green);
       background: #fff;
-      box-shadow: 0 0 0 3px var(--primary-glow);
+      box-shadow: 0 0 0 3px rgba(0,156,59,.1);
     }
     .field input[readonly] { color: var(--muted); cursor: default; }
     .field input[readonly]:focus { border-color: var(--border); box-shadow: none; background: #f8fafd; }
@@ -237,32 +240,29 @@
     }
     @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
 
-    /* ── Submit ── */
+    /* ── Submit (igual ao modal) ── */
     .btn-submit {
       width: 100%;
-      padding: 14.5px;
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      padding: 15px;
+      background: linear-gradient(120deg, #009C3B 0%, #002776 100%);
       border: none;
       border-radius: var(--radius-sm);
       font-family: 'Montserrat', sans-serif;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: .06em;
       text-transform: uppercase;
-      color: #fff;
+      color: var(--yellow);
       cursor: pointer;
       margin-top: 20px;
-      transition: opacity .2s, transform .1s, box-shadow .2s;
-      box-shadow: 0 8px 20px rgba(30,194,139,.28);
+      transition: filter .15s, transform .1s, box-shadow .15s;
+      box-shadow: 0 8px 24px rgba(0,39,118,.28);
     }
-    .btn-submit:hover {
-      opacity: .92;
-      box-shadow: 0 12px 28px rgba(30,194,139,.38);
-    }
+    .btn-submit:hover { filter: brightness(1.08); box-shadow: 0 12px 32px rgba(0,39,118,.36); }
     .btn-submit:active { transform: scale(.98); }
-    .btn-submit:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-submit:disabled { opacity: .55; cursor: not-allowed; transform: none; filter: saturate(.5); }
     .btn-submit.ok {
-      background: linear-gradient(135deg, #0f9b68, #0a7050);
+      background: linear-gradient(120deg, #007a2e, #001a55);
     }
 
     /* ── Banner offline ── */
@@ -368,13 +368,21 @@
   </div>
 
   <div class="card">
+    <div class="card-header">
+      <div class="card-header-brand">
+        <div class="card-header-logo">Lemoov</div>
+        <div class="card-header-sub">Moda Fitness Premium</div>
+      </div>
+      <div class="card-header-title">Identificação</div>
+    </div>
+
     <div class="tabs" role="tablist">
       <button class="tab-btn active" id="tabLogin" role="tab"
         aria-selected="true" aria-controls="panelLogin"
-        onclick="switchTab('login')">Já sou cliente</button>
+        onclick="switchTab('login')">Entrar</button>
       <button class="tab-btn" id="tabCadastro" role="tab"
         aria-selected="false" aria-controls="panelCadastro"
-        onclick="switchTab('cadastro')">Nova Conta</button>
+        onclick="switchTab('cadastro')">Criar Conta</button>
     </div>
 
     <!-- ─── Banner offline (visível só quando MySQL está off) ─── -->
@@ -388,8 +396,6 @@
 
     <!-- ─── LOGIN ─── -->
     <div class="panel active" id="panelLogin" role="tabpanel">
-      <h1 class="panel-title">Bem-vinda de volta</h1>
-      <p class="panel-sub">Acesse sua conta para acompanhar pedidos e agilizar sua próxima compra.</p>
 
       <form id="formLogin" novalidate>
         <div class="field">
@@ -415,8 +421,6 @@
 
     <!-- ─── CADASTRO ─── -->
     <div class="panel" id="panelCadastro" role="tabpanel">
-      <h1 class="panel-title">Criar minha conta</h1>
-      <p class="panel-sub">Cadastre-se e agilize todas as suas próximas compras.</p>
 
       <form id="formCadastro" novalidate>
 
@@ -827,7 +831,7 @@
       btn.classList.add('ok'); btn.textContent = '✓ Conta criada!';
       const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
       if (data.welcomeCoupon) {
-        showAlert('cadastroAlert', `Conta criada! Seu cupom de boas-vindas: ${data.welcomeCoupon} — 20% de desconto na primeira compra!`, 'ok');
+        showAlert('cadastroAlert', `Conta criada! Seu cupom de boas-vindas: ${data.welcomeCoupon} — 15% de desconto na primeira compra!`, 'ok');
         setTimeout(() => { location.href = redirect; }, 3000);
       } else {
         showAlert('cadastroAlert', 'Conta criada com sucesso! Redirecionando…', 'ok');
@@ -911,7 +915,7 @@
       btn.classList.add('ok'); btn.textContent = '✓ E-mail confirmado!';
       const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
       if (data.welcomeCoupon) {
-        showAlert('verifyAlert', `Conta confirmada! Cupom de boas-vindas: ${data.welcomeCoupon} — 20% na primeira compra!`, 'ok');
+        showAlert('verifyAlert', `Conta confirmada! Cupom de boas-vindas: ${data.welcomeCoupon} — 15% na primeira compra!`, 'ok');
         setTimeout(() => { location.href = redirect; }, 3000);
       } else {
         setTimeout(() => { location.href = redirect; }, 900);

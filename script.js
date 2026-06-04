@@ -3258,6 +3258,12 @@ async function initiateCheckout() {
     return;
   }
 
+  if (selectedDeliveryAddress && !selectedDeliveryAddress.numero) {
+    showAppMessage("Complete o número do endereço de entrega antes de gerar o pagamento.");
+    openAddressSelectionModal(await fetchClientAddresses());
+    return;
+  }
+
   if (entregaDisponivel && isFixedFreteMode()) {
     openCheckoutModal();
     return;
@@ -3347,6 +3353,35 @@ function openAddressSelectionModal(addresses) {
   if (hasAddresses) setDeliveryAddress(addresses[0]);
   else selectedDeliveryAddress = null;
 
+  const showAddressForm = (addr = null) => {
+    const form = dlg.querySelector('#addrNewForm');
+    if (!form) return;
+    form.style.display = 'block';
+    dlg.querySelector('#btnConfirmAddr').disabled = true;
+    dlg.querySelectorAll('.addr-card').forEach(c => c.classList.remove('selected'));
+    if (addr) {
+      dlg.querySelector('#addrCep').value = formatCEPForInput(addr.cep || "");
+      dlg.querySelector('#addrRua').value = addr.logradouro || "";
+      dlg.querySelector('#addrBairro').value = addr.bairro || "";
+      dlg.querySelector('#addrNumero').value = addr.numero || "";
+      dlg.querySelector('#addrComplemento').value = addr.complemento || "";
+      dlg.querySelector('#addrCidade').value = addr.cidade || "";
+      dlg.querySelector('#addrUf').value = addr.uf || "";
+    } else {
+      ['#addrCep','#addrRua','#addrBairro','#addrNumero','#addrComplemento','#addrCidade','#addrUf'].forEach((selector) => {
+        const input = dlg.querySelector(selector);
+        if (input) input.value = "";
+      });
+    }
+    selectedDeliveryAddress = null;
+    renderCartDeliveryState();
+    setTimeout(() => dlg.querySelector('#addrNumero')?.focus(), 50);
+  };
+
+  if (selectedDeliveryAddress && !selectedDeliveryAddress.numero) {
+    showAddressForm(selectedDeliveryAddress);
+  }
+
   dlg.querySelectorAll('.addr-card').forEach((card) => {
     card.addEventListener('click', () => {
       dlg.querySelectorAll('.addr-card').forEach(c => c.classList.remove('selected'));
@@ -3363,10 +3398,7 @@ function openAddressSelectionModal(addresses) {
     const showing = form.style.display !== 'none';
     form.style.display = showing ? 'none' : 'block';
     if (!showing) {
-      dlg.querySelector('#btnConfirmAddr').disabled = true;
-      selectedDeliveryAddress = null;
-      renderCartDeliveryState();
-      dlg.querySelectorAll('.addr-card').forEach(c => c.classList.remove('selected'));
+      showAddressForm();
     } else if (hasAddresses) {
       setDeliveryAddress(addresses[0]);
       dlg.querySelectorAll('.addr-card')[0]?.classList.add('selected');
@@ -3443,6 +3475,11 @@ function openAddressSelectionModal(addresses) {
   dlg.querySelector('#btnConfirmAddr').addEventListener('click', async () => {
     if (!selectedDeliveryAddress) {
       showAppMessage("Selecione ou cadastre um endereço de entrega.");
+      return;
+    }
+    if (!selectedDeliveryAddress.numero) {
+      showAppMessage("Complete o número do endereço de entrega antes de continuar.");
+      showAddressForm(selectedDeliveryAddress);
       return;
     }
     const btn = dlg.querySelector('#btnConfirmAddr');
@@ -5324,7 +5361,7 @@ function openCheckoutModal(){
                     placeholder="Digite seu cupom">
                   <button type="button" class="btn btn--ghost checkout__cepBtn" id="btnApplyDiscount">Aplicar desconto</button>
                 </div>
-                <p class="checkout__status" id="checkoutDiscountMsg" data-status="info">Primeira compra vinculada ao CPF recebe 20% automaticamente.</p>
+                <p class="checkout__status" id="checkoutDiscountMsg" data-status="info">Primeira compra vinculada ao CPF recebe o desconto ativo no cadastro de cupons.</p>
               </div>
               <div class="full">
                 <label class="checkout__label">CEP (opcional)</label>
@@ -5532,7 +5569,6 @@ function openCheckoutModal(){
   const pedidoEl = el("#ckPedido");
   if (pedidoEl) pedidoEl.textContent = previewOrder || "—";
 
-  // Auto-fill PRIMEIRA20 para primeira compra
   const ckCupomInput = dlg.querySelector("#ckCupom");
   const initialCupom = cartCouponCode || checkoutDiscountState.cupom || "";
   checkoutDiscountState = { ...checkoutDiscountState, cpf: checkoutDiscountState.cpf || "", cupom: initialCupom };
@@ -5541,15 +5577,18 @@ function openCheckoutModal(){
   if (currentClientSession && ckCupomInput && !ckCupomInput.value) {
     fetchClientOrders().then(orders => {
       if (orders.length === 0 && ckCupomInput && !ckCupomInput.value) {
-        ckCupomInput.value = 'PRIMEIRA20';
         const cpfVal = dlg.querySelector('input[name="cpf"]')?.value || '';
         if (cpfVal.replace(/\D/g,'').length === 11) {
-          validateCheckoutDiscounts({ cpf: cpfVal, cupom: 'PRIMEIRA20', subtotal: getCartSubtotal() })
-            .then(() => renderCheckoutTotals())
+          validateCheckoutDiscounts({ cpf: cpfVal, cupom: '', subtotal: getCartSubtotal() })
+            .then((state) => {
+              const firstPurchaseDiscount = (state.discounts || []).find(d => d.type === 'first_purchase');
+              if (firstPurchaseDiscount?.code && ckCupomInput) ckCupomInput.value = firstPurchaseDiscount.code;
+              renderCheckoutTotals();
+            })
             .catch(() => {});
         }
         const discMsg = dlg.querySelector('#checkoutDiscountMsg');
-        if (discMsg) discMsg.textContent = 'Cupom de primeira compra aplicado automaticamente!';
+        if (discMsg) discMsg.textContent = 'Desconto de primeira compra aplicado automaticamente.';
       }
     }).catch(() => {});
   }

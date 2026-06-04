@@ -244,6 +244,21 @@
     .mini-bar{display:grid;grid-template-columns:78px 1fr 88px;gap:10px;align-items:center;font-size:12px}
     .mini-bar__track{height:24px;background:#f1f5f9;border-radius:8px;overflow:hidden}
     .mini-bar__fill{height:100%;background:linear-gradient(90deg,#111827,#2f7d58);border-radius:8px}
+    .coupon-form-grid{display:grid;grid-template-columns:1.3fr 2fr .8fr .9fr .9fr auto;gap:12px;align-items:end}
+    @media(max-width:1200px){.coupon-form-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.coupon-form-actions{grid-column:1/-1}}
+    @media(max-width:700px){.coupon-form-grid{grid-template-columns:1fr}}
+    /* Clientes */
+    .client-form-card{border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#f8faff;margin-bottom:16px}
+    .client-form-title{font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
+    .client-form-section{display:grid;gap:12px;margin-bottom:14px}
+    .client-form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}
+    .client-form-grid--address{grid-template-columns:120px minmax(210px,2fr) 92px minmax(130px,1fr) minmax(130px,1fr) minmax(130px,1fr) 68px}
+    .client-form-actions{display:grid;grid-template-columns:minmax(260px,1fr) auto;gap:12px;align-items:end}
+    .client-form-save{white-space:nowrap;padding:9px 18px;min-width:84px;justify-content:center}
+    .client-searchbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+    .client-searchbar__search{flex:1;min-width:240px}
+    @media(max-width:1100px){.client-form-grid,.client-form-grid--address{grid-template-columns:repeat(2,minmax(0,1fr))}.client-form-actions{grid-template-columns:1fr auto}}
+    @media(max-width:650px){.client-form-grid,.client-form-grid--address,.client-form-actions{grid-template-columns:1fr}.client-form-save{width:100%}}
     @media(max-width:1100px){.crm-grid{grid-template-columns:1fr}.crm-kpis{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:900px){.rel-grid{grid-template-columns:1fr}.orders-shell{grid-template-columns:1fr;grid-template-areas:"kpis" "list" "detail"}.orders-kpis{grid-template-columns:1fr}.chart-donut-wrap{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr 1fr}}
     /* Items list in order form */
@@ -1337,10 +1352,14 @@ function renderCouponsPanel(){
   body.innerHTML=`
     <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#f8faff;margin-bottom:20px">
       <div style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px" id="cpFormTitle">Novo cupom</div>
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;align-items:end">
+      <div class="coupon-form-grid">
         <div>
           <label class="fl">Código</label>
           <input class="fc" id="cp_code" placeholder="Ex.: VERÃO25" style="text-transform:uppercase;font-weight:700;letter-spacing:.04em">
+        </div>
+        <div>
+          <label class="fl">Descrição</label>
+          <input class="fc" id="cp_description" placeholder="Ex.: Primeira compra vinculada ao CPF">
         </div>
         <div>
           <label class="fl">Desconto (%)</label>
@@ -1350,7 +1369,11 @@ function renderCouponsPanel(){
           <label class="fl">Status</label>
           <select class="fc" id="cp_active"><option value="1">Ativo</option><option value="0">Inativo</option></select>
         </div>
-        <div style="display:flex;gap:8px;padding-bottom:1px">
+        <div>
+          <label class="fl">Primeira compra</label>
+          <select class="fc" id="cp_first_purchase"><option value="0">Não</option><option value="1">Sim</option></select>
+        </div>
+        <div class="coupon-form-actions" style="display:flex;gap:8px;padding-bottom:1px">
           <button class="btn btn--primary btn--sm" id="btnSaveCoupon" type="button" style="white-space:nowrap;padding:9px 18px">Salvar</button>
           <button class="btn btn--ghost btn--sm" id="btnCancelCoupon" type="button" style="display:none;padding:9px 14px">✕</button>
         </div>
@@ -1362,6 +1385,7 @@ function renderCouponsPanel(){
         <thead>
           <tr>
             <th>Código</th>
+            <th>Descrição</th>
             <th style="text-align:center">Desconto</th>
             <th style="text-align:center">Status</th>
             <th style="text-align:right">Ações</th>
@@ -1369,29 +1393,31 @@ function renderCouponsPanel(){
         </thead>
         <tbody>
           ${cupons.length ? cupons.map(c => {
-            const isSystem = c.code === 'PRIMEIRA20';
-            const badge = isSystem ? `<span style="font-size:.65rem;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 6px;margin-left:6px;font-weight:700">1ª compra</span>` : '';
+            const firstPurchase = Boolean(c.firstPurchaseOnly);
+            const protectedCoupon = normalizeCouponCode(c.code) === 'PRIMEIRA15';
+            const badge = firstPurchase ? `<span style="font-size:.65rem;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 6px;margin-left:6px;font-weight:700">1ª compra</span>` : '';
             const statusDot = c.active
               ? `<span style="display:inline-flex;align-items:center;gap:5px;color:#059669;font-weight:600;font-size:.82rem"><span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block"></span>Ativo</span>`
               : `<span style="display:inline-flex;align-items:center;gap:5px;color:#94a3b8;font-weight:600;font-size:.82rem"><span style="width:7px;height:7px;border-radius:50%;background:#cbd5e1;display:inline-block"></span>Inativo</span>`;
             return `<tr>
               <td><strong style="letter-spacing:.04em">${esc(c.code)}</strong>${badge}</td>
+              <td style="font-size:12px;color:#64748b">${esc(c.description||'—')}</td>
               <td style="text-align:center;font-weight:700;color:#0f172a">${Number(c.percent||0).toLocaleString('pt-BR')}%</td>
               <td style="text-align:center">${statusDot}</td>
               <td style="text-align:right">
                 <div style="display:inline-flex;gap:6px">
                   <button class="btn btn--secondary btn--sm" data-edit-coupon="${esc(c.code)}" type="button">Editar</button>
                   <button class="btn btn--ghost btn--sm" data-toggle-coupon="${esc(c.code)}" type="button">${c.active ? 'Desativar' : 'Ativar'}</button>
-                  ${isSystem ? '' : `<button class="btn btn--danger btn--sm" data-del-coupon="${esc(c.code)}" type="button">Excluir</button>`}
+                  ${protectedCoupon ? '' : `<button class="btn btn--danger btn--sm" data-del-coupon="${esc(c.code)}" type="button">Excluir</button>`}
                 </div>
               </td>
             </tr>`;
-          }).join('') : `<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:24px">Nenhum cupom cadastrado.</td></tr>`}
+          }).join('') : `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px">Nenhum cupom cadastrado.</td></tr>`}
         </tbody>
       </table>
     </div>`;
   const resetCouponForm = () => {
-    $('cp_code').value=''; $('cp_percent').value=''; $('cp_active').value='1';
+    $('cp_code').value=''; $('cp_description').value=''; $('cp_percent').value=''; $('cp_active').value='1'; $('cp_first_purchase').value='0';
     $('cp_code').readOnly=false;
     if($('cpFormTitle')) $('cpFormTitle').textContent='Novo cupom';
     if($('btnCancelCoupon')) $('btnCancelCoupon').style.display='none';
@@ -1400,12 +1426,14 @@ function renderCouponsPanel(){
   $('btnCancelCoupon')?.addEventListener('click', resetCouponForm);
   $('btnSaveCoupon')?.addEventListener('click',async()=>{
     const code=normalizeCouponCode($('cp_code')?.value);
+    const description=($('cp_description')?.value||'').trim();
     const percent=Number($('cp_percent')?.value);
     const active=$('cp_active')?.value!=='0';
+    const firstPurchaseOnly=$('cp_first_purchase')?.value==='1';
     if(!code){toast('Informe o código do cupom','error');$('cp_code').focus();return;}
     if(!percent||percent<=0||percent>100){toast('Percentual deve ser entre 1 e 100','error');$('cp_percent').focus();return;}
     try{
-      const r=await fetch('/api/admin/cupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,percent,active})});
+      const r=await fetch('/api/admin/cupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,description,percent,active,firstPurchaseOnly})});
       const d=await r.json().catch(()=>({}));
       if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao salvar cupom');
       toast('Cupom salvo com sucesso','success');
@@ -1418,8 +1446,10 @@ function renderCouponsPanel(){
     if(!item) return;
     $('cp_code').value=item.code;
     $('cp_code').readOnly=true;
+    $('cp_description').value=item.description||'';
     $('cp_percent').value=Number(item.percent)||0;
     $('cp_active').value=item.active?'1':'0';
+    $('cp_first_purchase').value=item.firstPurchaseOnly?'1':'0';
     if($('cpFormTitle')) $('cpFormTitle').textContent=`Editando: ${item.code}`;
     if($('btnCancelCoupon')) $('btnCancelCoupon').style.display='';
     if($('btnSaveCoupon')) $('btnSaveCoupon').textContent='Atualizar';
@@ -1429,7 +1459,7 @@ function renderCouponsPanel(){
     const item=cupons.find(c=>normalizeCouponCode(c.code)===normalizeCouponCode(btn.dataset.toggleCoupon));
     if(!item) return;
     try{
-      const r=await fetch('/api/admin/cupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:item.code,percent:Number(item.percent)||0,active:!item.active})});
+      const r=await fetch('/api/admin/cupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:item.code,description:item.description||'',percent:Number(item.percent)||0,active:!item.active,firstPurchaseOnly:Boolean(item.firstPurchaseOnly)})});
       const d=await r.json().catch(()=>({}));
       if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao atualizar cupom');
       toast(item.active?'Cupom desativado':'Cupom ativado','success');
@@ -2540,37 +2570,103 @@ function adminConfirm(titulo, mensagem, btnConfirmar='Confirmar', btnCancelar='C
 }
 // ────────────────────────────────────────────────────────────────────────────
 
-document.querySelectorAll('.tab-btn[data-tab="clientes"]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{ loadClientes(); });
-});
-['clienteSearch','clienteSort'].forEach(id=>{
-  document.getElementById(id)?.addEventListener('input', renderClientesList);
-  document.getElementById(id)?.addEventListener('change', renderClientesList);
-});
-document.getElementById('btnWppTodos')?.addEventListener('click', openWppMassa);
+function bindClientesAdminUI(){
+  document.querySelectorAll('.tab-btn[data-tab="clientes"]').forEach(btn=>{
+    if(btn.dataset.clientesBound) return;
+    btn.dataset.clientesBound='1';
+    btn.addEventListener('click', ()=>{ loadClientes(); });
+  });
+  ['clienteSearch','clienteSort'].forEach(id=>{
+    const field=document.getElementById(id);
+    if(!field||field.dataset.clientesBound) return;
+    field.dataset.clientesBound='1';
+    field.addEventListener('input', renderClientesList);
+    field.addEventListener('change', renderClientesList);
+  });
+  const btnWppTodos=document.getElementById('btnWppTodos');
+  if(btnWppTodos&&!btnWppTodos.dataset.clientesBound){
+    btnWppTodos.dataset.clientesBound='1';
+    btnWppTodos.addEventListener('click', openWppMassa);
+  }
+  bindNcCep();
+  bindNovoCliente();
+}
+
+// CEP autofill no cadastro de cliente (admin)
+function bindNcCep(){
+  const cepEl = document.getElementById('nc_cep');
+  if(!cepEl) return;
+  if(cepEl.dataset.cepBound) return;
+  cepEl.dataset.cepBound='1';
+  let _last='';
+  cepEl.addEventListener('input', async function(){
+    let v=this.value.replace(/\D/g,'').slice(0,8);
+    if(v.length>5) v=v.slice(0,5)+'-'+v.slice(5);
+    this.value=v;
+    const plain=v.replace('-','');
+    if(plain.length===8&&plain!==_last){
+      _last=plain;
+      try{
+        const r=await fetch(`https://viacep.com.br/ws/${plain}/json/`);
+        const d=await r.json();
+        if(!d.erro){
+          const el=id=>document.getElementById(id);
+          if(el('nc_rua'))    { el('nc_rua').value=d.logradouro||''; }
+          if(el('nc_bairro')) { el('nc_bairro').value=d.bairro||''; }
+          if(el('nc_cidade')) { el('nc_cidade').value=d.localidade||''; }
+          if(el('nc_uf'))     { el('nc_uf').value=d.uf||''; }
+          document.getElementById('nc_numero')?.focus();
+        }
+      }catch(_){}
+    }
+  });
+}
 
 // Cadastrar novo cliente (admin)
-document.getElementById('btnNovoCliente')?.addEventListener('click', async ()=>{
+function bindNovoCliente(){
+  const saveButton=document.getElementById('btnNovoCliente');
+  if(!saveButton||saveButton.dataset.clientesBound) return;
+  saveButton.dataset.clientesBound='1';
+  saveButton.addEventListener('click', async ()=>{
   const nome   = ($('nc_nome')?.value||'').trim();
   const email  = ($('nc_email')?.value||'').trim();
   const tel    = ($('nc_tel')?.value||'').trim();
   const cpf    = ($('nc_cpf')?.value||'').replace(/\D/g,'');
   const senha  = ($('nc_senha')?.value||'');
+  const cep    = ($('nc_cep')?.value||'').replace(/\D/g,'');
+  const rua    = ($('nc_rua')?.value||'').trim();
+  const numero = ($('nc_numero')?.value||'').trim();
+  const complemento = ($('nc_complemento')?.value||'').trim();
+  const bairro = ($('nc_bairro')?.value||'').trim();
+  const cidade = ($('nc_cidade')?.value||'').trim();
+  const uf     = ($('nc_uf')?.value||'').trim().toUpperCase();
   const msg    = $('ncMsg');
-  if(!nome||!email||!tel){ if(msg){ msg.textContent='Nome, e-mail e telefone são obrigatórios.'; msg.style.color='#dc2626'; } return; }
-  if(senha && senha.length < 8){ if(msg){ msg.textContent='Senha deve ter pelo menos 8 caracteres.'; msg.style.color='#dc2626'; } return; }
-  const btn = $('btnNovoCliente'); btn.disabled=true; btn.textContent='Cadastrando…';
+
+  if(!nome||!email||!tel){ if(msg){msg.textContent='Nome, e-mail e telefone são obrigatórios.';msg.style.color='#dc2626';} return; }
+  if(!cep||cep.length!==8||!rua||!numero||!bairro||!cidade||!uf){ if(msg){msg.textContent='Preencha CEP, rua, número, bairro, cidade e UF.';msg.style.color='#dc2626';} return; }
+  if(senha && senha.length<8){ if(msg){msg.textContent='Senha deve ter pelo menos 8 caracteres.';msg.style.color='#dc2626';} return; }
+
+  const btn=$('btnNovoCliente'); btn.disabled=true; btn.textContent='Salvando…';
   try{
-    const payload = { nome, email, cpf: cpf||undefined, telefone: tel.replace(/\D/g,''), senha: senha||'Lemoov@'+Math.floor(1000+Math.random()*9000), endereco:{numero:'S/N'} };
+    const payload={
+      nome, email,
+      cpf: cpf||undefined,
+      telefone: tel.replace(/\D/g,''),
+      senha: senha||('Lemoov@'+Math.floor(1000+Math.random()*9000)),
+      endereco:{ cep, logradouro:rua, numero, complemento, bairro, cidade, uf }
+    };
     const r=await fetch('/api/client/register',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok&&r.status!==201){ if(msg){msg.textContent=d.error||'Erro ao cadastrar.';msg.style.color='#dc2626';} return; }
-    if(msg){ msg.textContent=`✅ Cliente ${nome} cadastrado com sucesso!`; msg.style.color='#16a34a'; }
-    ['nc_nome','nc_email','nc_tel','nc_cpf','nc_senha'].forEach(id=>{ const el=$(`${id}`); if(el) el.value=''; });
+    if(!r.ok){ if(msg){msg.textContent=d.error||'Erro ao cadastrar.';msg.style.color='#dc2626';} return; }
+    if(msg){ msg.textContent=`✅ Cliente ${nome} cadastrado!`; msg.style.color='#16a34a'; }
+    ['nc_nome','nc_email','nc_tel','nc_cpf','nc_senha','nc_cep','nc_rua','nc_numero','nc_complemento','nc_bairro','nc_cidade','nc_uf'].forEach(id=>{
+      const el=document.getElementById(id); if(el){ el.value=''; el.readOnly=false; }
+    });
     await loadClientes();
   }catch(e){ if(msg){msg.textContent='Erro de conexão.';msg.style.color='#dc2626';} }
-  finally{ btn.disabled=false; btn.textContent='Cadastrar cliente'; }
-});
+  finally{ btn.disabled=false; btn.textContent='Salvar'; }
+  });
+}
 </script>
 
 <!-- ── CLIENTES ── -->
@@ -2585,29 +2681,83 @@ document.getElementById('btnNovoCliente')?.addEventListener('click', async ()=>{
 
   <!-- Formulário de cadastro manual -->
   <div class="card" style="margin-bottom:16px">
-    <div class="card-head"><h2>Cadastrar cliente</h2></div>
     <div class="card-body">
-      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px">
-        <div><label class="fl">Nome completo *</label><input class="fc" id="nc_nome" placeholder="Maria da Silva"></div>
-        <div><label class="fl">E-mail *</label><input class="fc" id="nc_email" type="email" placeholder="maria@email.com"></div>
-        <div><label class="fl">Telefone (WhatsApp) *</label><input class="fc" id="nc_tel" placeholder="(85) 99999-0000" inputmode="tel"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:10px">
-        <div><label class="fl">CPF</label><input class="fc" id="nc_cpf" placeholder="000.000.000-00" inputmode="numeric" maxlength="14"></div>
-        <div><label class="fl">Senha (acesso à plataforma)</label><input class="fc" id="nc_senha" type="password" placeholder="Mín. 8 caracteres" autocomplete="new-password"></div>
-        <div style="display:flex;align-items:flex-end">
-          <button class="btn btn--primary" id="btnNovoCliente" style="width:100%">Cadastrar cliente</button>
+      <div class="client-form-card">
+        <div class="client-form-title">Novo cliente</div>
+
+        <div class="client-form-section">
+          <div class="client-form-grid">
+            <div>
+              <label class="fl">Nome completo *</label>
+              <input class="fc" id="nc_nome" placeholder="Maria da Silva" autocomplete="name">
+            </div>
+            <div>
+              <label class="fl">E-mail *</label>
+              <input class="fc" id="nc_email" type="email" placeholder="maria@email.com" autocomplete="email">
+            </div>
+            <div>
+              <label class="fl">Telefone *</label>
+              <input class="fc" id="nc_tel" placeholder="(85) 99999-0000" inputmode="tel" autocomplete="tel">
+            </div>
+            <div>
+              <label class="fl">CPF</label>
+              <input class="fc" id="nc_cpf" placeholder="000.000.000-00" inputmode="numeric" maxlength="14">
+            </div>
+          </div>
         </div>
+
+        <div class="client-form-title" style="margin-top:4px">Endereço de entrega</div>
+        <div class="client-form-section">
+          <div class="client-form-grid client-form-grid--address">
+            <div>
+              <label class="fl">CEP *</label>
+              <input class="fc" id="nc_cep" placeholder="00000-000" inputmode="numeric" maxlength="9" autocomplete="postal-code">
+            </div>
+            <div>
+              <label class="fl">Logradouro *</label>
+              <input class="fc" id="nc_rua" placeholder="Rua das Flores">
+            </div>
+            <div>
+              <label class="fl">Número *</label>
+              <input class="fc" id="nc_numero" placeholder="123">
+            </div>
+            <div>
+              <label class="fl">Complemento</label>
+              <input class="fc" id="nc_complemento" placeholder="Apto 42">
+            </div>
+            <div>
+              <label class="fl">Bairro *</label>
+              <input class="fc" id="nc_bairro" placeholder="Aldeota">
+            </div>
+            <div>
+              <label class="fl">Cidade *</label>
+              <input class="fc" id="nc_cidade" placeholder="Fortaleza">
+            </div>
+            <div>
+              <label class="fl">UF *</label>
+              <input class="fc" id="nc_uf" placeholder="CE" maxlength="2">
+            </div>
+          </div>
+        </div>
+
+        <div class="client-form-actions">
+          <div>
+            <label class="fl">Senha de acesso</label>
+            <input class="fc" id="nc_senha" type="password" placeholder="Deixe vazio para gerar automaticamente" autocomplete="new-password">
+          </div>
+          <button class="btn btn--primary btn--sm client-form-save" id="btnNovoCliente" type="button">Salvar</button>
+        </div>
+
+        <div id="ncMsg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
       </div>
-      <div id="ncMsg" style="font-size:12px;margin-top:8px;min-height:16px"></div>
     </div>
   </div>
 
   <!-- Busca + WhatsApp em massa -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-body">
-      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-        <div style="flex:1;min-width:200px">
+      <div class="client-searchbar">
+        <div class="client-searchbar__search">
           <label class="fl">Buscar</label>
           <input class="fc" id="clienteSearch" placeholder="Nome, e-mail, telefone ou CPF…" autocomplete="off">
         </div>
@@ -2630,6 +2780,10 @@ document.getElementById('btnNovoCliente')?.addEventListener('click', async ()=>{
     </div>
   </div>
 </div>
+
+<script>
+  bindClientesAdminUI();
+</script>
 
 <!-- ── CRM ── -->
 <div id="tab-crm" class="tab-panel"></div>

@@ -143,13 +143,24 @@ async function initDatabase() {
       CREATE TABLE IF NOT EXISTS lemoov_coupons (
         id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
         code VARCHAR(60) NOT NULL UNIQUE,
+        description VARCHAR(255) NULL,
         percent DECIMAL(5,2) NOT NULL,
         active TINYINT(1) NOT NULL DEFAULT 1,
+        first_purchase_only TINYINT(1) NOT NULL DEFAULT 0,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
-    await mysqlPool.execute(`INSERT IGNORE INTO lemoov_coupons (code, percent, active) VALUES ('PRIMEIRA20', 20, 1)`);
+    try { await mysqlPool.execute(`ALTER TABLE lemoov_coupons ADD COLUMN description VARCHAR(255) NULL AFTER code`); } catch (e) { if (e.code !== 'ER_DUP_FIELDNAME') throw e; }
+    try { await mysqlPool.execute(`ALTER TABLE lemoov_coupons ADD COLUMN first_purchase_only TINYINT(1) NOT NULL DEFAULT 0 AFTER active`); } catch (e) { if (e.code !== 'ER_DUP_FIELDNAME') throw e; }
+    await mysqlPool.execute(`
+      UPDATE lemoov_coupons
+      SET code = 'PRIMEIRA15', percent = 15
+      WHERE code = 'PRIMEIRA20'
+        AND NOT EXISTS (SELECT 1 FROM (SELECT code FROM lemoov_coupons WHERE code = 'PRIMEIRA15') AS existing_primeira15)
+    `);
+    await mysqlPool.execute(`INSERT IGNORE INTO lemoov_coupons (code, description, percent, active, first_purchase_only) VALUES ('PRIMEIRA15', 'Primeira compra vinculada ao CPF', 15, 1, 1)`);
+    await mysqlPool.execute(`UPDATE lemoov_coupons SET first_purchase_only = 1, percent = 15, description = COALESCE(NULLIF(description, ''), 'Primeira compra vinculada ao CPF') WHERE code = 'PRIMEIRA15'`);
     await mysqlPool.execute(`
       CREATE TABLE IF NOT EXISTS lemoov_payment_intents (
         id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -338,17 +349,26 @@ function requireDatabaseFeature(name) {
 async function readCouponsStore() {
   requireDatabaseFeature('Cupons');
   await initDatabase();
-  const [rows] = await mysqlPool.execute('SELECT id, code, percent, active, created_at AS createdAt, updated_at AS updatedAt FROM lemoov_coupons ORDER BY code');
-  return rows.map((r) => ({ ...r, percent: Number(r.percent), active: Boolean(r.active) }));
+  const [rows] = await mysqlPool.execute('SELECT id, code, description, percent, active, first_purchase_only AS firstPurchaseOnly, created_at AS createdAt, updated_at AS updatedAt FROM lemoov_coupons ORDER BY first_purchase_only DESC, code');
+  return rows.map((r) => ({ ...r, percent: Number(r.percent), active: Boolean(r.active), firstPurchaseOnly: Boolean(r.firstPurchaseOnly) }));
 }
 async function getCouponStore(code) {
   const normalized = normalizeCouponCode(code);
   if (!normalized) return null;
   requireDatabaseFeature('Cupons');
   await initDatabase();
-  const [rows] = await mysqlPool.execute('SELECT id, code, percent, active FROM lemoov_coupons WHERE code = ? LIMIT 1', [normalized]);
+  const [rows] = await mysqlPool.execute('SELECT id, code, description, percent, active, first_purchase_only AS firstPurchaseOnly FROM lemoov_coupons WHERE code = ? LIMIT 1', [normalized]);
   if (!rows.length) return null;
-  return { ...rows[0], percent: Number(rows[0].percent), active: Boolean(rows[0].active) };
+  return { ...rows[0], percent: Number(rows[0].percent), active: Boolean(rows[0].active), firstPurchaseOnly: Boolean(rows[0].firstPurchaseOnly) };
+}
+async function getActiveFirstPurchaseCoupon() {
+  requireDatabaseFeature('Cupons');
+  await initDatabase();
+  const [rows] = await mysqlPool.execute(
+    "SELECT id, code, description, percent, active, first_purchase_only AS firstPurchaseOnly FROM lemoov_coupons WHERE first_purchase_only = 1 AND active = 1 ORDER BY (code = 'PRIMEIRA15') DESC, updated_at DESC, id DESC LIMIT 1"
+  );
+  if (!rows.length) return null;
+  return { ...rows[0], percent: Number(rows[0].percent), active: Boolean(rows[0].active), firstPurchaseOnly: Boolean(rows[0].firstPurchaseOnly) };
 }
 async function calculateDiscounts({ subtotal = 0, cpf = '', couponCode = '', pedidos = null } = {}) {
   requireDatabaseFeature('Descontos');
@@ -358,7 +378,16 @@ async function calculateDiscounts({ subtotal = 0, cpf = '', couponCode = '', ped
   const cleanCpf = normalizeCpf(cpf);
   const normalizedCoupon = normalizeCouponCode(couponCode);
   if (cleanCpf.length === 11 && !hasCpfPurchase(currentPedidos, cleanCpf) && !normalizedCoupon) {
-    discounts.push({ type: 'first_purchase', label: 'Primeira compra CPF', percent: 20, amount: roundMoney(base * 0.20) });
+    const firstCoupon = await getActiveFirstPurchaseCoupon();
+    if (firstCoupon) {
+      discounts.push({
+        type: 'first_purchase',
+        label: firstCoupon.description || 'Primeira compra CPF',
+        code: firstCoupon.code,
+        percent: firstCoupon.percent,
+        amount: roundMoney(base * (firstCoupon.percent / 100))
+      });
+    }
   }
   if (normalizedCoupon) {
     const coupon = await getCouponStore(normalizedCoupon);
@@ -367,19 +396,18 @@ async function calculateDiscounts({ subtotal = 0, cpf = '', couponCode = '', ped
       err.status = 400;
       throw err;
     }
-    // PRIMEIRA20 é exclusivo para primeira compra — bloqueia se CPF já tem pedido pago
-    if (normalizedCoupon === 'PRIMEIRA20' && cleanCpf.length === 11 && hasCpfPurchase(currentPedidos, cleanCpf)) {
-      const err = new Error('O cupom PRIMEIRA20 é válido somente na primeira compra. Seu CPF já possui um pedido confirmado.');
+    if (coupon.firstPurchaseOnly && cleanCpf.length === 11 && hasCpfPurchase(currentPedidos, cleanCpf)) {
+      const err = new Error(`O cupom ${coupon.code} é válido somente na primeira compra. Seu CPF já possui um pedido confirmado.`);
       err.status = 400;
       throw err;
     }
-    discounts.push({ type: 'coupon', label: `Cupom ${coupon.code}`, code: coupon.code, percent: coupon.percent, amount: roundMoney(base * (coupon.percent / 100)) });
+    discounts.push({ type: 'coupon', label: coupon.description || `Cupom ${coupon.code}`, code: coupon.code, percent: coupon.percent, amount: roundMoney(base * (coupon.percent / 100)) });
   }
   let discountTotal = roundMoney(discounts.reduce((sum, item) => sum + Number(item.amount || 0), 0));
   discountTotal = Math.min(base, discountTotal);
   return {
     cpf: cleanCpf,
-    couponCode: normalizedCoupon,
+    couponCode: normalizedCoupon || discounts.find((item) => item.type === 'first_purchase')?.code || '',
     discounts,
     discountTotal,
     subtotalWithDiscount: roundMoney(Math.max(0, base - discountTotal))
@@ -956,12 +984,12 @@ app.post('/api/client/register', async (req, res) => {
         [clientId, String(endereco.cep).replace(/\D/g, ''), String(endereco.logradouro || ''), String(endereco.numero), String(endereco.complemento || '') || null, String(endereco.bairro || '') || null, String(endereco.cidade || ''), String(endereco.uf || '')]
       );
     }
-    // Gera cupom de boas-vindas 20% para primeira compra
+    // Gera cupom de boas-vindas 15% para primeira compra
     const _chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let welcomeCoupon = 'BV';
     for (let i = 0; i < 6; i++) welcomeCoupon += _chars[Math.floor(Math.random() * _chars.length)];
     try {
-      await mysqlPool.execute('INSERT INTO lemoov_coupons (code, percent, active) VALUES (?, 20, 1)', [welcomeCoupon]);
+      await mysqlPool.execute('INSERT INTO lemoov_coupons (code, description, percent, active, first_purchase_only) VALUES (?, ?, 15, 1, 1)', [welcomeCoupon, 'Boas-vindas para primeira compra']);
     } catch (_e) { welcomeCoupon = null; }
     if (process.env.SMTP_HOST || process.env.RESEND_API_KEY) {
       const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -2126,17 +2154,19 @@ app.post('/api/admin/cupons', authRequired, async (req, res) => {
     requireDatabaseFeature('Cupons');
     await initDatabase();
     const code = normalizeCouponCode(req.body?.code);
+    const description = String(req.body?.description || '').trim();
     const percent = Number(req.body?.percent);
     const active = req.body?.active === false ? 0 : 1;
+    const firstPurchaseOnly = req.body?.firstPurchaseOnly === true ? 1 : 0;
     if (!code) return res.status(400).json({ ok: false, error: 'Informe o código do cupom.' });
     if (!Number.isFinite(percent) || percent <= 0 || percent > 100) {
       return res.status(400).json({ ok: false, error: 'Percentual deve ficar entre 0,01 e 100.' });
     }
     await mysqlPool.execute(
-      `INSERT INTO lemoov_coupons (code, percent, active)
-       VALUES (?, ?, ?)
-       ON DUPLICATE KEY UPDATE percent = VALUES(percent), active = VALUES(active)`,
-      [code, percent, active]
+      `INSERT INTO lemoov_coupons (code, description, percent, active, first_purchase_only)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE description = VALUES(description), percent = VALUES(percent), active = VALUES(active), first_purchase_only = VALUES(first_purchase_only)`,
+      [code, description || null, percent, active, firstPurchaseOnly]
     );
     res.json({ ok: true, item: await getCouponStore(code) });
   } catch (e) {
