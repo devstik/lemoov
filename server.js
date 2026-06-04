@@ -1862,9 +1862,15 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
       checkout: data
     });
   } catch (e) {
-    console.error('[infinitepay] erro:', e.message);
+    console.error('[infinitepay] erro:', e.message, e.stack?.split('\n')[1] || '');
     const isStockError = /Estoque insuficiente|Produto não encontrado|Item esgotado/.test(e?.message || '');
-    res.status(isStockError ? 409 : 500).json({ ok: false, error: isStockError ? e.message : 'Falha ao preparar pagamento.' });
+    const isMysqlError = /MYSQL_ENABLED|Banco de dados MySQL/i.test(e?.message || '');
+    const isNetworkError = /ECONNREFUSED|ENOTFOUND|fetch failed|network|timeout/i.test(e?.message || '');
+    let userError = 'Falha ao preparar pagamento.';
+    if (isStockError) userError = e.message;
+    else if (isMysqlError) userError = 'Banco de dados indisponível. Tente novamente.';
+    else if (isNetworkError) userError = 'Não foi possível conectar ao serviço de pagamento. Tente novamente.';
+    res.status(isStockError ? 409 : 500).json({ ok: false, error: userError });
   }
 });
 

@@ -3211,7 +3211,13 @@ async function initiateCheckout() {
 
   const sessionResult = await checkClientSession();
   if (!sessionResult.ok) {
-    openLoginModal(() => initiateCheckout());
+    openLoginModal(async () => {
+      // Após login: volta ao carrinho com todas as opções (frete, cupom, endereço)
+      ensureCartClientSummary();
+      atualizarCart();
+      await autoLoadDeliveryFromClient();
+      atualizarCart();
+    });
     return;
   }
   currentClientSession = sessionResult.client;

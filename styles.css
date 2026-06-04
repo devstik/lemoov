@@ -3017,12 +3017,13 @@ legend {
     padding: 14px 18px;
     color: #0b1f2a;
 }
-.frete__ui[data-auth="logged-out"] .pickup-toggle,
-.frete__ui[data-auth="logged-out"] .frete__row,
+/* Quando não logado: esconde apenas opções de endereço e carrier */
 .frete__ui[data-auth="logged-out"] .checkout__link,
-.frete__ui[data-auth="logged-out"] #freteOpcoes {
+.frete__ui[data-auth="logged-out"] #freteOpcoes,
+.frete__ui[data-auth="logged-out"] #cartAddressSummary {
     display: none !important;
 }
+/* Quando logado: o endereço vem da conta; esconde CEP manual */
 .frete__ui[data-auth="logged-in"] .frete__row,
 .frete__ui[data-auth="logged-in"] .checkout__link {
     display: none !important;
