@@ -70,7 +70,6 @@ let currentClientSession = null;
 let originCoordsCache = null;
 let checkoutDiscountState = { cpf: "", cupom: "", discounts: [], discountTotal: 0 };
 let cartCouponCode = "";
-const CHECKOUT_RESUME_KEY = "lemoovResumeCheckout";
 const FB_EVENT_MAP = {
   add_to_cart: "AddToCart",
   start_checkout: "InitiateCheckout",
@@ -177,6 +176,7 @@ function _loadCart() {
       return [];
     }
     cartUpdatedAt = items.length ? updatedAt : 0;
+    if (parsed?.retiradaNaLoja) retiradaNaLoja = true;
     return items;
   } catch (_) {
     return [];
@@ -190,7 +190,7 @@ function _saveCart({ touch = false } = {}) {
       return;
     }
     if (touch || !cartUpdatedAt) cartUpdatedAt = Date.now();
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({ items: carrinho, updatedAt: cartUpdatedAt }));
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({ items: carrinho, updatedAt: cartUpdatedAt, retiradaNaLoja }));
   } catch (_) {
     if (!carrinho.length) cartUpdatedAt = 0;
   }
@@ -1191,17 +1191,23 @@ function computeColorPrice(prod, colorObj){
   #cart .cart__remove-btn:hover{ background: rgba(254,202,202,.9); }
   #cart .cart__footer{
     flex:0 0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
     padding: 14px 16px 20px;
     background: #f8faff;
     border-top: 1px solid rgba(0,39,118,.08);
+    max-height:min(62vh, calc(100dvh - 180px));
+    overflow-y:auto;
+    overflow-x:hidden;
   }
   #cart #btnCheckout{
-    order:-20;
+    order:30;
     width:100%;
     position:sticky;
-    top:0;
+    bottom:0;
     z-index:2;
-    margin-bottom:8px;
+    margin-top:4px;
   }
   #cart #btnCheckout:disabled{ opacity:.55; cursor:not-allowed; filter:saturate(.5); }
   #cart .cart-coupon{
@@ -1228,6 +1234,7 @@ function computeColorPrice(prod, colorObj){
     #cart .cart__item-actions{ grid-column:2; flex-direction:row; align-items:center; justify-content:space-between; min-width:0; text-align:left; }
   }
   #cart .cart__total{
+    order:20;
     display: flex; justify-content: space-between; align-items: center;
     font-size: 0.88rem; color: #374151;
     padding: 4px 0;
@@ -1235,7 +1242,22 @@ function computeColorPrice(prod, colorObj){
   #cart .cart__total:last-of-type{ font-size: 1rem; font-weight: 800; color: #0a1628; }
   #cart .cart__total strong{ color: #002776; }
 
-  .frete__ui{ margin-bottom: 10px; }
+  .frete__ui{ order:12; margin:4px 0 0; }
+  .frete__ui[data-auth="logged-out"] .frete__row,
+  .frete__ui[data-auth="logged-out"] .checkout__link,
+  .frete__ui[data-auth="logged-out"] #freteOpcoes,
+  .frete__ui[data-auth="logged-out"] #freteMsg,
+  .frete__ui[data-auth="logged-out"] #cartAddressSummary{ display:none !important; }
+  .frete__ui[data-auth="logged-in"] .frete__row,
+  .frete__ui[data-auth="logged-in"] .checkout__link{ display:none !important; }
+  #cart[data-cart-auth="logged-out"] .cart-coupon{ display:none !important; }
+  .cart-address-summary{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px;border:1px solid rgba(0,39,118,.1);border-radius:12px;background:#fff;
+    color:#334155;font-size:.78rem;line-height:1.35;
+  }
+  .cart-address-summary strong{display:block;color:#0a1628;font-size:.82rem}
+  .cart-address-summary button{border:1px solid #dbe3ea;background:#fff;border-radius:9px;padding:7px 10px;font:inherit;font-size:.72rem;font-weight:800;color:#002776;cursor:pointer;white-space:nowrap}
   .pickup-toggle{
     display:grid;
     grid-template-columns:auto 1fr;
@@ -2916,7 +2938,13 @@ function ensureFreteSubtotalRows() {
 
 function ensureCartCouponUI() {
   const footer = document.querySelector(".cart__footer");
-  if (!footer || footer.querySelector("#cartCouponBox")) return;
+  if (!footer) return;
+  const existing = footer.querySelector("#cartCouponBox");
+  if (!currentClientSession) {
+    if (existing) existing.style.display = "none";
+    return;
+  }
+  if (existing) { existing.style.display = ""; return; }
   const box = document.createElement("div");
   box.id = "cartCouponBox";
   box.className = "cart-coupon";
@@ -2986,8 +3014,9 @@ function ensureFreteUI() {
         <button id="btnUseLocation" class="btn">📍 Localização</button>
       </div>
       <div id="freteMsg" class="frete__msg">
-        ${DELIVERY_MODE_LABEL}. Informe o CEP para continuar.
+        Entre para carregar o frete a partir do endereço cadastrado.
       </div>
+      <div id="cartAddressSummary" class="cart-address-summary" style="display:none;"></div>
       <div id="freteOpcoes" class="frete__opcoes" style="display:none;"></div>
       <div class="checkout__link">
         Não sabe o CEP? <a href="https://buscacepinter.correios.com.br/app/endereco/index.php" target="_blank" rel="noopener">Consultar nos Correios</a>
@@ -3037,6 +3066,80 @@ function mostrarOpcoesTransportadora(opcoes) {
 function esconderOpcoesTransportadora() {
   const container = el('#freteOpcoes');
   if (container) { container.style.display = 'none'; container.innerHTML = ''; }
+}
+
+function renderCartDeliveryState() {
+  const box = document.querySelector(".frete__ui");
+  if (!box) return;
+  const msg = el("#freteMsg");
+  const addrBox = el("#cartAddressSummary");
+  box.dataset.auth = currentClientSession ? "logged-in" : "logged-out";
+  const cartEl = document.querySelector("#cart");
+  if (cartEl) cartEl.dataset.cartAuth = currentClientSession ? "logged-in" : "logged-out";
+  if (!currentClientSession) {
+    if (addrBox) { addrBox.style.display = "none"; addrBox.innerHTML = ""; }
+    return;
+  }
+  if (retiradaNaLoja) {
+    if (addrBox) { addrBox.style.display = "none"; addrBox.innerHTML = ""; }
+    if (msg) msg.textContent = "Retirada selecionada. Endereço não será usado para entrega e frete não será cobrado.";
+    return;
+  }
+  if (selectedDeliveryAddress && !retiradaNaLoja) {
+    const addr = selectedDeliveryAddress;
+    const line1 = `${addr.logradouro || ""}, ${addr.numero || ""}${addr.complemento ? " - " + addr.complemento : ""}`;
+    const line2 = `${addr.bairro ? addr.bairro + ", " : ""}${addr.cidade || ""}/${addr.uf || ""} - CEP ${formatCEPForInput(addr.cep || "")}`;
+    if (addrBox) {
+      addrBox.style.display = "";
+      addrBox.innerHTML = `<div><strong>Entrega cadastrada</strong><span>${escapeHTML(line1)}<br>${escapeHTML(line2)}</span></div><button type="button" id="btnCartChangeAddr">Alterar</button>`;
+      addrBox.querySelector("#btnCartChangeAddr")?.addEventListener("click", async () => {
+        const addresses = await fetchClientAddresses();
+        openAddressSelectionModal(addresses);
+      });
+    }
+    if (msg) msg.textContent = entregaDisponivel ? getFreteResumoLabel({ includeCep: true }) : "Calculando frete pelo endereço cadastrado...";
+    return;
+  }
+  if (addrBox) {
+    addrBox.style.display = "";
+    addrBox.innerHTML = `<div><strong>Endereço de entrega</strong><span>Nenhum endereço cadastrado para calcular o frete.</span></div><button type="button" id="btnCartAddAddr">Cadastrar</button>`;
+    addrBox.querySelector("#btnCartAddAddr")?.addEventListener("click", async () => {
+      const addresses = await fetchClientAddresses();
+      openAddressSelectionModal(addresses);
+    });
+  }
+  if (msg) msg.textContent = "Cadastre ou selecione um endereço para calcular o frete.";
+}
+
+async function autoLoadDeliveryFromClient() {
+  if (!currentClientSession || retiradaNaLoja) return;
+  if (selectedDeliveryAddress) {
+    if (!entregaDisponivel && selectedDeliveryAddress.cep) {
+      renderCartDeliveryState();
+      const backendOk = await calcularFreteBackend(selectedDeliveryAddress);
+      if (!backendOk) {
+        try { await calcularEntregaPorCEP(selectedDeliveryAddress.cep); } catch (_) {}
+      }
+      renderCartDeliveryState();
+      atualizarCart();
+    }
+    return;
+  }
+  if (entregaDisponivel) return;
+  const addresses = await fetchClientAddresses();
+  if (!addresses.length) {
+    renderCartDeliveryState();
+    updateCheckoutButtonState();
+    return;
+  }
+  setDeliveryAddress(addresses[0]);
+  renderCartDeliveryState();
+  const backendOk = await calcularFreteBackend(selectedDeliveryAddress);
+  if (!backendOk && selectedDeliveryAddress.cep) {
+    try { await calcularEntregaPorCEP(selectedDeliveryAddress.cep); } catch (_) {}
+  }
+  renderCartDeliveryState();
+  atualizarCart();
 }
 
 async function calcularFreteBackend(addr) {
@@ -3090,32 +3193,29 @@ async function checkClientSession() {
 async function initiateCheckout() {
   if (carrinho.length === 0) { showAppMessage("Seu carrinho está vazio."); return; }
   if (!validateWholeCartStock()) return;
-  if (!retiradaNaLoja && (!entregaDisponivel || !isFixedFreteMode())) {
-    openCart();
-    showAppMessage("Selecione uma opção de frete antes de ir para pagamento.");
-    return;
-  }
 
   // Sempre verifica sessão primeiro — sem exceção para modo offline
   const sessionResult = await checkClientSession();
   if (!sessionResult.ok) {
-    try { localStorage.setItem(CHECKOUT_RESUME_KEY, "1"); } catch (_) {}
     const redirectTarget = encodeURIComponent(window.location.pathname + '?initiateCheckout=1');
     window.location.href = `/cliente-login?redirect=${redirectTarget}`;
     return;
   }
   currentClientSession = sessionResult.client;
+  ensureCartClientSummary();
+  await autoLoadDeliveryFromClient();
 
-  let addresses = [];
-  try {
-    const addrRes = await fetch('/api/client/addresses', { credentials: 'same-origin' });
-    if (addrRes.ok) {
-      const addrData = await addrRes.json();
-      addresses = addrData.addresses || [];
-    }
-  } catch (_) {}
+  if (!retiradaNaLoja && (!entregaDisponivel || !isFixedFreteMode())) {
+    const addresses = await fetchClientAddresses();
+    openAddressSelectionModal(addresses);
+    return;
+  }
 
-  openAddressSelectionModal(addresses);
+  if (selectedDeliveryAddress || retiradaNaLoja) {
+    openCheckoutModal();
+    return;
+  }
+  openAddressSelectionModal(await fetchClientAddresses());
 }
 
 function openAddressSelectionModal(addresses) {
@@ -3196,7 +3296,8 @@ function openAddressSelectionModal(addresses) {
   dlg.showModal();
 
   let _lastAddrCep = '';
-  selectedDeliveryAddress = hasAddresses ? addresses[0] : null;
+  if (hasAddresses) setDeliveryAddress(addresses[0]);
+  else selectedDeliveryAddress = null;
 
   dlg.querySelectorAll('.addr-card').forEach((card) => {
     card.addEventListener('click', () => {
@@ -3204,7 +3305,7 @@ function openAddressSelectionModal(addresses) {
       card.classList.add('selected');
       const radio = card.querySelector('input[type="radio"]');
       if (radio) radio.checked = true;
-      selectedDeliveryAddress = addresses[Number(card.dataset.addrIdx)];
+      setDeliveryAddress(addresses[Number(card.dataset.addrIdx)]);
       dlg.querySelector('#btnConfirmAddr').disabled = false;
     });
   });
@@ -3216,9 +3317,10 @@ function openAddressSelectionModal(addresses) {
     if (!showing) {
       dlg.querySelector('#btnConfirmAddr').disabled = true;
       selectedDeliveryAddress = null;
+      renderCartDeliveryState();
       dlg.querySelectorAll('.addr-card').forEach(c => c.classList.remove('selected'));
     } else if (hasAddresses) {
-      selectedDeliveryAddress = addresses[0];
+      setDeliveryAddress(addresses[0]);
       dlg.querySelectorAll('.addr-card')[0]?.classList.add('selected');
       dlg.querySelector('#btnConfirmAddr').disabled = false;
     }
@@ -3272,10 +3374,8 @@ function openAddressSelectionModal(addresses) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 503 || res.status === 401) {
-        // Banco offline ou sessão expirada: usa endereço localmente
-        selectedDeliveryAddress = { id: null, cep, logradouro: rua, numero, complemento, bairro, cidade, uf };
-        dlg.querySelector('#btnConfirmAddr').disabled = false;
-        dlg.querySelector('#addrNewForm').style.display = 'none';
+        showAppMessage(data.error || "Não foi possível salvar o endereço no banco. Tente novamente.");
+        saveBtn.disabled = false; saveBtn.textContent = 'Salvar e usar este endereço';
         return;
       }
       if (!res.ok) {
@@ -3283,14 +3383,12 @@ function openAddressSelectionModal(addresses) {
         saveBtn.disabled = false; saveBtn.textContent = 'Salvar e usar este endereço';
         return;
       }
-      selectedDeliveryAddress = { id: data.id, cep, logradouro: rua, numero, complemento, bairro, cidade, uf };
+      setDeliveryAddress({ id: data.id, cep, logradouro: rua, numero, complemento, bairro, cidade, uf });
       dlg.querySelector('#btnConfirmAddr').disabled = false;
       dlg.querySelector('#addrNewForm').style.display = 'none';
     } catch (_) {
-      // Sem conexão: usa endereço localmente para não bloquear o fluxo
-      selectedDeliveryAddress = { id: null, cep, logradouro: rua, numero, complemento, bairro, cidade, uf };
-      dlg.querySelector('#btnConfirmAddr').disabled = false;
-      dlg.querySelector('#addrNewForm').style.display = 'none';
+      showAppMessage("Não foi possível salvar o endereço no banco. Tente novamente.");
+      saveBtn.disabled = false; saveBtn.textContent = 'Salvar e usar este endereço';
     }
   });
 
@@ -3301,6 +3399,8 @@ function openAddressSelectionModal(addresses) {
     }
     const btn = dlg.querySelector('#btnConfirmAddr');
     btn.disabled = true; btn.textContent = 'Calculando frete…';
+    retiradaNaLoja = false;
+    applyPickupUIState();
     if (!retiradaNaLoja && selectedDeliveryAddress.cep) {
       const backendOk = await calcularFreteBackend(selectedDeliveryAddress);
       if (!backendOk) {
@@ -3353,8 +3453,10 @@ function updateCheckoutButtonState(){
   if (!btn) return;
   const hasItems = carrinho.length > 0;
   const freightReady = retiradaNaLoja || (entregaDisponivel && isFixedFreteMode());
-  btn.disabled = !hasItems || !freightReady;
-  btn.textContent = freightReady ? "Ir para pagamento" : "Selecione o frete";
+  btn.disabled = !hasItems;
+  btn.textContent = (currentClientSession && !freightReady && !retiradaNaLoja)
+    ? "Selecionar endereço"
+    : "Ir para pagamento";
 }
 
 function ensureCartClientSummary() {
@@ -3382,6 +3484,9 @@ async function hydrateClientSession() {
   const result = await checkClientSession();
   currentClientSession = result.ok ? result.client : null;
   ensureCartClientSummary();
+  renderCartDeliveryState();
+  await autoLoadDeliveryFromClient();
+  atualizarCart();
 }
 
 async function fetchClientAddresses() {
@@ -3834,6 +3939,8 @@ function _reopenCheckoutModalDisplay(){
 function atualizarCart(){
   _saveCart();
   try{ ensureFreteShownOnce(); }catch(e){}
+  const cartEl = document.querySelector("#cart");
+  if (cartEl) cartEl.dataset.cartAuth = currentClientSession ? "logged-in" : "logged-out";
 
   const cartCount = el("#cartCount");
   if (cartCount) cartCount.textContent = getCartCount();
@@ -3891,6 +3998,8 @@ function atualizarCart(){
   ensureFreteSubtotalRows();
   ensureCartCouponUI();
   ensureCheckoutButton();
+  renderCartDeliveryState();
+  autoLoadDeliveryFromClient().catch(()=>{});
 
   const totalProdutos = getCartSubtotal();
   refreshDiscountAmountsForSubtotal();
@@ -4031,11 +4140,7 @@ async function initCatalog(){
 if (!restorePaymentOriginIfNeeded()) {
   initCatalog().then(() => {
     const _qs = new URLSearchParams(location.search);
-    let shouldResumeCheckout = _qs.get('initiateCheckout') === '1';
-    try {
-      shouldResumeCheckout = shouldResumeCheckout || localStorage.getItem(CHECKOUT_RESUME_KEY) === "1";
-      localStorage.removeItem(CHECKOUT_RESUME_KEY);
-    } catch (_) {}
+    const shouldResumeCheckout = _qs.get('initiateCheckout') === '1';
     if (shouldResumeCheckout) {
       history.replaceState(null, '', location.pathname);
       atualizarCart();
@@ -4444,6 +4549,63 @@ function resetFreteUI(message = "Informe o CEP para calcular a entrega.") {
   atualizarCart();
 }
 
+async function setPickupMode(enabled, { recalculateDelivery = false } = {}) {
+  retiradaNaLoja = Boolean(enabled);
+  const cepInput = el("#cepInput");
+  const freteMsg = el("#freteMsg");
+  if (retiradaNaLoja) {
+    freteAtual = 0;
+    cepAtual = "";
+    entregaDisponivel = false;
+    enderecoAutofill = null;
+    freteOpcoesCache = [];
+    freteModo = "retirada";
+    esconderOpcoesTransportadora();
+    if (cepInput) cepInput.value = "";
+  } else {
+    freteAtual = 0;
+    cepAtual = "";
+    entregaDisponivel = false;
+    enderecoAutofill = null;
+    freteOpcoesCache = [];
+    freteModo = null;
+    esconderOpcoesTransportadora();
+    if (freteMsg) freteMsg.textContent = selectedDeliveryAddress
+      ? "Calculando frete pelo endereço selecionado..."
+      : "Selecione um endereço de entrega para calcular o frete.";
+    if (recalculateDelivery && selectedDeliveryAddress?.cep) {
+      const backendOk = await calcularFreteBackend(selectedDeliveryAddress);
+      if (!backendOk) {
+        try { await calcularEntregaPorCEP(selectedDeliveryAddress.cep); } catch (_) {}
+      }
+    }
+  }
+  applyPickupUIState();
+  renderCartDeliveryState();
+  atualizarCart();
+}
+
+function setDeliveryAddress(addr) {
+  selectedDeliveryAddress = addr || null;
+  if (selectedDeliveryAddress) {
+    retiradaNaLoja = false;
+    freteAtual = 0;
+    cepAtual = "";
+    entregaDisponivel = false;
+    freteModo = null;
+    enderecoAutofill = {
+      cep: normalizeCEP(selectedDeliveryAddress.cep || ""),
+      rua: selectedDeliveryAddress.logradouro || "",
+      bairro: selectedDeliveryAddress.bairro || "",
+      cidade: selectedDeliveryAddress.cidade || "",
+      uf: selectedDeliveryAddress.uf || ""
+    };
+    esconderOpcoesTransportadora();
+  }
+  applyPickupUIState();
+  renderCartDeliveryState();
+}
+
 function applyPickupUIState() {
   const pickupToggle = el("#pickupToggle");
   const cepInput = el("#cepInput");
@@ -4543,21 +4705,8 @@ function bindFreteUIEvents() {
   if (pickupToggle && !pickupToggle._lemoovBound) {
     pickupToggle._lemoovBound = true;
     pickupToggle.checked = retiradaNaLoja;
-    pickupToggle.addEventListener("change", () => {
-      retiradaNaLoja = pickupToggle.checked;
-      if (retiradaNaLoja) {
-        freteAtual = 0;
-        cepAtual = "";
-        entregaDisponivel = false;
-        enderecoAutofill = null;
-        freteModo = "retirada";
-        if (cepInput) cepInput.value = "";
-      } else {
-        freteModo = null;
-        if (freteMsg) freteMsg.textContent = "Informe o CEP para calcular a entrega.";
-      }
-      applyPickupUIState();
-      atualizarCart();
+    pickupToggle.addEventListener("change", async () => {
+      await setPickupMode(pickupToggle.checked, { recalculateDelivery: !pickupToggle.checked });
     });
   }
   applyPickupUIState();

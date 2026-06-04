@@ -2928,16 +2928,18 @@ legend {
     padding: 28px 34px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 8px;
     flex: 0 0 auto;
+    max-height: 48vh;
+    overflow: auto;
 }
 #cart #btnCheckout {
-    order: -20;
+    order: 30;
     width: 100%;
     position: sticky;
-    top: 0;
+    bottom: 0;
     z-index: 2;
-    margin-bottom: 8px;
+    margin-top: 4px;
 }
 #cart #btnCheckout:disabled {
     opacity: .55;
@@ -2998,6 +3000,7 @@ legend {
 .cart-coupon__msg[data-status="ok"] { color: #087a4d; }
 .cart-coupon__msg[data-status="warn"] { color: #b45309; }
 .cart__total {
+    order: 20;
     display: flex;
     justify-content: space-between;
     font-size: 1rem;
@@ -3007,11 +3010,52 @@ legend {
     text-transform: uppercase;
 }
 .frete__ui {
+    order: 12;
     background: #f5f8fc;
     border: 1px solid rgba(7,24,32,0.12);
     border-radius: 18px;
     padding: 14px 18px;
     color: #0b1f2a;
+}
+.frete__ui[data-auth="logged-out"] .pickup-toggle,
+.frete__ui[data-auth="logged-out"] .frete__row,
+.frete__ui[data-auth="logged-out"] .checkout__link,
+.frete__ui[data-auth="logged-out"] #freteOpcoes {
+    display: none !important;
+}
+.frete__ui[data-auth="logged-in"] .frete__row,
+.frete__ui[data-auth="logged-in"] .checkout__link {
+    display: none !important;
+}
+.cart-address-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid rgba(0,39,118,.1);
+    border-radius: 12px;
+    background: #fff;
+    color: #334155;
+    font-size: .78rem;
+    line-height: 1.35;
+}
+.cart-address-summary strong {
+    display: block;
+    color: #0a1628;
+    font-size: .82rem;
+}
+.cart-address-summary button {
+    border: 1px solid #dbe3ea;
+    background: #fff;
+    border-radius: 9px;
+    padding: 7px 10px;
+    font: inherit;
+    font-size: .72rem;
+    font-weight: 800;
+    color: #002776;
+    cursor: pointer;
+    white-space: nowrap;
 }
 .frete__ui select,
 .frete__ui input {

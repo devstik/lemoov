@@ -825,9 +825,14 @@
         return;
       }
       btn.classList.add('ok'); btn.textContent = '✓ Conta criada!';
-      showAlert('cadastroAlert', 'Conta criada com sucesso! Redirecionando…', 'ok');
       const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
-      setTimeout(() => { location.href = redirect; }, 1200);
+      if (data.welcomeCoupon) {
+        showAlert('cadastroAlert', `Conta criada! Seu cupom de boas-vindas: ${data.welcomeCoupon} — 20% de desconto na primeira compra!`, 'ok');
+        setTimeout(() => { location.href = redirect; }, 3000);
+      } else {
+        showAlert('cadastroAlert', 'Conta criada com sucesso! Redirecionando…', 'ok');
+        setTimeout(() => { location.href = redirect; }, 1200);
+      }
     } catch {
       showAlert('cadastroAlert', 'Erro de conexão. Tente novamente.');
       btn.disabled = false; btn.textContent = 'Criar conta';
@@ -905,7 +910,12 @@
       }
       btn.classList.add('ok'); btn.textContent = '✓ E-mail confirmado!';
       const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
-      setTimeout(() => { location.href = redirect; }, 900);
+      if (data.welcomeCoupon) {
+        showAlert('verifyAlert', `Conta confirmada! Cupom de boas-vindas: ${data.welcomeCoupon} — 20% na primeira compra!`, 'ok');
+        setTimeout(() => { location.href = redirect; }, 3000);
+      } else {
+        setTimeout(() => { location.href = redirect; }, 900);
+      }
     } catch {
       showAlert('verifyAlert', 'Erro de conexão. Tente novamente.');
       btn.disabled = false; btn.textContent = 'Confirmar';

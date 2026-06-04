@@ -316,10 +316,10 @@ async function calculateDiscounts({ subtotal = 0, cpf = '', couponCode = '', ped
   const currentPedidos = Array.isArray(pedidos) ? pedidos : await readPedidosStore();
   const discounts = [];
   const cleanCpf = normalizeCpf(cpf);
-  if (cleanCpf.length === 11 && !hasCpfPurchase(currentPedidos, cleanCpf)) {
+  const normalizedCoupon = normalizeCouponCode(couponCode);
+  if (cleanCpf.length === 11 && !hasCpfPurchase(currentPedidos, cleanCpf) && !normalizedCoupon) {
     discounts.push({ type: 'first_purchase', label: 'Primeira compra CPF', percent: 20, amount: roundMoney(base * 0.20) });
   }
-  const normalizedCoupon = normalizeCouponCode(couponCode);
   if (normalizedCoupon) {
     const coupon = await getCouponStore(normalizedCoupon);
     if (!coupon || !coupon.active) {
@@ -910,17 +910,24 @@ app.post('/api/client/register', async (req, res) => {
         [clientId, String(endereco.cep).replace(/\D/g, ''), String(endereco.logradouro || ''), String(endereco.numero), String(endereco.complemento || '') || null, String(endereco.bairro || '') || null, String(endereco.cidade || ''), String(endereco.uf || '')]
       );
     }
+    // Gera cupom de boas-vindas 20% para primeira compra
+    const _chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let welcomeCoupon = 'BV';
+    for (let i = 0; i < 6; i++) welcomeCoupon += _chars[Math.floor(Math.random() * _chars.length)];
+    try {
+      await mysqlPool.execute('INSERT INTO lemoov_coupons (code, percent, active) VALUES (?, 20, 1)', [welcomeCoupon]);
+    } catch (_e) { welcomeCoupon = null; }
     if (process.env.SMTP_HOST || process.env.RESEND_API_KEY) {
       const code = String(Math.floor(100000 + Math.random() * 900000));
       const verifyToken = crypto.randomBytes(24).toString('hex');
-      verificationCodes.set(verifyToken, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), code, expiresAt: Date.now() + VERIFY_CODE_TTL_MS });
+      verificationCodes.set(verifyToken, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), code, welcomeCoupon, expiresAt: Date.now() + VERIFY_CODE_TTL_MS });
       await sendVerificationEmail(emailNorm, String(nome).trim(), code).catch((e) => console.error('[verify-email]', e.message));
-      return res.status(201).json({ ok: true, needsVerification: true, verifyToken });
+      return res.status(201).json({ ok: true, needsVerification: true, verifyToken, welcomeCoupon });
     }
     const token = crypto.randomBytes(24).toString('hex');
     clientSessions.set(token, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), createdAt: Date.now() });
     res.setHeader('Set-Cookie', clientSessionCookie(token, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
-    return res.status(201).json({ ok: true, client: { id: clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, '') } });
+    return res.status(201).json({ ok: true, welcomeCoupon, client: { id: clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, '') } });
   } catch (e) {
     console.error('[client/register]', e.message);
     if (e.code === 'ER_DUP_ENTRY') {
@@ -1258,7 +1265,7 @@ app.post('/api/client/verify-email', async (req, res) => {
   const sessionToken = crypto.randomBytes(24).toString('hex');
   clientSessions.set(sessionToken, { clientId: entry.clientId, nome: entry.nome, email: entry.email, telefone: entry.telefone, createdAt: Date.now() });
   res.setHeader('Set-Cookie', clientSessionCookie(sessionToken, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
-  return res.json({ ok: true, client: { id: entry.clientId, nome: entry.nome, email: entry.email } });
+  return res.json({ ok: true, welcomeCoupon: entry.welcomeCoupon || null, client: { id: entry.clientId, nome: entry.nome, email: entry.email } });
 });
 
 app.post('/api/client/forgot-password', async (req, res) => {
