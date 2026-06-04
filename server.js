@@ -5,6 +5,45 @@ const express = require('express');
 const multer = require('multer');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
+
+// Polyfill fetch para Node < 18
+if (typeof fetch === 'undefined') {
+  const https = require('https');
+  const http = require('http');
+  global.fetch = function(url, options = {}) {
+    return new Promise((resolve, reject) => {
+      const u = new URL(url);
+      const lib = u.protocol === 'https:' ? https : http;
+      const body = options.body != null ? String(options.body) : null;
+      const reqOpts = {
+        hostname: u.hostname, port: u.port || (u.protocol === 'https:' ? 443 : 80),
+        path: u.pathname + u.search, method: options.method || 'GET',
+        headers: { ...(options.headers || {}) }
+      };
+      if (body) reqOpts.headers['Content-Length'] = Buffer.byteLength(body);
+      const req = lib.request(reqOpts, (res) => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf8');
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            status: res.statusCode,
+            headers: { get: (h) => res.headers[h.toLowerCase()] },
+            json: () => Promise.resolve(JSON.parse(text)),
+            text: () => Promise.resolve(text)
+          });
+        });
+      });
+      req.on('error', reject);
+      req.setTimeout(20000, () => req.destroy(new Error('fetch timeout')));
+      if (body) req.write(body);
+      req.end();
+    });
+  };
+  console.log('[server] fetch polyfill ativado (Node < 18)');
+}
+
 const app = express();
 
 app.set('trust proxy', 1);
@@ -67,7 +106,7 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 console.log(`[uploads] salvando em: ${UPLOAD_DIR}`);
 const INFINITEPAY_API_URL = process.env.INFINITEPAY_API_URL || 'https://api.checkout.infinitepay.io/links';
-const INFINITEPAY_HANDLE = (process.env.INFINITEPAY_HANDLE || process.env.INFINITYPAY_HANDLE || '').replace(/^\$/, '');
+const INFINITEPAY_HANDLE = (process.env.INFINITEPAY_HANDLE || process.env.INFINITYPAY_HANDLE || '').replace(/^\$/, '').trim();
 const PUBLIC_SITE_URL = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
 
 function requireMysqlStorage() {
@@ -1865,11 +1904,10 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
     console.error('[infinitepay] erro:', e.message, e.stack?.split('\n')[1] || '');
     const isStockError = /Estoque insuficiente|Produto não encontrado|Item esgotado/.test(e?.message || '');
     const isMysqlError = /MYSQL_ENABLED|Banco de dados MySQL/i.test(e?.message || '');
-    const isNetworkError = /ECONNREFUSED|ENOTFOUND|fetch failed|network|timeout/i.test(e?.message || '');
-    let userError = 'Falha ao preparar pagamento.';
-    if (isStockError) userError = e.message;
-    else if (isMysqlError) userError = 'Banco de dados indisponível. Tente novamente.';
-    else if (isNetworkError) userError = 'Não foi possível conectar ao serviço de pagamento. Tente novamente.';
+    const isNetworkError = /ECONNREFUSED|ENOTFOUND|fetch failed|network|timeout|fetch is not defined/i.test(e?.message || '');
+    let userError = e.message || 'Falha ao preparar pagamento.';
+    if (isMysqlError) userError = 'Banco de dados indisponível. Tente novamente.';
+    else if (isNetworkError) userError = 'Não foi possível conectar ao serviço de pagamento. Verifique a configuração do InfinitePay.';
     res.status(isStockError ? 409 : 500).json({ ok: false, error: userError });
   }
 });
@@ -2826,6 +2864,8 @@ initDatabase()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Servidor no ar http://localhost:${PORT} (MySQL)`);
+      console.log(`[config] InfinitePay handle: ${INFINITEPAY_HANDLE ? INFINITEPAY_HANDLE.slice(0,6) + '...' : 'NÃO CONFIGURADO'}`);
+      console.log(`[config] Node.js: ${process.version}`);
     });
   })
   .catch((err) => {
