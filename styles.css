@@ -3017,9 +3017,8 @@ legend {
     padding: 14px 18px;
     color: #0b1f2a;
 }
-/* Quando não logado: esconde apenas opções de endereço e carrier */
+/* Quando não logado: esconde endereço cadastrado e link dos Correios */
 .frete__ui[data-auth="logged-out"] .checkout__link,
-.frete__ui[data-auth="logged-out"] #freteOpcoes,
 .frete__ui[data-auth="logged-out"] #cartAddressSummary {
     display: none !important;
 }

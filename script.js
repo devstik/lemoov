@@ -1258,7 +1258,6 @@ function computeColorPrice(prod, colorObj){
 
   .frete__ui{ order:12; margin:4px 0 0; }
   .frete__ui[data-auth="logged-out"] .checkout__link,
-  .frete__ui[data-auth="logged-out"] #freteOpcoes,
   .frete__ui[data-auth="logged-out"] #cartAddressSummary{ display:none !important; }
   .frete__ui[data-auth="logged-in"] .frete__row,
   .frete__ui[data-auth="logged-in"] .checkout__link{ display:none !important; }
@@ -4037,17 +4036,25 @@ function atualizarCart(){
       freteEl.textContent = "Informe o CEP";
     } else if (freteModo === "uber_free") {
       freteEl.textContent = `Grátis (até ${DELIVERY_FREE_RADIUS_KM} km)`;
-    } else if (["local_12","local_15","local_25","sedex"].includes(freteModo)) {
+    } else if (["local_12","local_15","local_25"].includes(freteModo)) {
       freteEl.textContent = getDeliveryModeLabel(freteModo);
+    } else if (freteAtual > 0) {
+      // Melhor Envio ou Sedex — mostra transportadora + valor
+      const opSel = freteOpcoesCache.find(o => o.modo === freteModo);
+      if (opSel) {
+        freteEl.textContent = `${opSel.servico} – ${formatBRL(freteAtual)}${opSel.prazo ? ` (${opSel.prazo})` : ''}`;
+      } else {
+        freteEl.textContent = getDeliveryModeLabel(freteModo) || formatBRL(freteAtual);
+      }
     } else {
-      freteEl.textContent = "Consultar via WhatsApp";
+      freteEl.textContent = "Selecione a transportadora";
     }
   }
   renderCartDiscountSummary();
 
   const fixedFrete = isFixedFreteMode();
   const totalLabel = !retiradaNaLoja && entregaDisponivel
-    ? (fixedFrete ? formatBRL(totalComFrete) : `${formatBRL(totalComFrete)} + frete`)
+    ? (fixedFrete ? formatBRL(totalComFrete) : formatBRL(totalComFrete))
     : formatBRL(totalComFrete);
   el("#cartTotal").textContent = totalLabel;
   updateCheckoutButtonState();
