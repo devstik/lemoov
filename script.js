@@ -71,6 +71,7 @@ let enderecoAutofill = null;
 let selectedDeliveryAddress = null;
 let currentClientSession = null;
 let originCoordsCache = null;
+let checkoutDiscountState = { cpf: "", cupom: "", discounts: [], discountTotal: 0 };
 const FB_EVENT_MAP = {
   add_to_cart: "AddToCart",
   start_checkout: "InitiateCheckout",
@@ -358,8 +359,23 @@ function getFreteResumoLabel({ includeCep = false } = {}) {
   if (isFixedFreteMode()) return `${getDeliveryModeLabel(freteModo)}${cepInfo}`;
   return `Consultar via WhatsApp${cepInfo}`;
 }
-function buildPaymentItems() {
-  const items = buildCartItems();
+function buildPaymentItems(discountTotal = 0) {
+  const cartItems = buildCartItems();
+  const subtotal = cartItems.reduce((sum, item) => sum + (Number(item.price || item.preco || 0) * Number(item.quantity || item.quantidade || 1)), 0);
+  const discount = Math.min(Math.max(0, Number(discountTotal) || 0), subtotal);
+  let items = cartItems;
+  if (discount > 0 && subtotal > 0) {
+    const targetCents = Math.max(0, Math.round((subtotal - discount) * 100));
+    let allocated = 0;
+    items = cartItems.map((item, idx) => {
+      const qty = Math.max(1, Number(item.quantity || item.quantidade || 1));
+      const line = Number(item.price || item.preco || 0) * qty;
+      let lineCents = Math.round((line / subtotal) * targetCents);
+      if (idx === cartItems.length - 1) lineCents = Math.max(0, targetCents - allocated);
+      allocated += lineCents;
+      return { ...item, quantity: 1, quantidade: 1, price: Math.max(0.01, lineCents / 100) };
+    });
+  }
   if (!retiradaNaLoja && entregaDisponivel && isFixedFreteMode() && freteAtual > 0) {
     items.push({
       item_name: "Frete",
@@ -900,7 +916,7 @@ function normalizeStockSize(size){
 }
 function getStockQtyForSize(cor, size){
   const stock = getColorStock(cor);
-  if (!stock) return null;
+  if (!stock) return 0;
   const key = normalizeStockSize(size);
   const qty = Number(stock[key]);
   return Number.isFinite(qty) ? qty : 0;
@@ -913,7 +929,7 @@ function getStockWarningMessage(stockQty){
 }
 function hasStockForSize(cor, size){
   const qty = getStockQtyForSize(cor, size);
-  return qty === null ? true : qty > 0;
+  return qty > 0;
 }
 function setMainImage(imgEl, colorObj, index = 0){
   if (!imgEl) return false;
@@ -943,14 +959,14 @@ function isVariantSoldOut(prod, colorIndex = 0){
   const cor = (prod && prod.cores) ? prod.cores[colorIndex] : null;
   if (cor && cor.soldOut) return true;
   const stock = getColorStock(cor);
-  if (stock && Object.values(stock).every((qty) => Number(qty) <= 0)) return true;
+  if (!stock || Object.values(stock).every((qty) => Number(qty) <= 0)) return true;
   return false;
 }
 function isProductSoldOut(prod){
   if (!prod) return true;
   if (prod.soldOut) return true;
   const colors = Array.isArray(prod.cores) ? prod.cores : [];
-  if (!colors.length) return false;
+  if (!colors.length) return true;
   const requiresSize = Array.isArray(prod.tamanhos) && prod.tamanhos.length > 0;
   return colors.every((_, idx) => {
     if (isVariantSoldOut(prod, idx)) return true;
@@ -968,7 +984,7 @@ function getAvailableSizesForColor(prod, colorIndex){
     return prod.tamanhos || [];
   })();
   const stock = getColorStock(cor);
-  if (!stock) return baseSizes;
+  if (!stock) return [];
   const stockSizes = Object.keys(stock).filter((size) => Number(stock[size]) > 0);
   if (!baseSizes.length) return stockSizes;
   return baseSizes.filter((size) => hasStockForSize(cor, size));
@@ -1076,7 +1092,7 @@ function computeColorPrice(prod, colorObj){
     top: 0 !important; right: 0 !important; left: auto !important;
     transform: translateX(20px);
     width: min(480px, calc(100vw - 12px));
-    height: 100vh;
+    height: 100dvh;
     max-width: none; max-height: none;
     border-radius: 28px 0 0 28px;
     background: #ffffff;
@@ -1090,7 +1106,7 @@ function computeColorPrice(prod, colorObj){
   }
   #cart.show { opacity: 1; transform: translateX(0); pointer-events: auto; }
   @media (max-width: 640px){
-    #cart{ width:100vw; border-radius:0; border-left:none; border-top:3px solid #009C3B; }
+    #cart{ width:100vw; height:100dvh; border-radius:0; border-left:none; border-top:3px solid #009C3B; }
   }
   @media (min-width: 860px){
     #cart{
@@ -1160,8 +1176,9 @@ function computeColorPrice(prod, colorObj){
   }
   #cart .cart__client i{ color:#009C3B; }
   #cart .cart__client strong{ color:#002776; }
-  #cart .cart__list{ padding: 12px 16px 0; flex: 1; overflow-y: auto; min-height: 0; }
+  #cart .cart__list{ padding: 12px 16px 0; flex: 1 1 180px; overflow-y: auto; min-height: 150px; overscroll-behavior: contain; }
   #cart .cart__item{
+    display:grid; grid-template-columns:64px minmax(0,1fr) auto; align-items:start;
     background: #fafcff;
     border: 1px solid rgba(0,39,118,.08);
     border-radius: 16px;
@@ -1176,6 +1193,8 @@ function computeColorPrice(prod, colorObj){
     overflow: hidden;
   }
   #cart .cart__item-name{ font-size: 0.9rem; font-weight: 700; color: #0a1628; }
+  #cart .cart__item-info{ min-width:0; }
+  #cart .cart__item-actions{ min-width:82px; }
   #cart .cart__item-desc{ display: none; }
   #cart .cart__item-details,
   #cart .cart__item-qty{ color: #5a6a80; font-size: 0.74rem; }
@@ -1206,9 +1225,16 @@ function computeColorPrice(prod, colorObj){
   }
   #cart .cart__remove-btn:hover{ background: rgba(254,202,202,.9); }
   #cart .cart__footer{
+    flex:0 0 auto;
     padding: 14px 16px 20px;
     background: #f8faff;
     border-top: 1px solid rgba(0,39,118,.08);
+  }
+  @media (max-width: 420px){
+    #cart .cart__list{ min-height: 120px; padding-left:12px; padding-right:12px; }
+    #cart .cart__item{ grid-template-columns:56px minmax(0,1fr); gap:10px; }
+    #cart .cart__item-media{ width:56px; height:68px; min-width:56px; }
+    #cart .cart__item-actions{ grid-column:2; flex-direction:row; align-items:center; justify-content:space-between; min-width:0; text-align:left; }
   }
   #cart .cart__total{
     display: flex; justify-content: space-between; align-items: center;
@@ -2758,7 +2784,6 @@ function getCartItemStockQty(item){
 }
 function validateCartItemStock(item, incomingQty = 0){
   const stockQty = getCartItemStockQty(item);
-  if (stockQty === null) return true;
   const requestedQty = getCartQtyForStockKey(getCartStockKey(item)) + Math.max(0, Number(incomingQty) || 0);
   if (requestedQty <= stockQty) return true;
   showAppMessage(getStockWarningMessage(stockQty), { title: "Estoque insuficiente" });
@@ -2772,7 +2797,6 @@ function validateWholeCartStock(){
   }
   for (const item of carrinho) {
     const stockQty = getCartItemStockQty(item);
-    if (stockQty === null) continue;
     const requestedQty = requestedByStockKey.get(getCartStockKey(item)) || 0;
     if (requestedQty > stockQty) {
       showAppMessage(getStockWarningMessage(stockQty), { title: "Estoque insuficiente" });
@@ -4065,6 +4089,60 @@ function formatPhoneForInput(value){
   if (!last) return `(${ddd}) ${first}`;
   return `(${ddd}) ${first}-${last}`;
 }
+function normalizeCpf(value) {
+  return (value || "").toString().replace(/\D/g, "").slice(0, 11);
+}
+function formatCpfForInput(value) {
+  const digits = normalizeCpf(value);
+  if (digits.length > 9) return `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`;
+  if (digits.length > 6) return `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6)}`;
+  if (digits.length > 3) return `${digits.slice(0,3)}.${digits.slice(3)}`;
+  return digits;
+}
+async function validateCheckoutDiscounts({ cpf = "", cupom = "", subtotal = getCartSubtotal() } = {}) {
+  const cleanCpf = normalizeCpf(cpf);
+  const code = String(cupom || "").trim().toUpperCase();
+  const payload = { cpf: cleanCpf, cupom: code, subtotal };
+  const res = await fetch(`${API_BASE}/api/descontos/validar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data?.ok === false) throw new Error(data?.error || "Não foi possível validar o desconto.");
+  checkoutDiscountState = {
+    cpf: cleanCpf,
+    cupom: data.couponCode || code,
+    discounts: Array.isArray(data.discounts) ? data.discounts : [],
+    discountTotal: Number(data.discountTotal) || 0
+  };
+  return checkoutDiscountState;
+}
+function renderCheckoutTotals() {
+  const subtotal = getCartSubtotal();
+  const frete = !retiradaNaLoja && entregaDisponivel ? (freteAtual || 0) : 0;
+  const discount = Math.min(subtotal, Number(checkoutDiscountState.discountTotal) || 0);
+  const total = Math.max(0, subtotal - discount) + frete;
+  const subtotalEl = el("#ckSubtotal");
+  const freteEl = el("#ckFrete");
+  const discountRow = el("#ckDiscountRow");
+  const discountEl = el("#ckDiscount");
+  const totalEl = el("#ckTotal");
+  if (subtotalEl) subtotalEl.textContent = formatBRL(subtotal);
+  if (freteEl) freteEl.textContent = getFreteResumoLabel();
+  if (discountRow && discountEl) {
+    discountRow.style.display = discount > 0 ? "" : "none";
+    const labels = (checkoutDiscountState.discounts || []).map((d) => d.code || d.label).filter(Boolean).join(" + ");
+    discountEl.textContent = discount > 0 ? `-${formatBRL(discount)}${labels ? ` (${labels})` : ""}` : "—";
+  }
+  if (totalEl) {
+    let totalLabel = formatBRL(total);
+    if (!retiradaNaLoja && entregaDisponivel && !isFixedFreteMode()) {
+      totalLabel = `${formatBRL(total)} + frete`;
+    }
+    totalEl.textContent = totalLabel;
+  }
+}
 function computeOrderNumber({ commit } = { commit: false }) {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -4476,12 +4554,13 @@ function openCheckoutModal(){
               Revise antes de gerar o pagamento. O estoque só é baixado quando o pagamento for confirmado.
             </p>
             <div id="checkoutItems" class="checkout__muted" style="margin-top:6px;"></div>
-            <div class="checkout__totals">
-              <div>Pedido <strong id="ckPedido">—</strong></div>
-              <div>Produtos <strong id="ckSubtotal">—</strong></div>
-              <div>Frete <strong id="ckFrete">—</strong></div>
-              <div>Total <strong id="ckTotal">—</strong></div>
-            </div>
+              <div class="checkout__totals">
+                <div>Pedido <strong id="ckPedido">—</strong></div>
+                <div>Produtos <strong id="ckSubtotal">—</strong></div>
+                <div id="ckDiscountRow" style="display:none;">Desconto <strong id="ckDiscount">—</strong></div>
+                <div>Frete <strong id="ckFrete">—</strong></div>
+                <div>Total <strong id="ckTotal">—</strong></div>
+              </div>
             <div class="checkout__note" id="checkoutFreteNote"></div>
           </div>
 
@@ -4523,6 +4602,20 @@ function openCheckoutModal(){
                   placeholder="seuemail@exemplo.com">
               </div>
               <div class="full">
+                <label class="checkout__label">CPF *</label>
+                <input required name="cpf" class="checkout__input" inputmode="numeric" autocomplete="off"
+                  placeholder="000.000.000-00">
+              </div>
+              <div class="full">
+                <label class="checkout__label">Cupom de desconto</label>
+                <div class="checkout__row checkout__row--stack">
+                  <input name="cupom" class="checkout__input" id="ckCupom"
+                    placeholder="Digite seu cupom">
+                  <button type="button" class="btn btn--ghost checkout__cepBtn" id="btnApplyDiscount">Aplicar desconto</button>
+                </div>
+                <p class="checkout__status" id="checkoutDiscountMsg" data-status="info">Primeira compra vinculada ao CPF recebe 20% automaticamente.</p>
+              </div>
+              <div class="full">
                 <label class="checkout__label">CEP (opcional)</label>
                 <div class="checkout__row checkout__row--stack">
                   <input name="cep" class="checkout__input" id="ckCep"
@@ -4537,7 +4630,7 @@ function openCheckoutModal(){
               <div class="full">
                 <strong>2. Pagamento via InfinitePay</strong>
                 <p class="checkout__muted" style="margin:4px 0 0;">
-                  Você será redirecionado para o ambiente seguro da InfinitePay. Endereço, CPF e dados do cartão são preenchidos lá.
+                  Você será redirecionado para o ambiente seguro da InfinitePay. Endereço e dados do cartão são preenchidos lá.
                 </p>
               </div>
               <input type="hidden" name="pagamento" value="online" />
@@ -4596,6 +4689,42 @@ function openCheckoutModal(){
       telefoneInput._lemoovMask = true;
       telefoneInput.addEventListener("input", () => {
         telefoneInput.value = formatPhoneForInput(telefoneInput.value);
+      });
+    }
+    const cpfInput = dlg.querySelector('input[name="cpf"]');
+    if (cpfInput && !cpfInput._lemoovMask) {
+      cpfInput._lemoovMask = true;
+      cpfInput.addEventListener("input", () => {
+        cpfInput.value = formatCpfForInput(cpfInput.value);
+      });
+    }
+    const applyDiscountBtn = dlg.querySelector("#btnApplyDiscount");
+    if (applyDiscountBtn && !applyDiscountBtn._lemoovClick) {
+      applyDiscountBtn._lemoovClick = true;
+      applyDiscountBtn.addEventListener("click", async () => {
+        const msg = dlg.querySelector("#checkoutDiscountMsg");
+        try {
+          applyDiscountBtn.disabled = true;
+          applyDiscountBtn.textContent = "Validando...";
+          await validateCheckoutDiscounts({
+            cpf: dlg.querySelector('input[name="cpf"]')?.value || "",
+            cupom: dlg.querySelector('input[name="cupom"]')?.value || "",
+            subtotal: getCartSubtotal()
+          });
+          renderCheckoutTotals();
+          if (msg) {
+            const count = checkoutDiscountState.discounts.length;
+            msg.textContent = count ? "Desconto aplicado ao pedido." : "Nenhum desconto disponível para este CPF/cupom.";
+            msg.dataset.status = count ? "ok" : "info";
+          }
+        } catch (err) {
+          checkoutDiscountState = { cpf: "", cupom: "", discounts: [], discountTotal: 0 };
+          renderCheckoutTotals();
+          if (msg) { msg.textContent = err.message; msg.dataset.status = "warn"; }
+        } finally {
+          applyDiscountBtn.disabled = false;
+          applyDiscountBtn.textContent = "Aplicar desconto";
+        }
       });
     }
 
@@ -4687,11 +4816,11 @@ function openCheckoutModal(){
   const previewOrder = peekNextOrderNumber();
   const pedidoEl = el("#ckPedido");
   if (pedidoEl) pedidoEl.textContent = previewOrder || "—";
+  checkoutDiscountState = { cpf: "", cupom: "", discounts: [], discountTotal: 0 };
 
   // Preencher resumo
   const itemsDiv = el("#checkoutItems");
   const subtotal = getCartSubtotal();
-  const total = subtotal + (!retiradaNaLoja && entregaDisponivel ? (freteAtual||0) : 0);
   itemsDiv.innerHTML = carrinho.map((p,i)=>{
     const qty = getItemQty(p);
     const lineTotal = getItemLineTotal(p);
@@ -4704,16 +4833,9 @@ function openCheckoutModal(){
     return `${i+1}. ${qty}x ${det} — ${formatBRL(lineTotal)}`;
   }).join("<br>");
 
-  el("#ckSubtotal").textContent = formatBRL(subtotal);
-  el("#ckFrete").textContent = getFreteResumoLabel();
+  renderCheckoutTotals();
   const freteVia = el("#ckFreteVia");
   if (freteVia) freteVia.textContent = "";
-  const fixedFrete2 = isFixedFreteMode();
-  let totalLabel = formatBRL(total);
-  if (!retiradaNaLoja && entregaDisponivel) {
-    totalLabel = fixedFrete2 ? formatBRL(total) : `${formatBRL(total)} + frete`;
-  }
-  el("#ckTotal").textContent = totalLabel;
   const freteNote = el("#checkoutFreteNote");
   if (freteNote) {
     if (retiradaNaLoja) {
@@ -5019,9 +5141,8 @@ async function handleSubmitCheckout(ev){
   const form = ev.currentTarget;
   const btn = el("#btnEnviarPedido");
   const subtotalCompra = getCartSubtotal();
-  const totalCompra = subtotalCompra + (!retiradaNaLoja && entregaDisponivel ? (freteAtual||0) : 0);
+  const taxaFrete = !retiradaNaLoja && entregaDisponivel ? (freteAtual || 0) : 0;
   const purchaseItems = buildCartItems();
-  const paymentItems = buildPaymentItems();
   if (btn) {
     btn.disabled = true; btn.textContent = "Gerando pagamento...";
   }
@@ -5032,6 +5153,7 @@ async function handleSubmitCheckout(ev){
       nome: (fdUI.get("nome") || currentClientSession?.nome || "").toString().trim(),
       telefone: formatPhoneForInput((fdUI.get("telefone") || "").toString()),
       email: (fdUI.get("email") || currentClientSession?.email || "").toString().trim(),
+      cpf: normalizeCpf((fdUI.get("cpf") || "").toString()),
     };
     const _sda = selectedDeliveryAddress;
     const endereco = {
@@ -5047,6 +5169,7 @@ async function handleSubmitCheckout(ev){
 
     const faltantes = [];
     if (!cliente.nome) faltantes.push("nome completo");
+    if (!cliente.cpf || cliente.cpf.length !== 11) faltantes.push("CPF");
     if (!retiradaNaLoja) {
       if (!endereco.cep || endereco.cep.length !== 8) faltantes.push("CEP");
       if (!endereco.rua) faltantes.push("rua");
@@ -5060,6 +5183,15 @@ async function handleSubmitCheckout(ev){
     if (faltantes.length) {
       throw new Error("Preencha: " + faltantes.join(", ") + ".");
     }
+    const discountState = await validateCheckoutDiscounts({
+      cpf: cliente.cpf,
+      cupom: (fdUI.get("cupom") || "").toString(),
+      subtotal: subtotalCompra
+    });
+    renderCheckoutTotals();
+    const descontoCompra = Math.min(subtotalCompra, Number(discountState.discountTotal) || 0);
+    const totalCompra = Math.max(0, subtotalCompra - descontoCompra) + taxaFrete;
+    const paymentItems = buildPaymentItems(descontoCompra);
 
     const visitorRegion = getVisitorRegion();
     const numeroPedidoSugerido = getNextOrderNumber();
@@ -5075,6 +5207,12 @@ async function handleSubmitCheckout(ev){
       pedido: numeroPedidoSugerido,
       status: "reservado",
       total: totalCompra,
+      subtotal: subtotalCompra,
+      taxa: taxaFrete,
+      desconto: descontoCompra,
+      descontos: discountState.discounts,
+      cupom: discountState.cupom || "",
+      cliente_cpf: cliente.cpf,
       currency: "BRL",
       item_count: purchaseItems.length,
       itens: purchaseItems,
@@ -5095,6 +5233,7 @@ async function handleSubmitCheckout(ev){
       cliente_nome: cliente.nome || "",
       cliente_telefone: cliente.telefone || "",
       cliente_email: cliente.email || "",
+      cpf: cliente.cpf,
       numero: endereco.numero || "",
       complemento: endereco.complemento || "",
       ...(currentClientSession ? { client_id: currentClientSession.id } : {}),
@@ -5103,6 +5242,7 @@ async function handleSubmitCheckout(ev){
         nome:        cliente.nome || "",
         telefone:    cliente.telefone || "",
         email:       cliente.email || "",
+        cpf:         cliente.cpf || "",
         cep:         endereco.cep || "",
         cidade:      endereco.cidade || "",
         uf:          endereco.uf || "",
@@ -5116,6 +5256,10 @@ async function handleSubmitCheckout(ev){
       pedido: numeroPedidoSugerido,
       metodo: pagamento,
       total: totalCompra,
+      subtotal: subtotalCompra,
+      taxa: taxaFrete,
+      desconto: descontoCompra,
+      cupom: discountState.cupom || "",
       currency: "BRL",
       cliente,
       endereco,

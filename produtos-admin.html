@@ -282,6 +282,7 @@
     <button class="tab-btn active" data-tab="produtos">Produtos</button>
     <button class="tab-btn" data-tab="estoque">Estoque</button>
     <button class="tab-btn" data-tab="pedidos">Pedidos</button>
+    <button class="tab-btn" data-tab="cupons">Cupons</button>
     <button class="tab-btn" data-tab="relatorio">Relatório</button>
     <button class="tab-btn" data-tab="crm">CRM</button>
   </nav>
@@ -320,7 +321,7 @@
       <div>
         <div class="screen-kicker">Operação de estoque</div>
         <h1 class="screen-title">Consulta e movimentação de estoque</h1>
-        <p class="screen-copy">Pesquise produtos, acompanhe saldo por item e registre entradas. As saídas acontecem quando a venda é confirmada no checkout ou criada como pedido efetivo no admin.</p>
+        <p class="screen-copy">Pesquise produtos, registre entradas de mercadorias, aplique inventário e acompanhe o saldo final por movimentação. As saídas acontecem quando a venda é confirmada no checkout ou criada como pedido efetivo no admin.</p>
       </div>
     </div>
     <div class="quick-stats" id="stockSummary"></div>
@@ -343,7 +344,7 @@
         </div>
       </div>
       <div class="card stock-card stock-card--entry">
-        <div class="card-head"><h2>Entrada de estoque</h2><span class="stock-head-sub">Soma ao saldo atual</span></div>
+        <div class="card-head"><h2>Operação de estoque</h2><span class="stock-head-sub">Entrada soma, inventário ajusta saldo final</span></div>
         <div class="card-body">
           <div id="estoqueNotice" class="notice"></div>
           <div class="fg">
@@ -355,9 +356,11 @@
             <select class="fc" id="estoq_cor"><option value="">— Selecione o produto —</option></select>
           </div>
           <div id="estoq_sizes"></div>
-          <div style="margin-top:16px">
+          <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn--primary" id="btnEntrada">Registrar entrada</button>
+            <button class="btn btn--secondary" id="btnInventario">Aplicar inventário</button>
           </div>
+          <div style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.45">Entrada adiciona ao saldo atual. Inventário considera os campos preenchidos como contagem final e registra ajuste maior ou menor.</div>
         </div>
       </div>
       <div class="card stock-card stock-card--movement">
@@ -398,7 +401,7 @@
       <div style="overflow-x:auto">
         <table class="orders-tbl">
           <thead><tr>
-            <th>Pedido</th><th>Cliente</th><th>Origem</th><th>Status</th><th>Itens</th><th>Total</th><th>Data</th>
+            <th>Pedido</th><th>Cliente</th><th>Origem</th><th>Cupom</th><th>Status</th><th>Itens</th><th>Total</th><th>Data</th>
           </tr></thead>
           <tbody id="ordersBody"></tbody>
         </table>
@@ -406,6 +409,23 @@
     </div>
     <div class="card orders-detail" id="orderSide">
       <div class="form-empty">Clique em um pedido para ver detalhes<br>ou crie um novo.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CUPONS ───────────────────────────────────── -->
+<div id="tab-cupons" class="tab-panel">
+  <div class="screen-hero">
+    <div>
+      <div class="screen-kicker">Campanhas comerciais</div>
+      <h1 class="screen-title">Cupons de desconto</h1>
+      <p class="screen-copy">Cadastre códigos, altere percentuais e ative ou desative campanhas sem mexer em pedidos ou produtos.</p>
+    </div>
+  </div>
+  <div class="card" id="couponPanel">
+    <div class="card-head"><h2>Gestão de cupons</h2><span style="font-size:12px;color:#64748b">Cadastro salvo no banco</span></div>
+    <div class="card-body" id="couponPanelBody">
+      <div class="form-empty">Carregando cupons...</div>
     </div>
   </div>
 </div>
@@ -486,6 +506,9 @@ function fmtR(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',c
 function fmtD(iso){ if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) }
 function sLabel(s){ return ({reservado:'Reservado',confirmado:'Confirmado',enviado:'Enviado',entregue:'Entregue',cancelado:'Cancelado'})[s]||s||'Reservado' }
 function sPill(s){ return `<span class="status-pill s-${s||'reservado'}">${sLabel(s)}</span>` }
+function normalizeCouponCode(v){return String(v||'').trim().toUpperCase().replace(/\s+/g,'')}
+function orderCoupon(p){return normalizeCouponCode(p?.cupom||p?.couponCode||p?.pedidoPayload?.cupom||'')}
+function orderDiscount(p){return Number(p?.desconto||p?.discountTotal||p?.pedidoPayload?.desconto||0)||0}
 function origemLabel(o){
   const key=String(o||'').trim().toLowerCase();
   return ({ecommerce:'Ecommerce',admin:'Admin',whatsapp:'WhatsApp',instagram:'Instagram','loja_fisica':'Loja física',telefone:'Telefone',outro:'Outro'})[key]||o||'—';
@@ -583,7 +606,7 @@ function showNotice(_el,msg,type='success'){toast(msg,type)}
 function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
-let produtos=[], pedidos=[], stockMovimentos=[], activeProdId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', relDateStart='', relDateEnd='';
+let produtos=[], pedidos=[], cupons=[], stockMovimentos=[], activeProdId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', relDateStart='', relDateEnd='';
 let colorCounter=0, newOrderItems=[], prodListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
@@ -593,7 +616,8 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   $$('.tab-panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   $(`tab-${tab}`).classList.add('active');
-  if(tab==='pedidos') loadPedidos();
+  if(tab==='pedidos') { loadCupons(); loadPedidos(); }
+  if(tab==='cupons') loadCupons();
   if(tab==='estoque') refreshStockScreen();
   if(tab==='relatorio') loadRelatorio();
 }));
@@ -788,9 +812,9 @@ function addColorRow(cor={}){
       <div class="fg"><label class="fl">Preço promo desta cor (R$)</label><input class="fc" type="number" step="0.01" min="0" data-cpp placeholder="Opcional" /></div>
     </div>
     <div class="fg">
-      <label class="fl">Estoque por tamanho</label>
-      <input class="fc" data-ck placeholder="P: 5, M: 3, G: 0" />
-      <div style="font-size:11px;color:#64748b;margin-top:3px">Formato tamanho: quantidade. Ex: P: 5, M: 3</div>
+      <label class="fl">Saldo atual por tamanho</label>
+      <input class="fc" data-ck readonly placeholder="Gerenciado na aba Estoque" />
+      <div style="font-size:11px;color:#64748b;margin-top:3px">Campo apenas consultivo. Faça entradas, inventário e ajustes na aba Estoque.</div>
     </div>
     <div class="color-images">
       ${[['1','Principal'],['2','Foto 2'],['3','Foto 3']].map(([idx,lbl])=>`
@@ -1156,8 +1180,10 @@ function renderStockProductResults(){
 function movementLabel(m){
   if(m.reason==='saldo_inicial') return 'Saldo inicial';
   if(m.reason==='entrada_manual') return 'Entrada manual';
+  if(m.reason==='inventario') return 'Inventário';
   if(m.reason==='devolucao') return 'Devolução ao estoque';
   if(m.reason==='venda') return 'Venda efetiva';
+  if(m.type==='ajuste') return 'Ajuste';
   return m.type==='saida'?'Saída':'Entrada';
 }
 
@@ -1166,11 +1192,13 @@ function renderStockMovements(){
   if(!el) return;
   const rows=[...stockMovimentos].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,80);
   el.innerHTML=rows.length?`<div class="stock-ledger">${rows.map(m=>{
-    const isOut=m.type==='saida';
-    const qty=(isOut?'-':'+')+(Number(m.quantity)||0);
+    const quantity=Number(m.quantity)||0;
+    const isOut=m.type==='saida'||quantity<0;
+    const isAdjust=m.type==='ajuste';
+    const qty=(quantity<0?'':'+')+quantity;
     const ref=m.orderNumber?` · Pedido #${esc(String(m.orderNumber))}`:'';
     return `<div class="stock-move">
-      <div class="stock-move__type ${isOut?'out':'in'}">${isOut?'−':'+'}</div>
+      <div class="stock-move__type ${isOut?'out':'in'}">${isAdjust?'±':(isOut?'−':'+')}</div>
       <div>
         <div class="stock-move__name">${esc(m.productName||'Produto')}</div>
         <div class="stock-move__meta">${movementLabel(m)}${ref} · ${esc(m.colorName||'Variação')} · ${esc(m.size||'UNICO')} · ${fmtD(m.createdAt)}</div>
@@ -1186,19 +1214,19 @@ function renderSizes(prod,ci){
   const base=Array.isArray(c?.tamanhos)&&c.tamanhos.length?c.tamanhos:(Array.isArray(prod?.tamanhos)&&prod.tamanhos.length?prod.tamanhos:['P','M','G','GG']);
   const all=Array.from(new Set([...base,...Object.keys(e)]));
   $('estoq_sizes').innerHTML=`
-    <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">Quantidades a adicionar por tamanho:</div>
+    <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">Informe quantidades por tamanho:</div>
     <div class="size-grid">
       ${all.map(s=>`<div class="size-slot">
         <div class="size-current">Atual: ${Number(e[s])||0}</div>
         <label class="fl">${s}</label>
-        <input type="number" class="fc" min="0" value="0" data-sz="${esc(s)}" />
+        <input type="number" class="fc" min="0" placeholder="0" data-sz="${esc(s)}" />
       </div>`).join('')}
     </div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px dashed #e2e8f0">
       <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">Adicionar tamanho não listado:</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <div><label class="fl">Tamanho</label><input class="fc" style="width:110px" id="estoq_new_sz" placeholder="XG, UNICO…" /></div>
-        <div><label class="fl">Quantidade</label><input type="number" class="fc" style="width:110px" min="0" value="0" id="estoq_new_qty" /></div>
+        <div><label class="fl">Quantidade</label><input type="number" class="fc" style="width:110px" min="0" placeholder="0" id="estoq_new_qty" /></div>
       </div>
     </div>`;
 }
@@ -1226,6 +1254,33 @@ $('btnEntrada').addEventListener('click',async()=>{
   }catch(e){ showNotice($('estoqueNotice'),'Erro: '+e.message,'error') }
 });
 
+$('btnInventario').addEventListener('click',async()=>{
+  const prodId=$('estoq_prod').value, ci=Number($('estoq_cor').value)||0;
+  if(!prodId){showNotice($('estoqueNotice'),'Selecione um produto.','error');return}
+  const contagem={};
+  $$('#estoq_sizes [data-sz]').forEach(inp=>{
+    if(String(inp.value).trim()==='') return;
+    contagem[inp.dataset.sz]=Math.max(0,Number(inp.value)||0);
+  });
+  const newSz=($('estoq_new_sz')?.value||'').trim().toUpperCase();
+  const newRaw=String($('estoq_new_qty')?.value||'').trim();
+  if(newSz&&newRaw!=='') contagem[newSz]=Math.max(0,Number(newRaw)||0);
+  if(!Object.keys(contagem).length){showNotice($('estoqueNotice'),'Preencha ao menos uma contagem final para inventário.','error');return}
+  if(!confirm('Aplicar inventário? Os campos preenchidos serão tratados como saldo final contado.')) return;
+  try{
+    const r=await fetch('/api/admin/inventario-estoque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({produtoId:Number(prodId),corIndex:ci,contagem})});
+    if(r.status===401){redirect401();return}
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||'Falha');
+    showNotice($('estoqueNotice'),`Inventário aplicado. ${d.movements||0} ajuste${d.movements===1?'':'s'} registrado${d.movements===1?'':'s'}.`,'success');
+    await loadProdutos();
+    await loadStockMovements();
+    const p=produtos.find(p=>String(p.id)===prodId);
+    if(p) renderSizes(p,ci);
+    renderStockPreview();
+  }catch(e){ showNotice($('estoqueNotice'),'Erro: '+e.message,'error') }
+});
+
 // ═══════════════════════════════════════════════════════════
 // PEDIDOS
 // ═══════════════════════════════════════════════════════════
@@ -1238,6 +1293,86 @@ async function loadPedidos(){
     pedidos.sort((a,b)=>new Date(b.recebidoEm||0)-new Date(a.recebidoEm||0));
     renderOrdersTable();
   }catch(e){console.error(e)}
+}
+
+async function loadCupons(){
+  try{
+    const r=await fetch('/api/admin/cupons');
+    if(r.status===401){redirect401();return}
+    if(!r.ok) return;
+    cupons=await r.json();
+    renderCouponsPanel();
+  }catch(e){console.error(e)}
+}
+
+function renderCouponsPanel(){
+  const body=$('couponPanelBody');
+  if(!body) return;
+  body.innerHTML=`
+    <div class="frow" style="align-items:end">
+      <div class="fg"><label class="fl">Código</label><input class="fc" id="cp_code" placeholder="EX.: PRIMEIRA20" style="text-transform:uppercase"></div>
+      <div class="fg"><label class="fl">Percentual (%)</label><input class="fc" id="cp_percent" type="number" min="0.01" max="100" step="0.01" placeholder="10"></div>
+      <div class="fg"><label class="fl">Status</label><select class="fc" id="cp_active"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
+      <button class="btn btn--primary btn--sm" id="btnSaveCoupon" type="button">Salvar cupom</button>
+    </div>
+    <div style="margin-top:14px;overflow-x:auto">
+      <table class="orders-tbl">
+        <thead><tr><th>Cupom</th><th>Desconto</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody>
+          ${cupons.length?cupons.map(c=>`<tr>
+            <td><strong>${esc(c.code)}</strong></td>
+            <td>${Number(c.percent||0).toLocaleString('pt-BR')}%</td>
+            <td>${c.active?'Ativo':'Inativo'}</td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn--secondary btn--sm" data-edit-coupon="${esc(c.code)}" type="button">Editar</button>
+              <button class="btn btn--ghost btn--sm" data-toggle-coupon="${esc(c.code)}" type="button">${c.active?'Desativar':'Ativar'}</button>
+              <button class="btn btn--danger btn--sm" data-del-coupon="${esc(c.code)}" type="button">Excluir</button>
+            </td>
+          </tr>`).join(''):`<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:18px">Nenhum cupom cadastrado.</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+  $('btnSaveCoupon')?.addEventListener('click',async()=>{
+    const code=normalizeCouponCode($('cp_code')?.value);
+    const percent=Number($('cp_percent')?.value);
+    const active=$('cp_active')?.value!=='0';
+    try{
+      const r=await fetch('/api/admin/cupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,percent,active})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao salvar cupom');
+      toast('Cupom salvo','success');
+      await loadCupons();
+    }catch(e){toast(e.message,'error')}
+  });
+  $$('[data-edit-coupon]').forEach(btn=>btn.addEventListener('click',()=>{
+    const item=cupons.find(c=>normalizeCouponCode(c.code)===normalizeCouponCode(btn.dataset.editCoupon));
+    if(!item) return;
+    $('cp_code').value=item.code;
+    $('cp_percent').value=Number(item.percent)||0;
+    $('cp_active').value=item.active?'1':'0';
+    $('cp_code').focus();
+  }));
+  $$('[data-toggle-coupon]').forEach(btn=>btn.addEventListener('click',async()=>{
+    const item=cupons.find(c=>normalizeCouponCode(c.code)===normalizeCouponCode(btn.dataset.toggleCoupon));
+    if(!item) return;
+    try{
+      const r=await fetch('/api/admin/cupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:item.code,percent:Number(item.percent)||0,active:!item.active})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao atualizar cupom');
+      toast(item.active?'Cupom desativado':'Cupom ativado','success');
+      await loadCupons();
+    }catch(e){toast(e.message,'error')}
+  }));
+  $$('[data-del-coupon]').forEach(btn=>btn.addEventListener('click',async()=>{
+    if(!confirm(`Excluir cupom ${btn.dataset.delCoupon}?`)) return;
+    try{
+      const r=await fetch(`/api/admin/cupons/${encodeURIComponent(btn.dataset.delCoupon)}`,{method:'DELETE'});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao excluir cupom');
+      toast('Cupom excluído','success');
+      await loadCupons();
+    }catch(e){toast(e.message,'error')}
+  }));
 }
 
 function filteredPedidos(){
@@ -1271,15 +1406,17 @@ function renderOrdersTable(){
   renderOrdersKpis();
   $('ordersCount').textContent=`${rows.length} pedido${rows.length!==1?'s':''}`;
   $('ordersBody').innerHTML=rows.length===0
-    ?`<tr><td colspan="7" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
+    ?`<tr><td colspan="8" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
     :rows.map(p=>{
 	      const nome=p.cliente?.nome||p.nome||'—';
 	      const itens=orderItems(p).length||'—';
 	      const cancelPending=p.cancellation_requested&&String(p.cancellation_request_status||'pendente')==='pendente';
+	      const cupom=orderCoupon(p);
 	      return `<tr data-num="${esc(String(p.pedido))}" class="${String(p.pedido)===String(activePedNum)?'selected':''}">
 	        <td><strong>#${esc(String(p.pedido))}</strong>${cancelPending?'<span class="cancel-dot">Cancelamento</span>':''}</td>
 	        <td>${esc(nome)}</td>
         <td style="color:#64748b;font-size:12px">${esc(origemLabel(p.origem))}</td>
+        <td style="color:#64748b;font-size:12px">${cupom?`<strong>${esc(cupom)}</strong>`:'—'}</td>
         <td>${sPill(p.status)}</td>
         <td>${itens}</td>
         <td style="font-weight:700;white-space:nowrap">${fmtR(p.total||0)}</td>
@@ -1374,11 +1511,13 @@ function renderOrderDetail(ped){
             <div style="color:#64748b">Qtd: ${it.quantidade} · Unit.: ${fmtR(it.precoUnitario)} · Linha: ${fmtR(it.precoUnitario*it.quantidade)}</div>
           </div>`).join('')}
           <div style="text-align:right;font-weight:700;margin-top:8px">Itens: ${fmtR(total)}</div>
+          ${orderDiscount(ped)>0?`<div style="text-align:right;color:#0f766e;font-size:12px">Desconto${orderCoupon(ped)?` (${esc(orderCoupon(ped))})`:''}: -${fmtR(orderDiscount(ped))}</div>`:''}
           ${Number(ped.taxa)>0?`<div style="text-align:right;color:#64748b;font-size:12px">Taxa/Frete: ${fmtR(ped.taxa)}</div>`:''}
           ${Number(ped.total)>0?`<div style="text-align:right;font-weight:800;margin-top:4px">Total pedido: ${fmtR(ped.total)}</div>`:''}
         </div>`:''}
       ${ped.pagamento?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Pagamento: ${esc(ped.pagamento)}</div>`:''}
       <div style="font-size:12px;color:#64748b;margin-bottom:4px">Origem: ${esc(origemLabel(ped.origem))}</div>
+      ${orderCoupon(ped)?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Cupom usado: ${esc(orderCoupon(ped))}</div>`:''}
       ${ped.pagamento_status?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Status pagamento: ${esc(ped.pagamento_status)}</div>`:''}
       ${ped.frete_modo?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Entrega: ${esc(ped.frete_modo)}</div>`:''}
       ${ped.obs?`<div style="font-size:12px;color:#64748b;margin-bottom:12px">Obs: ${esc(ped.obs)}</div>`:''}
@@ -1481,6 +1620,20 @@ function renderNewOrderForm(){
             <label style="color:#64748b">Taxa / frete (R$)</label>
             <input type="number" id="np_taxa" step="0.01" value="0" style="width:90px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;text-align:right;font-family:inherit" />
           </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px">
+            <label style="color:#64748b">Desconto manual (R$)</label>
+            <input type="number" id="np_desconto" step="0.01" min="0" value="0" style="width:90px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;text-align:right;font-family:inherit" />
+          </div>
+          <div class="fg" style="margin-bottom:8px">
+            <label class="fl">Cupom</label>
+            <select class="fc" id="np_cupom">
+              <option value="">— Sem cupom —</option>
+              ${cupons.filter(c=>c.active).map(c=>`<option value="${esc(c.code)}" data-percent="${Number(c.percent)||0}">${esc(c.code)} · ${Number(c.percent||0).toLocaleString('pt-BR')}%</option>`).join('')}
+            </select>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;color:#0f766e">
+            <span>Descontos aplicados</span><span id="np_discount_total" style="font-weight:600">R$ 0,00</span>
+          </div>
           <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding-top:10px;border-top:1px solid #f1f5f9">
             <span>Total</span><span id="np_total">R$ 0,00</span>
           </div>
@@ -1513,8 +1666,14 @@ function renderNewOrderForm(){
   function updateTotals(){
     const sub=newOrderItems.reduce((s,it)=>s+it.precoUnitario*it.quantidade,0);
     const taxa=Number($('np_taxa')?.value)||0;
+    const manual=Math.max(0,Number($('np_desconto')?.value)||0);
+    const couponOption=$('np_cupom')?.selectedOptions?.[0];
+    const couponPercent=Number(couponOption?.dataset?.percent)||0;
+    const couponDiscount=sub*(couponPercent/100);
+    const discount=Math.min(sub,manual+couponDiscount);
     $('np_subtotal').textContent=fmtR(sub);
-    $('np_total').textContent=fmtR(sub+taxa);
+    $('np_discount_total').textContent=discount>0?`-${fmtR(discount)}`:fmtR(0);
+    $('np_total').textContent=fmtR(Math.max(0,sub-discount)+taxa);
   }
   function renderNpItems(){
     $('npItemsList').innerHTML=newOrderItems.length===0
@@ -1542,6 +1701,8 @@ function renderNewOrderForm(){
     if(p) fillSzSelect(p,Number($('np_cor').value)||0);
   });
   $('np_taxa').addEventListener('input',updateTotals);
+  $('np_desconto').addEventListener('input',updateTotals);
+  $('np_cupom').addEventListener('change',updateTotals);
 
   $('np_addItem').addEventListener('click',()=>{
     const prodId=$('np_prod').value;
@@ -1563,6 +1724,12 @@ function renderNewOrderForm(){
     if(!nome){showNotice($('npNotice'),'Informe o nome do cliente.','error');return}
     const sub=newOrderItems.reduce((s,it)=>s+it.precoUnitario*it.quantidade,0);
     const taxa=Number($('np_taxa')?.value)||0;
+    const descontoManual=Math.max(0,Number($('np_desconto')?.value)||0);
+    const cupom=normalizeCouponCode($('np_cupom')?.value);
+    const cupomItem=cupons.find(c=>normalizeCouponCode(c.code)===cupom);
+    const cupomPercentual=cupomItem?Number(cupomItem.percent)||0:0;
+    const descontoCupom=sub*(cupomPercentual/100);
+    const desconto=Math.min(sub,descontoManual+descontoCupom);
     const body={
       cliente:{nome,telefone:($('np_tel').value||'').trim(),email:($('np_email').value||'').trim(),
                 endereco:($('np_end').value||'').trim(),cidade:($('np_cidade').value||'').trim(),uf:($('np_uf').value||'').trim().toUpperCase()},
@@ -1570,7 +1737,12 @@ function renderNewOrderForm(){
       obs:($('np_obs').value||'').trim(),
       itens:newOrderItems,
       itensEstoque:newOrderItems.map(it=>({productId:it.productId,colorIndex:it.colorIndex,tamanhoSelecionado:it.tamanhoSelecionado,quantidade:it.quantidade,nome:it.nome})),
-      subtotal:sub, taxa, total:sub+taxa
+      subtotal:sub, taxa, desconto, descontoManual, cupom, cupomPercentual,
+      descontos:[
+        ...(descontoManual>0?[{type:'manual',label:'Desconto manual',amount:descontoManual}]:[]),
+        ...(cupom&&descontoCupom>0?[{type:'coupon',label:`Cupom ${cupom}`,code:cupom,percent:cupomPercentual,amount:descontoCupom}]:[])
+      ],
+      total:Math.max(0,sub-desconto)+taxa
     };
     try{
       const r=await fetch('/api/admin/pedido',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -1587,7 +1759,8 @@ function renderNewOrderForm(){
   renderNpItems();
 }
 
-$('btnNovoPedido').addEventListener('click',()=>{
+$('btnNovoPedido').addEventListener('click',async()=>{
+  if(!cupons.length) await loadCupons();
   $('modalOv').style.display='flex';
   renderNewOrderForm();
 });
@@ -1731,6 +1904,7 @@ if(btnRelClear){
 // ── Init ─────────────────────────────────────────────────────
 renderToneOptions();
 loadProdutos();
+loadCupons();
 
 // ── CRM ──────────────────────────────────────────────────────
 let crmDays = 30;

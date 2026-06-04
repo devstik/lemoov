@@ -27,9 +27,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const DB_PATH = path.join(__dirname, 'data', 'pedidos.json');
-const PENDING_PAYMENTS_PATH = path.join(__dirname, 'data', 'pagamentos-pendentes.json');
-const CRM_PATH = path.join(__dirname, 'data', 'crm-sessions.json');
 const PROD_PATH = path.join(__dirname, 'data', 'produtos.json');
 const ADMIN_USER = process.env.REPORT_USER || 'lemoov';
 const ADMIN_PASS = process.env.REPORT_PASS || 'L3moov@';
@@ -60,11 +57,6 @@ const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const verificationCodes = new Map();
 const VERIFY_CODE_TTL_MS = 15 * 60 * 1000;
 
-// garante arquivo
-if (!fs.existsSync(DB_PATH)) fs.writeFileSync(DB_PATH, '[]', 'utf-8');
-if (!fs.existsSync(PENDING_PAYMENTS_PATH)) fs.writeFileSync(PENDING_PAYMENTS_PATH, '[]', 'utf-8');
-if (!fs.existsSync(PROD_PATH)) fs.writeFileSync(PROD_PATH, '[]', 'utf-8');
-if (!fs.existsSync(CRM_PATH)) fs.writeFileSync(CRM_PATH, '[]', 'utf-8');
 const IMAGE_DIR = path.join(__dirname, 'image');
 if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
 const UPLOAD_PUBLIC_PREFIX = (process.env.UPLOAD_PUBLIC_PREFIX || 'uploads').replace(/^\/+|\/+$/g, '');
@@ -79,20 +71,6 @@ const INFINITEPAY_API_URL = process.env.INFINITEPAY_API_URL || 'https://api.chec
 const INFINITEPAY_HANDLE = (process.env.INFINITEPAY_HANDLE || process.env.INFINITYPAY_HANDLE || '').replace(/^\$/, '');
 const PUBLIC_SITE_URL = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
 
-function readPedidos() {
-  try {
-    return JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
-  } catch (_e) {
-    return [];
-  }
-}
-function readPendingPayments() {
-  try {
-    return JSON.parse(fs.readFileSync(PENDING_PAYMENTS_PATH, 'utf-8'));
-  } catch (_e) {
-    return [];
-  }
-}
 function readProdutos() {
   try {
     return JSON.parse(fs.readFileSync(PROD_PATH, 'utf-8'));
@@ -100,17 +78,11 @@ function readProdutos() {
     return [];
   }
 }
-function writeProdutos(list) {
-  fs.writeFileSync(PROD_PATH, JSON.stringify(list, null, 2), 'utf-8');
-}
-function writePedidos(list) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(list, null, 2), 'utf-8');
-}
-function writePendingPayments(list) {
-  fs.writeFileSync(PENDING_PAYMENTS_PATH, JSON.stringify(list, null, 2), 'utf-8');
+function requireMysqlStorage() {
+  if (!MYSQL_ENABLED) throw new Error('Banco de dados MySQL obrigatório. Persistência local/JSON desativada.');
 }
 async function initDatabase() {
-  if (!MYSQL_ENABLED) return;
+  requireMysqlStorage();
   if (mysqlInitPromise) return mysqlInitPromise;
   mysqlInitPromise = (async () => {
     await mysqlPool.execute(`
@@ -134,6 +106,16 @@ async function initDatabase() {
         data LONGTEXT NOT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_stock_created_at (created_at)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_coupons (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(60) NOT NULL UNIQUE,
+        percent DECIMAL(5,2) NOT NULL,
+        active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     await mysqlPool.execute(`
@@ -242,7 +224,7 @@ async function initDatabase() {
   return mysqlInitPromise;
 }
 async function readProdutosStore(conn = null) {
-  if (!MYSQL_ENABLED) return readProdutos();
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   const [rows] = await db.execute('SELECT id, data FROM lemoov_products ORDER BY id');
@@ -252,11 +234,8 @@ async function readProdutosStore(conn = null) {
   });
 }
 async function writeProdutosStore(list, conn = null) {
+  requireMysqlStorage();
   const canonical = ensureProductIds(list);
-  if (!MYSQL_ENABLED) {
-    writeProdutos(canonical);
-    return;
-  }
   await initDatabase();
   if (conn) {
     await conn.execute('DELETE FROM lemoov_products');
@@ -288,7 +267,7 @@ async function writeProdutosStore(list, conn = null) {
   }
 }
 async function readPedidosStore(conn = null) {
-  if (!MYSQL_ENABLED) return readPedidos();
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   const [rows] = await db.execute('SELECT order_number, data FROM lemoov_orders ORDER BY id');
@@ -299,9 +278,7 @@ async function readPedidosStore(conn = null) {
 }
 async function readPedidoStore(numero, conn = null) {
   const pedidoNumero = String(numero);
-  if (!MYSQL_ENABLED) {
-    return readPedidos().find((p) => String(p.pedido) === pedidoNumero) || null;
-  }
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   const [rows] = await db.execute('SELECT order_number, data FROM lemoov_orders WHERE order_number = ?', [pedidoNumero]);
@@ -310,7 +287,7 @@ async function readPedidoStore(numero, conn = null) {
   return { ...item, pedido: item.pedido || rows[0].order_number };
 }
 async function readStockMovementsStore(conn = null) {
-  if (!MYSQL_ENABLED) throw new Error('Banco de dados não configurado para movimentação de estoque.');
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   const [rows] = await db.execute('SELECT id, data, created_at FROM lemoov_stock_movements ORDER BY id DESC LIMIT 300');
@@ -322,7 +299,7 @@ async function readStockMovementsStore(conn = null) {
 async function appendStockMovementsStore(items = [], conn = null) {
   const list = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!list.length) return;
-  if (!MYSQL_ENABLED) throw new Error('Banco de dados não configurado para movimentação de estoque.');
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   for (const item of list) {
@@ -331,15 +308,57 @@ async function appendStockMovementsStore(items = [], conn = null) {
   }
 }
 function requireStockMovementDatabase() {
-  if (!MYSQL_ENABLED) throw new Error('Banco de dados não configurado para movimentação de estoque.');
+  requireMysqlStorage();
+}
+function requireDatabaseFeature(name) {
+  requireMysqlStorage();
+}
+async function readCouponsStore() {
+  requireDatabaseFeature('Cupons');
+  await initDatabase();
+  const [rows] = await mysqlPool.execute('SELECT id, code, percent, active, created_at AS createdAt, updated_at AS updatedAt FROM lemoov_coupons ORDER BY code');
+  return rows.map((r) => ({ ...r, percent: Number(r.percent), active: Boolean(r.active) }));
+}
+async function getCouponStore(code) {
+  const normalized = normalizeCouponCode(code);
+  if (!normalized) return null;
+  requireDatabaseFeature('Cupons');
+  await initDatabase();
+  const [rows] = await mysqlPool.execute('SELECT id, code, percent, active FROM lemoov_coupons WHERE code = ? LIMIT 1', [normalized]);
+  if (!rows.length) return null;
+  return { ...rows[0], percent: Number(rows[0].percent), active: Boolean(rows[0].active) };
+}
+async function calculateDiscounts({ subtotal = 0, cpf = '', couponCode = '', pedidos = null } = {}) {
+  requireDatabaseFeature('Descontos');
+  const base = Math.max(0, Number(subtotal) || 0);
+  const currentPedidos = Array.isArray(pedidos) ? pedidos : await readPedidosStore();
+  const discounts = [];
+  const cleanCpf = normalizeCpf(cpf);
+  if (cleanCpf.length === 11 && !hasCpfPurchase(currentPedidos, cleanCpf)) {
+    discounts.push({ type: 'first_purchase', label: 'Primeira compra CPF', percent: 20, amount: roundMoney(base * 0.20) });
+  }
+  const normalizedCoupon = normalizeCouponCode(couponCode);
+  if (normalizedCoupon) {
+    const coupon = await getCouponStore(normalizedCoupon);
+    if (!coupon || !coupon.active) {
+      const err = new Error('Cupom inválido ou inativo.');
+      err.status = 400;
+      throw err;
+    }
+    discounts.push({ type: 'coupon', label: `Cupom ${coupon.code}`, code: coupon.code, percent: coupon.percent, amount: roundMoney(base * (coupon.percent / 100)) });
+  }
+  let discountTotal = roundMoney(discounts.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+  discountTotal = Math.min(base, discountTotal);
+  return {
+    cpf: cleanCpf,
+    couponCode: normalizedCoupon,
+    discounts,
+    discountTotal,
+    subtotalWithDiscount: roundMoney(Math.max(0, base - discountTotal))
+  };
 }
 async function appendPedidoStore(item, conn = null) {
-  if (!MYSQL_ENABLED) {
-    const pedidos = readPedidos();
-    pedidos.push(item);
-    writePedidos(pedidos);
-    return;
-  }
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   await db.execute(
@@ -349,9 +368,7 @@ async function appendPedidoStore(item, conn = null) {
 }
 async function readPendingPaymentStore(numero, conn = null) {
   const orderNumber = String(numero);
-  if (!MYSQL_ENABLED) {
-    return readPendingPayments().find((p) => String(p.pedido || p.order_nsu) === orderNumber) || null;
-  }
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   const [rows] = await db.execute('SELECT order_number, data FROM lemoov_payment_intents WHERE order_number = ?', [orderNumber]);
@@ -360,7 +377,7 @@ async function readPendingPaymentStore(numero, conn = null) {
   return { ...item, pedido: item.pedido || rows[0].order_number, order_nsu: item.order_nsu || rows[0].order_number };
 }
 async function readPendingPaymentsStore(conn = null) {
-  if (!MYSQL_ENABLED) return readPendingPayments();
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   const [rows] = await db.execute('SELECT order_number, data FROM lemoov_payment_intents ORDER BY id');
@@ -372,12 +389,7 @@ async function readPendingPaymentsStore(conn = null) {
 async function savePendingPaymentStore(item, conn = null) {
   const orderNumber = String(item.pedido || item.order_nsu);
   const payload = { ...item, pedido: orderNumber, order_nsu: orderNumber };
-  if (!MYSQL_ENABLED) {
-    const pending = readPendingPayments().filter((p) => String(p.pedido || p.order_nsu) !== orderNumber);
-    pending.push(payload);
-    writePendingPayments(pending);
-    return;
-  }
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   await db.execute(
@@ -388,23 +400,13 @@ async function savePendingPaymentStore(item, conn = null) {
 }
 async function deletePendingPaymentStore(numero, conn = null) {
   const orderNumber = String(numero);
-  if (!MYSQL_ENABLED) {
-    writePendingPayments(readPendingPayments().filter((p) => String(p.pedido || p.order_nsu) !== orderNumber));
-    return;
-  }
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   await db.execute('DELETE FROM lemoov_payment_intents WHERE order_number = ?', [orderNumber]);
 }
 async function updatePedidoStore(numero, updates, conn = null) {
-  if (!MYSQL_ENABLED) {
-    const pedidos = readPedidos();
-    const idx = pedidos.findIndex((p) => String(p.pedido) === String(numero));
-    if (idx === -1) throw new Error('Pedido não encontrado');
-    pedidos[idx] = { ...pedidos[idx], ...updates, pedido: numero };
-    writePedidos(pedidos);
-    return pedidos[idx];
-  }
+  requireMysqlStorage();
   await initDatabase();
   const db = conn || mysqlPool;
   const [rows] = await db.execute('SELECT data FROM lemoov_orders WHERE order_number = ?', [String(numero)]);
@@ -414,10 +416,7 @@ async function updatePedidoStore(numero, updates, conn = null) {
   return updated;
 }
 async function deletePedidoStore(numero) {
-  if (!MYSQL_ENABLED) {
-    writePedidos(readPedidos().filter((p) => String(p.pedido) !== String(numero)));
-    return;
-  }
+  requireMysqlStorage();
   await initDatabase();
   await mysqlPool.execute('DELETE FROM lemoov_orders WHERE order_number = ?', [String(numero)]);
 }
@@ -432,6 +431,28 @@ function ensureProductIds(list) {
 }
 function normalizeKey(value) {
   return String(value || '').trim().toUpperCase();
+}
+function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+function normalizeCpf(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 11);
+}
+function normalizeCouponCode(value) {
+  return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+function getOrderCpf(order = {}) {
+  return normalizeCpf(order.cpf || order.cliente_cpf || order.cliente?.cpf || order.pedidoPayload?.cliente?.cpf || order.pedidoPayload?.cpf);
+}
+function orderCountsAsPurchase(order = {}) {
+  const status = String(order.status || '').toLowerCase();
+  if (status === 'cancelado') return false;
+  return ['confirmado', 'enviado', 'entregue'].includes(status) || String(order.pagamento_status || '').toLowerCase() === 'pago';
+}
+function hasCpfPurchase(pedidos = [], cpf) {
+  const clean = normalizeCpf(cpf);
+  if (!clean || clean.length !== 11) return false;
+  return pedidos.some((pedido) => getOrderCpf(pedido) === clean && orderCountsAsPurchase(pedido));
 }
 function getColorStock(cor) {
   return cor && cor.estoque && typeof cor.estoque === 'object' && !Array.isArray(cor.estoque)
@@ -471,7 +492,10 @@ function validateStockAvailability(produtos, itens = []) {
       throw new Error(`Item esgotado: ${label || item.nome || item.productId}.`);
     }
     const stock = getColorStock(cor);
-    if (!stock) continue;
+    if (!stock) {
+      const label = [prod.nome, cor?.nome, item.tamanho].filter(Boolean).join(' - ');
+      throw new Error(`Estoque insuficiente para ${label}. Estoque atual: 0.`);
+    }
     const current = Number(stock[item.tamanho]);
     if (!Number.isFinite(current) || current < item.quantidade) {
       const label = [prod.nome, cor?.nome, item.tamanho].filter(Boolean).join(' - ');
@@ -1587,25 +1611,49 @@ app.post('/api/admin/reset-admin-user', authRequired, async (_req, res) => {
 
 app.post('/api/pagamentos/infinitypay', async (req, res) => {
   try {
-    const { metodo, total, itens, itensEstoque, cliente, endereco, pedidoPayload } = req.body || {};
+    const { metodo, itens, itensEstoque, cliente, endereco } = req.body || {};
+    const pedidoPayload = req.body?.pedidoPayload && typeof req.body.pedidoPayload === 'object' ? req.body.pedidoPayload : {};
     const returnPathRaw = String(req.body?.returnPath || '/catalogo-produtos.html');
     const returnPath = /^\/[a-z0-9._~/%-]*$/i.test(returnPathRaw) ? returnPathRaw : '/catalogo-produtos.html';
     const pedidos = await readPedidosStore();
     const pendingPayments = await readPendingPaymentsStore();
     const orderNsu = generateOrderNumber([...pedidos, ...pendingPayments]);
+    const subtotal = roundMoney(Number(req.body?.subtotal ?? pedidoPayload?.subtotal ?? 0) || 0);
+    const taxa = roundMoney(Number(req.body?.taxa ?? pedidoPayload?.taxa ?? 0) || 0);
+    const discountResult = await calculateDiscounts({
+      subtotal,
+      cpf: cliente?.cpf || pedidoPayload?.cliente?.cpf || pedidoPayload?.cpf || pedidoPayload?.cliente_cpf || '',
+      couponCode: req.body?.cupom || req.body?.couponCode || pedidoPayload?.cupom || '',
+      pedidos
+    });
+    const finalTotal = roundMoney(Math.max(0, subtotal - discountResult.discountTotal) + taxa);
     const paymentItems = normalizePaymentItems(itens);
+    const enrichedPedidoPayload = {
+      ...pedidoPayload,
+      total: finalTotal,
+      subtotal,
+      taxa,
+      desconto: discountResult.discountTotal,
+      descontos: discountResult.discounts,
+      cupom: discountResult.couponCode || pedidoPayload?.cupom || '',
+      cliente_cpf: discountResult.cpf || pedidoPayload?.cliente_cpf || '',
+      cliente: {
+        ...(pedidoPayload?.cliente || {}),
+        cpf: discountResult.cpf || pedidoPayload?.cliente?.cpf || ''
+      }
+    };
     const intent = {
       pedido: orderNsu,
       order_nsu: orderNsu,
       status: 'aguardando_pagamento',
-      total: Number(total || 0),
+      total: finalTotal,
       currency: req.body?.currency || 'BRL',
       metodo: metodo || 'online',
-      cliente: cliente || {},
+      cliente: { ...(cliente || {}), cpf: discountResult.cpf || cliente?.cpf || '' },
       endereco: endereco || {},
-      itens: Array.isArray(pedidoPayload?.itens) ? pedidoPayload.itens : [],
+      itens: Array.isArray(enrichedPedidoPayload?.itens) ? enrichedPedidoPayload.itens : [],
       itensEstoque: Array.isArray(itensEstoque) ? itensEstoque : [],
-      pedidoPayload: pedidoPayload && typeof pedidoPayload === 'object' ? pedidoPayload : {},
+      pedidoPayload: enrichedPedidoPayload,
       createdAt: new Date().toISOString()
     };
     const produtos = ensureProductIds(await readProdutosStore());
@@ -1908,6 +1956,63 @@ app.get('/api/pedidos', authRequired, async (req, res) => {
   }
 });
 
+app.get('/api/admin/cupons', authRequired, async (_req, res) => {
+  try {
+    res.json(await readCouponsStore());
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/cupons', authRequired, async (req, res) => {
+  try {
+    requireDatabaseFeature('Cupons');
+    await initDatabase();
+    const code = normalizeCouponCode(req.body?.code);
+    const percent = Number(req.body?.percent);
+    const active = req.body?.active === false ? 0 : 1;
+    if (!code) return res.status(400).json({ ok: false, error: 'Informe o código do cupom.' });
+    if (!Number.isFinite(percent) || percent <= 0 || percent > 100) {
+      return res.status(400).json({ ok: false, error: 'Percentual deve ficar entre 0,01 e 100.' });
+    }
+    await mysqlPool.execute(
+      `INSERT INTO lemoov_coupons (code, percent, active)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE percent = VALUES(percent), active = VALUES(active)`,
+      [code, percent, active]
+    );
+    res.json({ ok: true, item: await getCouponStore(code) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.delete('/api/admin/cupons/:code', authRequired, async (req, res) => {
+  try {
+    requireDatabaseFeature('Cupons');
+    await initDatabase();
+    await mysqlPool.execute('DELETE FROM lemoov_coupons WHERE code = ?', [normalizeCouponCode(req.params.code)]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/descontos/validar', async (req, res) => {
+  try {
+    const pedidos = await readPedidosStore();
+    const result = await calculateDiscounts({
+      subtotal: req.body?.subtotal,
+      cpf: req.body?.cpf,
+      couponCode: req.body?.cupom || req.body?.couponCode,
+      pedidos
+    });
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/relatorio', authRequired, (req, res) => {
   res.sendFile(path.join(__dirname, 'relatorio.html'));
 });
@@ -2034,17 +2139,34 @@ app.patch('/api/admin/produtos/ordem', authRequired, async (req, res) => {
 });
 
 app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
+  let conn = null;
   try {
     requireStockMovementDatabase();
+    if (MYSQL_ENABLED) {
+      await initDatabase();
+      conn = await mysqlPool.getConnection();
+      await conn.beginTransaction();
+      await conn.execute('SELECT id FROM lemoov_products FOR UPDATE');
+    }
     const { produtoId, corIndex, quantidades } = req.body || {};
     if (!produtoId || !quantidades || typeof quantidades !== 'object') {
-      return res.status(400).json({ ok: false, error: 'Dados inválidos' });
+      const err = new Error('Dados inválidos');
+      err.status = 400;
+      throw err;
     }
-    const produtos = ensureProductIds(await readProdutosStore());
+    const produtos = ensureProductIds(await readProdutosStore(conn));
     const prod = produtos.find((p) => Number(p.id) === Number(produtoId));
-    if (!prod) return res.status(404).json({ ok: false, error: 'Produto não encontrado' });
+    if (!prod) {
+      const err = new Error('Produto não encontrado');
+      err.status = 404;
+      throw err;
+    }
     const cor = Array.isArray(prod.cores) ? prod.cores[Number(corIndex) || 0] : null;
-    if (!cor) return res.status(404).json({ ok: false, error: 'Cor não encontrada' });
+    if (!cor) {
+      const err = new Error('Cor não encontrada');
+      err.status = 404;
+      throw err;
+    }
     if (!cor.estoque || typeof cor.estoque !== 'object' || Array.isArray(cor.estoque)) {
       cor.estoque = {};
     }
@@ -2081,12 +2203,18 @@ app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
       prod.soldOut = prod.cores.every((c) => Object.values(c.estoque).every((q) => Number(q) <= 0));
     }
     prod.updatedAt = new Date().toISOString();
-    await writeProdutosStore(produtos);
-    await appendStockMovementsStore(movements);
+    await writeProdutosStore(produtos, conn);
+    await appendStockMovementsStore(movements, conn);
+    if (conn) await conn.commit();
     res.json({ ok: true, produto: prod });
   } catch (e) {
+    if (conn) {
+      try { await conn.rollback(); } catch (_rollbackError) {}
+    }
     console.error('[entrada-estoque]', e.message);
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 
@@ -2173,6 +2301,86 @@ app.delete('/api/admin/pedido/:numero', authRequired, async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/inventario-estoque', authRequired, async (req, res) => {
+  let conn = null;
+  try {
+    requireStockMovementDatabase();
+    if (MYSQL_ENABLED) {
+      await initDatabase();
+      conn = await mysqlPool.getConnection();
+      await conn.beginTransaction();
+      await conn.execute('SELECT id FROM lemoov_products FOR UPDATE');
+    }
+    const { produtoId, corIndex, contagem } = req.body || {};
+    if (!produtoId || !contagem || typeof contagem !== 'object') {
+      const err = new Error('Dados inválidos');
+      err.status = 400;
+      throw err;
+    }
+    const produtos = ensureProductIds(await readProdutosStore(conn));
+    const prod = produtos.find((p) => Number(p.id) === Number(produtoId));
+    if (!prod) {
+      const err = new Error('Produto não encontrado');
+      err.status = 404;
+      throw err;
+    }
+    const cor = Array.isArray(prod.cores) ? prod.cores[Number(corIndex) || 0] : null;
+    if (!cor) {
+      const err = new Error('Cor não encontrada');
+      err.status = 404;
+      throw err;
+    }
+    if (!cor.estoque || typeof cor.estoque !== 'object' || Array.isArray(cor.estoque)) {
+      cor.estoque = {};
+    }
+    const movements = [];
+    const now = new Date().toISOString();
+    Object.entries(contagem).forEach(([size, qty]) => {
+      const s = String(size).trim().toUpperCase();
+      if (!s) return;
+      const counted = Math.max(0, Number(qty) || 0);
+      const before = Math.max(0, Number(cor.estoque[s]) || 0);
+      const delta = counted - before;
+      if (delta === 0) return;
+      cor.estoque[s] = counted;
+      movements.push({
+        id: crypto.randomUUID(),
+        type: 'ajuste',
+        reason: 'inventario',
+        productId: Number(produtoId),
+        productName: prod.nome || '',
+        colorIndex: Number(corIndex) || 0,
+        colorName: cor.nome || '',
+        size: s,
+        quantity: delta,
+        before,
+        after: counted,
+        source: 'admin',
+        createdAt: now
+      });
+    });
+    cor.tamanhos = Object.keys(cor.estoque).filter((s) => Number(cor.estoque[s]) > 0);
+    cor.soldOut = cor.tamanhos.length === 0;
+    const allManaged = prod.cores.every((c) => c.estoque && typeof c.estoque === 'object' && !Array.isArray(c.estoque));
+    if (allManaged) {
+      prod.soldOut = prod.cores.every((c) => Object.values(c.estoque).every((q) => Number(q) <= 0));
+    }
+    prod.updatedAt = new Date().toISOString();
+    await writeProdutosStore(produtos, conn);
+    await appendStockMovementsStore(movements, conn);
+    if (conn) await conn.commit();
+    res.json({ ok: true, produto: prod, movements: movements.length });
+  } catch (e) {
+    if (conn) {
+      try { await conn.rollback(); } catch (_rollbackError) {}
+    }
+    console.error('[inventario-estoque]', e.message);
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  } finally {
+    if (conn) conn.release();
   }
 });
 

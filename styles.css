@@ -2832,11 +2832,14 @@ legend {
     padding: 0 32px;
     margin: 0;
     overflow-y: auto;
-    flex: 1 1 auto;
+    flex: 1 1 180px;
+    min-height: 150px;
+    overscroll-behavior: contain;
 }
 .cart__item {
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 74px minmax(0, 1fr) auto;
+    align-items: start;
     gap: 16px;
     padding: 20px 0;
     border-bottom: 1px solid rgba(0,0,0,0.06);
@@ -2864,6 +2867,7 @@ legend {
     border-radius: 10px;
 }
 .cart__item-info {
+    min-width: 0;
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
@@ -2895,6 +2899,7 @@ legend {
     align-items: flex-end;
     gap: 8px;
     text-align: right;
+    min-width: 88px;
 }
 .cart__item-price {
     font-size: 1.2rem;
@@ -2924,6 +2929,7 @@ legend {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    flex: 0 0 auto;
 }
 .cart__total {
     display: flex;
@@ -2953,6 +2959,31 @@ legend {
 .frete__ui select::placeholder,
 .frete__ui input::placeholder {
     color: rgba(15,45,46,0.4);
+}
+
+@media (max-width: 420px) {
+    .cart__list {
+        min-height: 120px;
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .cart__item {
+        grid-template-columns: 56px minmax(0, 1fr);
+        gap: 10px;
+    }
+    .cart__item-media {
+        width: 56px;
+        height: 68px;
+        min-width: 56px;
+    }
+    .cart__item-actions {
+        grid-column: 2;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 0;
+        text-align: left;
+    }
 }
 .frete__ui button {
     background: linear-gradient(120deg, #0ce38d, #00a2ff) !important;
