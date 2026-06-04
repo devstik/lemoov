@@ -1079,7 +1079,7 @@ function computeColorPrice(prod, colorObj){
       top:50% !important;
       width:min(660px,calc(100vw - 48px)) !important;
       height:auto !important;
-      max-height:88vh !important;
+      max-height:94vh !important;
       border-radius:24px !important;
       border-left:none !important;
       outline:none !important;
@@ -1210,6 +1210,20 @@ function computeColorPrice(prod, colorObj){
     margin-top:4px;
   }
   #cart #btnCheckout:disabled{ opacity:.55; cursor:not-allowed; filter:saturate(.5); }
+  #cart #btnAddMore{
+    order:40;
+    width:100%;
+    font-size:.78rem;
+    font-weight:700;
+    color:#002776;
+    background:transparent;
+    border:1.5px dashed rgba(0,39,118,.25);
+    border-radius:12px;
+    padding:10px;
+    cursor:pointer;
+    transition:all .15s;
+  }
+  #cart #btnAddMore:hover{ background:rgba(0,39,118,.05); border-color:rgba(0,39,118,.4); }
   #cart .cart-coupon{
     order:8;
     border:1px solid rgba(0,39,118,.1);
@@ -1243,10 +1257,8 @@ function computeColorPrice(prod, colorObj){
   #cart .cart__total strong{ color: #002776; }
 
   .frete__ui{ order:12; margin:4px 0 0; }
-  .frete__ui[data-auth="logged-out"] .frete__row,
   .frete__ui[data-auth="logged-out"] .checkout__link,
   .frete__ui[data-auth="logged-out"] #freteOpcoes,
-  .frete__ui[data-auth="logged-out"] #freteMsg,
   .frete__ui[data-auth="logged-out"] #cartAddressSummary{ display:none !important; }
   .frete__ui[data-auth="logged-in"] .frete__row,
   .frete__ui[data-auth="logged-in"] .checkout__link{ display:none !important; }
@@ -1406,18 +1418,20 @@ function computeColorPrice(prod, colorObj){
     background:rgba(255,255,255,.12);
   }
 
-  #payment-transition .pt-logo{
-    font-size:clamp(.8rem,3.5vw,1rem);
+  #payment-transition .pt-ordem{
+    font-size:clamp(.48rem,1.8vw,.62rem);
     font-weight:900;
-    letter-spacing:.22em;
-    color:#FFDF00;
+    letter-spacing:.18em;
+    color:rgba(255,255,255,.9);
     text-transform:uppercase;
-    text-shadow:0 1px 8px rgba(0,0,0,.4);
+    text-align:center;
+    line-height:1.3;
     position:relative;
     z-index:1;
+    padding:0 8px;
   }
   #payment-transition .pt-lock{
-    font-size:clamp(1rem,4vw,1.3rem);
+    font-size:clamp(1.1rem,5vw,1.6rem);
     animation:ptPulse 1.8s ease-in-out infinite;
     line-height:1;
   }
@@ -3078,6 +3092,7 @@ function renderCartDeliveryState() {
   if (cartEl) cartEl.dataset.cartAuth = currentClientSession ? "logged-in" : "logged-out";
   if (!currentClientSession) {
     if (addrBox) { addrBox.style.display = "none"; addrBox.innerHTML = ""; }
+    if (msg && !retiradaNaLoja && !msg.textContent) msg.textContent = "Informe o CEP para calcular o frete (estimativa).";
     return;
   }
   if (retiradaNaLoja) {
@@ -3194,27 +3209,26 @@ async function initiateCheckout() {
   if (carrinho.length === 0) { showAppMessage("Seu carrinho está vazio."); return; }
   if (!validateWholeCartStock()) return;
 
-  // Sempre verifica sessão primeiro — sem exceção para modo offline
   const sessionResult = await checkClientSession();
   if (!sessionResult.ok) {
-    const redirectTarget = encodeURIComponent(window.location.pathname + '?initiateCheckout=1');
-    window.location.href = `/cliente-login?redirect=${redirectTarget}`;
+    openLoginModal(() => initiateCheckout());
     return;
   }
   currentClientSession = sessionResult.client;
   ensureCartClientSummary();
+  atualizarCart();
   await autoLoadDeliveryFromClient();
 
-  if (!retiradaNaLoja && (!entregaDisponivel || !isFixedFreteMode())) {
-    const addresses = await fetchClientAddresses();
-    openAddressSelectionModal(addresses);
-    return;
-  }
-
-  if (selectedDeliveryAddress || retiradaNaLoja) {
+  if (retiradaNaLoja) {
     openCheckoutModal();
     return;
   }
+
+  if (entregaDisponivel && isFixedFreteMode()) {
+    openCheckoutModal();
+    return;
+  }
+
   openAddressSelectionModal(await fetchClientAddresses());
 }
 
@@ -4043,6 +4057,311 @@ function atualizarCart(){
   });
 
   bindFreteUIEvents();
+}
+
+/* ------------------------------------------------------------
+   Modal de Login/Cadastro Inline
+------------------------------------------------------------ */
+(function injectAuthModalStyles(){
+  const css = `
+  #authModal{ max-width:440px; width:calc(100vw - 24px); border:none; border-radius:20px; padding:0; overflow:hidden; box-shadow:0 28px 80px rgba(0,20,80,.22); }
+  #authModal::backdrop{ background:rgba(0,20,50,.6); backdrop-filter:blur(6px); }
+  .am-header{ background:linear-gradient(135deg,#009C3B 0%,#002776 100%); padding:20px 24px 16px; display:flex; align-items:center; justify-content:space-between; }
+  .am-header h3{ color:#FFDF00; font-size:1rem; font-weight:800; margin:0; }
+  .am-close{ width:34px;height:34px;border-radius:50%;background:rgba(255,223,0,.18);border:1px solid rgba(255,223,0,.35);color:#FFDF00;font-size:1rem;cursor:pointer;display:grid;place-items:center; }
+  .am-tabs{ display:flex; border-bottom:2px solid #e8eef5; padding:0 24px; background:#fff; }
+  .am-tab{ flex:1; padding:12px 8px; font:inherit; font-size:.82rem; font-weight:700; background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; cursor:pointer; color:#5a6a80; transition:all .15s; }
+  .am-tab.active{ color:#002776; border-bottom-color:#009C3B; }
+  .am-panel{ display:none; padding:20px 24px 24px; background:#fff; max-height:70vh; overflow-y:auto; }
+  .am-panel.active{ display:block; }
+  .am-field{ margin-bottom:14px; }
+  .am-label{ display:block; font-size:.74rem; font-weight:700; color:#56677c; text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; }
+  .am-input{ width:100%; box-sizing:border-box; border:1.5px solid #dbe3ea; border-radius:10px; padding:10px 12px; font:inherit; font-size:.9rem; outline:none; transition:border-color .15s; }
+  .am-input:focus{ border-color:#009C3B; }
+  .am-input.err{ border-color:#e8445a; }
+  .am-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .am-btn{ width:100%; padding:13px; border:none; border-radius:12px; font:inherit; font-size:.92rem; font-weight:800; color:#fff; background:linear-gradient(120deg,#009C3B,#002776); cursor:pointer; margin-top:6px; transition:filter .15s; }
+  .am-btn:hover{ filter:brightness(1.08); }
+  .am-btn:disabled{ opacity:.6;cursor:not-allowed; }
+  .am-btn.ok{ background:linear-gradient(120deg,#087a4d,#003a8c); }
+  .am-msg{ min-height:18px; font-size:.78rem; font-weight:700; margin-top:8px; text-align:center; }
+  .am-msg.err{ color:#e8445a; }
+  .am-msg.ok{ color:#087a4d; }
+  .am-link{ font-size:.78rem; color:#002776; cursor:pointer; background:none; border:none; text-decoration:underline; font:inherit; }
+  .am-divider{ border:none; border-top:1px solid #e8eef5; margin:14px 0; }
+  .am-section-title{ font-size:.72rem; font-weight:800; color:#56677c; text-transform:uppercase; letter-spacing:.06em; margin:0 0 10px; }
+  @media(max-width:440px){ #authModal{ border-radius:20px 20px 0 0; position:fixed; bottom:0; left:0; right:0; width:100%; max-width:100%; margin:0; } }
+  `;
+  const s = document.createElement('style');
+  s.textContent = css;
+  document.head.appendChild(s);
+})();
+
+function openLoginModal(onSuccess) {
+  const existing = document.getElementById('authModal');
+  if (existing) { existing.showModal(); return; }
+
+  const dlg = document.createElement('dialog');
+  dlg.id = 'authModal';
+  dlg.innerHTML = `
+    <div class="am-header">
+      <h3>Identificação</h3>
+      <button type="button" class="am-close" id="amClose">✕</button>
+    </div>
+    <div class="am-tabs">
+      <button type="button" class="am-tab active" data-tab="login">Entrar</button>
+      <button type="button" class="am-tab" data-tab="cadastro">Criar Conta</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="am-panel active" id="amPanelLogin">
+      <div class="am-field">
+        <label class="am-label">E-mail *</label>
+        <input type="email" id="amLoginEmail" class="am-input" placeholder="seu@email.com" autocomplete="email">
+      </div>
+      <div class="am-field">
+        <label class="am-label">Senha *</label>
+        <input type="password" id="amLoginSenha" class="am-input" placeholder="Sua senha" autocomplete="current-password">
+      </div>
+      <button type="button" class="am-btn" id="amBtnLogin">Entrar</button>
+      <div class="am-msg" id="amLoginMsg"></div>
+    </div>
+
+    <!-- CADASTRO -->
+    <div class="am-panel" id="amPanelCadastro">
+      <p class="am-section-title">Dados pessoais</p>
+      <div class="am-field">
+        <label class="am-label">Nome completo *</label>
+        <input type="text" id="amRegNome" class="am-input" placeholder="Seu nome completo" autocomplete="name">
+      </div>
+      <div class="am-row">
+        <div class="am-field">
+          <label class="am-label">E-mail *</label>
+          <input type="email" id="amRegEmail" class="am-input" placeholder="seu@email.com" autocomplete="email">
+        </div>
+        <div class="am-field">
+          <label class="am-label">CPF *</label>
+          <input type="text" id="amRegCpf" class="am-input" placeholder="000.000.000-00" inputmode="numeric" maxlength="14">
+        </div>
+      </div>
+      <div class="am-row">
+        <div class="am-field">
+          <label class="am-label">Telefone *</label>
+          <input type="text" id="amRegTel" class="am-input" placeholder="(85) 99999-0000" inputmode="tel">
+        </div>
+        <div class="am-field">
+          <label class="am-label">Senha *</label>
+          <input type="password" id="amRegSenha" class="am-input" placeholder="Mín. 8 caracteres" autocomplete="new-password">
+        </div>
+      </div>
+      <hr class="am-divider">
+      <p class="am-section-title">Endereço de entrega</p>
+      <div class="am-row">
+        <div class="am-field">
+          <label class="am-label">CEP *</label>
+          <input type="text" id="amRegCep" class="am-input" placeholder="00000-000" inputmode="numeric" maxlength="9">
+        </div>
+        <div class="am-field">
+          <label class="am-label">Número *</label>
+          <input type="text" id="amRegNumero" class="am-input" placeholder="123">
+        </div>
+      </div>
+      <div class="am-field">
+        <label class="am-label">Logradouro</label>
+        <input type="text" id="amRegRua" class="am-input" placeholder="Rua das Flores" readonly>
+      </div>
+      <div class="am-row">
+        <div class="am-field">
+          <label class="am-label">Bairro</label>
+          <input type="text" id="amRegBairro" class="am-input" placeholder="Bairro" readonly>
+        </div>
+        <div class="am-field">
+          <label class="am-label">Cidade</label>
+          <input type="text" id="amRegCidade" class="am-input" placeholder="Cidade" readonly>
+        </div>
+      </div>
+      <input type="hidden" id="amRegUf">
+      <button type="button" class="am-btn" id="amBtnCadastro">Criar conta</button>
+      <div class="am-msg" id="amCadastroMsg"></div>
+    </div>
+
+    <!-- VERIFICAR EMAIL -->
+    <div class="am-panel" id="amPanelVerify">
+      <p style="font-size:.85rem;color:#374151;margin-bottom:14px;">Digite o código de 6 dígitos enviado para seu e-mail.</p>
+      <div class="am-field">
+        <input type="text" id="amVerifyCode" class="am-input" placeholder="000000" inputmode="numeric" maxlength="6" style="font-size:1.5rem;letter-spacing:10px;text-align:center;">
+      </div>
+      <button type="button" class="am-btn" id="amBtnVerify">Confirmar código</button>
+      <div class="am-msg" id="amVerifyMsg"></div>
+    </div>
+  `;
+
+  document.body.appendChild(dlg);
+
+  let _amVerifyToken = null;
+  let _amWelcomeCoupon = null;
+
+  function amShowPanel(id) {
+    dlg.querySelectorAll('.am-panel').forEach(p => p.classList.toggle('active', p.id === id));
+    dlg.querySelectorAll('.am-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === (id === 'amPanelLogin' ? 'login' : 'cadastro')));
+  }
+  function amMsg(id, text, type = 'err') {
+    const el = dlg.querySelector('#' + id);
+    if (el) { el.textContent = text; el.className = 'am-msg ' + type; }
+  }
+  function amClear(id) { amMsg(id, ''); }
+
+  // Tabs
+  dlg.querySelectorAll('.am-tab').forEach(tab => {
+    tab.addEventListener('click', () => amShowPanel(tab.dataset.tab === 'login' ? 'amPanelLogin' : 'amPanelCadastro'));
+  });
+
+  // Close
+  dlg.querySelector('#amClose').addEventListener('click', () => dlg.close());
+  dlg.addEventListener('close', () => dlg.remove());
+
+  // CPF mask
+  const cpfInput = dlg.querySelector('#amRegCpf');
+  if (cpfInput) cpfInput.addEventListener('input', () => { cpfInput.value = formatCpfForInput(cpfInput.value); });
+
+  // Phone mask
+  const telInput = dlg.querySelector('#amRegTel');
+  if (telInput) telInput.addEventListener('input', () => { telInput.value = formatPhoneForInput(telInput.value); });
+
+  // CEP autofill
+  const cepIn = dlg.querySelector('#amRegCep');
+  let _lastCep = '';
+  if (cepIn) {
+    cepIn.addEventListener('input', async function() {
+      let v = this.value.replace(/\D/g, '').slice(0, 8);
+      if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+      this.value = v;
+      const plain = v.replace('-', '');
+      if (plain.length === 8 && plain !== _lastCep) {
+        _lastCep = plain;
+        try {
+          const r = await fetch(`https://viacep.com.br/ws/${plain}/json/`);
+          const d = await r.json();
+          if (!d.erro) {
+            dlg.querySelector('#amRegRua').value = d.logradouro || '';
+            dlg.querySelector('#amRegBairro').value = d.bairro || '';
+            dlg.querySelector('#amRegCidade').value = d.localidade || '';
+            dlg.querySelector('#amRegUf').value = d.uf || '';
+            dlg.querySelector('#amRegNumero').focus();
+          }
+        } catch(_){}
+      }
+    });
+  }
+
+  // LOGIN
+  dlg.querySelector('#amBtnLogin').addEventListener('click', async () => {
+    amClear('amLoginMsg');
+    const email = dlg.querySelector('#amLoginEmail').value.trim();
+    const senha = dlg.querySelector('#amLoginSenha').value;
+    const btn = dlg.querySelector('#amBtnLogin');
+    if (!email || !senha) { amMsg('amLoginMsg', 'Preencha e-mail e senha.'); return; }
+    btn.disabled = true; btn.textContent = 'Entrando…';
+    try {
+      const res = await fetch('/api/client/login', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { amMsg('amLoginMsg', data.error || 'E-mail ou senha incorretos.'); return; }
+      currentClientSession = data.client;
+      dlg.close();
+      atualizarCart();
+      if (typeof onSuccess === 'function') onSuccess();
+    } catch(_) { amMsg('amLoginMsg', 'Erro de conexão. Tente novamente.'); }
+    finally { btn.disabled = false; btn.textContent = 'Entrar'; }
+  });
+
+  // allow Enter key on login
+  [dlg.querySelector('#amLoginEmail'), dlg.querySelector('#amLoginSenha')].forEach(inp => {
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') dlg.querySelector('#amBtnLogin').click(); });
+  });
+
+  // CADASTRO
+  dlg.querySelector('#amBtnCadastro').addEventListener('click', async () => {
+    amClear('amCadastroMsg');
+    const nome = dlg.querySelector('#amRegNome').value.trim();
+    const email = dlg.querySelector('#amRegEmail').value.trim();
+    const cpf = dlg.querySelector('#amRegCpf').value.replace(/\D/g, '');
+    const telefone = dlg.querySelector('#amRegTel').value.replace(/\D/g, '');
+    const senha = dlg.querySelector('#amRegSenha').value;
+    const cep = dlg.querySelector('#amRegCep').value.replace(/\D/g, '');
+    const rua = dlg.querySelector('#amRegRua').value.trim();
+    const bairro = dlg.querySelector('#amRegBairro').value.trim();
+    const cidade = dlg.querySelector('#amRegCidade').value.trim();
+    const uf = dlg.querySelector('#amRegUf').value.trim();
+    const numero = dlg.querySelector('#amRegNumero').value.trim();
+    const btn = dlg.querySelector('#amBtnCadastro');
+
+    if (!nome) { amMsg('amCadastroMsg', 'Informe o nome completo.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { amMsg('amCadastroMsg', 'E-mail inválido.'); return; }
+    if (cpf.length !== 11) { amMsg('amCadastroMsg', 'CPF inválido.'); return; }
+    if (!senha || senha.length < 8) { amMsg('amCadastroMsg', 'Senha deve ter pelo menos 8 caracteres.'); return; }
+    if (!cep || cep.length !== 8) { amMsg('amCadastroMsg', 'Informe o CEP de entrega.'); return; }
+    if (!numero) { amMsg('amCadastroMsg', 'Informe o número do endereço.'); return; }
+
+    btn.disabled = true; btn.textContent = 'Criando conta…';
+    try {
+      const res = await fetch('/api/client/register', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, cpf, telefone, senha, endereco: { cep, logradouro: rua, numero, bairro, cidade, uf } })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { amMsg('amCadastroMsg', data.error || 'Erro ao criar conta.'); return; }
+      _amWelcomeCoupon = data.welcomeCoupon || null;
+      if (data.needsVerification) {
+        _amVerifyToken = data.verifyToken;
+        amShowPanel('amPanelVerify');
+        return;
+      }
+      currentClientSession = data.client;
+      if (_amWelcomeCoupon) {
+        amMsg('amCadastroMsg', `Conta criada! Cupom de 1ª compra: ${_amWelcomeCoupon}`, 'ok');
+        await new Promise(r => setTimeout(r, 1800));
+      }
+      dlg.close();
+      atualizarCart();
+      if (typeof onSuccess === 'function') onSuccess();
+    } catch(_) { amMsg('amCadastroMsg', 'Erro de conexão. Tente novamente.'); }
+    finally { btn.disabled = false; btn.textContent = 'Criar conta'; }
+  });
+
+  // VERIFY
+  dlg.querySelector('#amBtnVerify').addEventListener('click', async () => {
+    amClear('amVerifyMsg');
+    const code = dlg.querySelector('#amVerifyCode').value.trim();
+    const btn = dlg.querySelector('#amBtnVerify');
+    if (code.length !== 6) { amMsg('amVerifyMsg', 'Digite o código de 6 dígitos.'); return; }
+    btn.disabled = true; btn.textContent = 'Verificando…';
+    try {
+      const res = await fetch('/api/client/verify-email', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verifyToken: _amVerifyToken, code })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { amMsg('amVerifyMsg', data.error || 'Código inválido.'); return; }
+      currentClientSession = data.client;
+      if (_amWelcomeCoupon || data.welcomeCoupon) {
+        const c = _amWelcomeCoupon || data.welcomeCoupon;
+        amMsg('amVerifyMsg', `E-mail confirmado! Cupom de 1ª compra: ${c}`, 'ok');
+        await new Promise(r => setTimeout(r, 1800));
+      }
+      dlg.close();
+      atualizarCart();
+      if (typeof onSuccess === 'function') onSuccess();
+    } catch(_) { amMsg('amVerifyMsg', 'Erro de conexão. Tente novamente.'); }
+    finally { btn.disabled = false; btn.textContent = 'Confirmar código'; }
+  });
+
+  dlg.showModal();
 }
 
 /* ------------------------------------------------------------
@@ -5044,12 +5363,16 @@ function openCheckoutModal(){
 
   // Pre-fill client data from session
   if (currentClientSession) {
-    const nomeInput    = dlg.querySelector('input[name="nome"]');
-    const emailInput   = dlg.querySelector('input[name="email"]');
+    const nomeInput     = dlg.querySelector('input[name="nome"]');
+    const emailInput    = dlg.querySelector('input[name="email"]');
     const telefoneInput = dlg.querySelector('input[name="telefone"]');
-    const ckCepInput   = dlg.querySelector('#ckCep');
-    if (nomeInput    && !nomeInput.value)    nomeInput.value    = currentClientSession.nome  || '';
-    if (emailInput   && !emailInput.value)   emailInput.value   = currentClientSession.email || '';
+    const cpfInputCk    = dlg.querySelector('input[name="cpf"]');
+    const ckCepInput    = dlg.querySelector('#ckCep');
+    if (nomeInput    && !nomeInput.value)    nomeInput.value    = currentClientSession.nome     || '';
+    if (emailInput   && !emailInput.value)   emailInput.value   = currentClientSession.email    || '';
+    if (cpfInputCk   && !cpfInputCk.value && currentClientSession.cpf) {
+      cpfInputCk.value = formatCpfForInput(currentClientSession.cpf);
+    }
     if (telefoneInput && !telefoneInput.value && currentClientSession.telefone) {
       telefoneInput.value = formatPhoneForInput(currentClientSession.telefone);
     }
@@ -5061,13 +5384,28 @@ function openCheckoutModal(){
   const previewOrder = peekNextOrderNumber();
   const pedidoEl = el("#ckPedido");
   if (pedidoEl) pedidoEl.textContent = previewOrder || "—";
-  checkoutDiscountState = {
-    ...checkoutDiscountState,
-    cpf: checkoutDiscountState.cpf || "",
-    cupom: cartCouponCode || checkoutDiscountState.cupom || ""
-  };
+
+  // Auto-fill PRIMEIRA20 para primeira compra
   const ckCupomInput = dlg.querySelector("#ckCupom");
-  if (ckCupomInput && checkoutDiscountState.cupom) ckCupomInput.value = checkoutDiscountState.cupom;
+  const initialCupom = cartCouponCode || checkoutDiscountState.cupom || "";
+  checkoutDiscountState = { ...checkoutDiscountState, cpf: checkoutDiscountState.cpf || "", cupom: initialCupom };
+  if (ckCupomInput) ckCupomInput.value = initialCupom;
+
+  if (currentClientSession && ckCupomInput && !ckCupomInput.value) {
+    fetchClientOrders().then(orders => {
+      if (orders.length === 0 && ckCupomInput && !ckCupomInput.value) {
+        ckCupomInput.value = 'PRIMEIRA20';
+        const cpfVal = dlg.querySelector('input[name="cpf"]')?.value || '';
+        if (cpfVal.replace(/\D/g,'').length === 11) {
+          validateCheckoutDiscounts({ cpf: cpfVal, cupom: 'PRIMEIRA20', subtotal: getCartSubtotal() })
+            .then(() => renderCheckoutTotals())
+            .catch(() => {});
+        }
+        const discMsg = dlg.querySelector('#checkoutDiscountMsg');
+        if (discMsg) discMsg.textContent = 'Cupom de primeira compra aplicado automaticamente!';
+      }
+    }).catch(() => {});
+  }
 
   // Preencher resumo
   const itemsDiv = el("#checkoutItems");
@@ -5249,11 +5587,15 @@ function openWhatsAppWithMessage(message) {
 function showPaymentTransition(){
   const existing = document.getElementById("payment-transition");
   if (existing) { existing.style.display = "flex"; return; }
-  const stars = [
-    [12,18],[22,72],[38,8],[55,85],[68,14],[80,60],[90,30],[6,50],
-    [45,42],[75,78],[30,92],[60,5],[15,65],[85,45],[50,22]
-  ].map(([l,t],i) =>
-    `<span style="left:${l}%;top:${t}%;animation-delay:${(i*0.17).toFixed(2)}s">★</span>`
+  // Posições das estrelas da bandeira do Brasil
+  const starPositions = [
+    [12,18,0],[22,72,.17],[38,8,.34],[55,85,.51],[68,14,.68],
+    [80,60,.85],[90,30,1.02],[6,50,1.19],[45,42,1.36],[75,78,1.53],
+    [30,92,1.7],[60,5,1.87],[15,65,2.04],[85,45,2.21],[50,22,2.38],
+    [35,35,.9],[65,55,1.1],[25,55,.6],[70,30,.4],[48,70,1.6]
+  ];
+  const stars = starPositions.map(([l,t,d]) =>
+    `<span style="left:${l}%;top:${t}%;animation-delay:${d}s">★</span>`
   ).join("");
   const div = document.createElement("div");
   div.id = "payment-transition";
@@ -5261,8 +5603,8 @@ function showPaymentTransition(){
     <div class="pt-stars">${stars}</div>
     <div class="pt-diamond"></div>
     <div class="pt-circle">
+      <div class="pt-ordem">ORDEM E PROGRESSO</div>
       <div class="pt-lock">🔒</div>
-      <div class="pt-logo">Lemoov</div>
       <div class="pt-bar-wrap"><div class="pt-bar"></div></div>
     </div>
     <div class="pt-msg">Redirecionando para pagamento seguro…</div>

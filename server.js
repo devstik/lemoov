@@ -110,6 +110,7 @@ async function initDatabase() {
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    await mysqlPool.execute(`INSERT IGNORE INTO lemoov_coupons (code, percent, active) VALUES ('PRIMEIRA20', 20, 1)`);
     await mysqlPool.execute(`
       CREATE TABLE IF NOT EXISTS lemoov_payment_intents (
         id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -834,7 +835,7 @@ app.get('/api/client/me', (req, res) => {
     if (token) clientSessions.delete(token);
     return res.status(401).json({ ok: false, error: 'sessão expirada' });
   }
-  return res.json({ ok: true, client: { id: session.clientId, nome: session.nome, email: session.email, telefone: session.telefone || '' } });
+  return res.json({ ok: true, client: { id: session.clientId, nome: session.nome, email: session.email, telefone: session.telefone || '', cpf: session.cpf || '' } });
 });
 
 app.put('/api/client/me', clientAuthRequired, async (req, res) => {
@@ -873,15 +874,15 @@ app.post('/api/client/login', async (req, res) => {
   if (!email || !senha) return res.status(400).json({ ok: false, error: 'E-mail e senha são obrigatórios.' });
   try {
     await initDatabase();
-    const [rows] = await mysqlPool.execute('SELECT id, nome, email, senha_hash, telefone FROM lemoov_clients WHERE email = ?', [String(email).toLowerCase().trim()]);
+    const [rows] = await mysqlPool.execute('SELECT id, nome, email, senha_hash, telefone, cpf FROM lemoov_clients WHERE email = ?', [String(email).toLowerCase().trim()]);
     if (!rows.length || !verifyClientPwd(String(senha), rows[0].senha_hash)) {
       return res.status(401).json({ ok: false, error: 'E-mail ou senha incorretos.' });
     }
     const client = rows[0];
     const token = crypto.randomBytes(24).toString('hex');
-    clientSessions.set(token, { clientId: client.id, nome: client.nome, email: client.email, telefone: client.telefone || '', createdAt: Date.now() });
+    clientSessions.set(token, { clientId: client.id, nome: client.nome, email: client.email, telefone: client.telefone || '', cpf: client.cpf || '', createdAt: Date.now() });
     res.setHeader('Set-Cookie', clientSessionCookie(token, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
-    return res.json({ ok: true, client: { id: client.id, nome: client.nome, email: client.email, telefone: client.telefone || '' } });
+    return res.json({ ok: true, client: { id: client.id, nome: client.nome, email: client.email, telefone: client.telefone || '', cpf: client.cpf || '' } });
   } catch (e) {
     console.error('[client/login]', e.message);
     return res.status(500).json({ ok: false, error: 'Erro interno.' });
@@ -920,14 +921,15 @@ app.post('/api/client/register', async (req, res) => {
     if (process.env.SMTP_HOST || process.env.RESEND_API_KEY) {
       const code = String(Math.floor(100000 + Math.random() * 900000));
       const verifyToken = crypto.randomBytes(24).toString('hex');
-      verificationCodes.set(verifyToken, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), code, welcomeCoupon, expiresAt: Date.now() + VERIFY_CODE_TTL_MS });
+      verificationCodes.set(verifyToken, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: String(cpf || '').replace(/\D/g, '') || '', code, welcomeCoupon, expiresAt: Date.now() + VERIFY_CODE_TTL_MS });
       await sendVerificationEmail(emailNorm, String(nome).trim(), code).catch((e) => console.error('[verify-email]', e.message));
       return res.status(201).json({ ok: true, needsVerification: true, verifyToken, welcomeCoupon });
     }
     const token = crypto.randomBytes(24).toString('hex');
-    clientSessions.set(token, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), createdAt: Date.now() });
+    const cpfClean = String(cpf || '').replace(/\D/g, '') || '';
+    clientSessions.set(token, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: cpfClean, createdAt: Date.now() });
     res.setHeader('Set-Cookie', clientSessionCookie(token, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
-    return res.status(201).json({ ok: true, welcomeCoupon, client: { id: clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, '') } });
+    return res.status(201).json({ ok: true, welcomeCoupon, client: { id: clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: cpfClean } });
   } catch (e) {
     console.error('[client/register]', e.message);
     if (e.code === 'ER_DUP_ENTRY') {
@@ -1263,9 +1265,9 @@ app.post('/api/client/verify-email', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Código incorreto.' });
   verificationCodes.delete(String(verifyToken));
   const sessionToken = crypto.randomBytes(24).toString('hex');
-  clientSessions.set(sessionToken, { clientId: entry.clientId, nome: entry.nome, email: entry.email, telefone: entry.telefone, createdAt: Date.now() });
+  clientSessions.set(sessionToken, { clientId: entry.clientId, nome: entry.nome, email: entry.email, telefone: entry.telefone, cpf: entry.cpf || '', createdAt: Date.now() });
   res.setHeader('Set-Cookie', clientSessionCookie(sessionToken, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
-  return res.json({ ok: true, welcomeCoupon: entry.welcomeCoupon || null, client: { id: entry.clientId, nome: entry.nome, email: entry.email } });
+  return res.json({ ok: true, welcomeCoupon: entry.welcomeCoupon || null, client: { id: entry.clientId, nome: entry.nome, email: entry.email, cpf: entry.cpf || '' } });
 });
 
 app.post('/api/client/forgot-password', async (req, res) => {
