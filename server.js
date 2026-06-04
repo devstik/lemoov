@@ -2324,6 +2324,34 @@ app.get('/api/admin/estoque-movimentos', authRequired, async (_req, res) => {
   }
 });
 
+app.post('/api/admin/operacao-estoque', authRequired, async (req, res) => {
+  let conn = null;
+  try {
+    requireStockMovementDatabase();
+    if (MYSQL_ENABLED) {
+      await initDatabase();
+      conn = await mysqlPool.getConnection();
+      await conn.beginTransaction();
+      await conn.execute('SELECT id FROM lemoov_products FOR UPDATE');
+    }
+    const produtos = ensureProductIds(await readProdutosStore(conn));
+    const movements = applyStockOperation(produtos, req.body || {});
+    await writeProdutosStore(produtos, conn);
+    await appendStockMovementsStore(movements, conn);
+    if (conn) await conn.commit();
+    const produto = produtos.find((p) => Number(p.id) === Number(req.body?.produtoId)) || null;
+    res.json({ ok: true, produto, movements: movements.length });
+  } catch (e) {
+    if (conn) {
+      try { await conn.rollback(); } catch (_rollbackError) {}
+    }
+    console.error('[operacao-estoque]', e.message);
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
   let conn = null;
   try {
@@ -2418,54 +2446,8 @@ app.post('/api/admin/inventario-estoque', authRequired, async (req, res) => {
       throw err;
     }
     const produtos = ensureProductIds(await readProdutosStore(conn));
+    const movements = applyStockOperation(produtos, { tipo: 'inventario', produtoId, corIndex, quantidades: contagem });
     const prod = produtos.find((p) => Number(p.id) === Number(produtoId));
-    if (!prod) {
-      const err = new Error('Produto não encontrado');
-      err.status = 404;
-      throw err;
-    }
-    const cor = Array.isArray(prod.cores) ? prod.cores[Number(corIndex) || 0] : null;
-    if (!cor) {
-      const err = new Error('Cor não encontrada');
-      err.status = 404;
-      throw err;
-    }
-    if (!cor.estoque || typeof cor.estoque !== 'object' || Array.isArray(cor.estoque)) {
-      cor.estoque = {};
-    }
-    const movements = [];
-    const now = new Date().toISOString();
-    Object.entries(contagem).forEach(([size, qty]) => {
-      const s = String(size).trim().toUpperCase();
-      if (!s) return;
-      const counted = Math.max(0, Number(qty) || 0);
-      const before = Math.max(0, Number(cor.estoque[s]) || 0);
-      const delta = counted - before;
-      if (delta === 0) return;
-      cor.estoque[s] = counted;
-      movements.push({
-        id: crypto.randomUUID(),
-        type: 'ajuste',
-        reason: 'inventario',
-        productId: Number(produtoId),
-        productName: prod.nome || '',
-        colorIndex: Number(corIndex) || 0,
-        colorName: cor.nome || '',
-        size: s,
-        quantity: delta,
-        before,
-        after: counted,
-        source: 'admin',
-        createdAt: now
-      });
-    });
-    cor.tamanhos = Object.keys(cor.estoque).filter((s) => Number(cor.estoque[s]) > 0);
-    cor.soldOut = cor.tamanhos.length === 0;
-    const allManaged = prod.cores.every((c) => c.estoque && typeof c.estoque === 'object' && !Array.isArray(c.estoque));
-    if (allManaged) {
-      prod.soldOut = prod.cores.every((c) => Object.values(c.estoque).every((q) => Number(q) <= 0));
-    }
-    prod.updatedAt = new Date().toISOString();
     await writeProdutosStore(produtos, conn);
     await appendStockMovementsStore(movements, conn);
     if (conn) await conn.commit();

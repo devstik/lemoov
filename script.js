@@ -158,6 +158,7 @@ const IMAGE_BASE = window.LEMOOV_IMAGE_BASE || "";
 let filtroAtual = "Todos";
 let ordenacaoAtual = "destaque";
 let buscaAtual = "";
+const CART_STORAGE_KEY = "lemoov_cart_v1";
 const CART_TTL_MS = 30 * 60 * 1000;
 let cartUpdatedAt = 0;
 let cartExpiryTimer = null;
@@ -165,11 +166,34 @@ let paymentOriginPath = "";
 let visitorRegionMemory = null;
 let cookieConsentMemory = null;
 function _loadCart() {
-  return [];
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.items) ? parsed.items : []);
+    const updatedAt = Number(Array.isArray(parsed) ? Date.now() : parsed?.updatedAt) || Date.now();
+    if (items.length && Date.now() - updatedAt >= CART_TTL_MS) {
+      localStorage.removeItem(CART_STORAGE_KEY);
+      return [];
+    }
+    cartUpdatedAt = items.length ? updatedAt : 0;
+    return items;
+  } catch (_) {
+    return [];
+  }
 }
 function _saveCart({ touch = false } = {}) {
-  if (!carrinho.length) { cartUpdatedAt = 0; return; }
-  if (touch || !cartUpdatedAt) cartUpdatedAt = Date.now();
+  try {
+    if (!carrinho.length) {
+      cartUpdatedAt = 0;
+      localStorage.removeItem(CART_STORAGE_KEY);
+      return;
+    }
+    if (touch || !cartUpdatedAt) cartUpdatedAt = Date.now();
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify({ items: carrinho, updatedAt: cartUpdatedAt }));
+  } catch (_) {
+    if (!carrinho.length) cartUpdatedAt = 0;
+  }
 }
 function _scheduleCartExpiry() {
   if (cartExpiryTimer) window.clearTimeout(cartExpiryTimer);
