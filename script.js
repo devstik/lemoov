@@ -5065,21 +5065,40 @@ function showFreteNumeroForm(cep) {
   if (!form._lemoovBound) {
     form._lemoovBound = true;
     const confirmar = el("#btnConfirmarNumero");
-    const confirmAddr = () => {
+    const confirmAddr = async () => {
       const numero = (el("#freteNumeroInput")?.value || "").trim();
       if (!numero) { el("#freteNumeroInput")?.focus(); return; }
       const complemento = (el("#freteComplementoInput")?.value || "").trim();
       const a = enderecoAutofill || {};
-      selectedDeliveryAddress = {
-        cep: (a.cep || cepAtual || "").replace(/\D/g, ""),
+      const novoAddr = {
+        cep:        (a.cep || cepAtual || "").replace(/\D/g, ""),
         logradouro: a.logradouro || a.rua || "",
         numero,
         complemento,
-        bairro: a.bairro || "",
-        cidade: a.cidade || "",
-        uf: a.uf || ""
+        bairro:     a.bairro || "",
+        cidade:     a.cidade || "",
+        uf:         a.uf || ""
       };
+
+      if (confirmar) { confirmar.disabled = true; confirmar.textContent = "Salvando…"; }
+
+      // Salva no cadastro do cliente se estiver logado
+      if (currentClientSession) {
+        try {
+          const res = await fetch('/api/client/addresses', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(novoAddr)
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.id) novoAddr.id = data.id;
+        } catch (_) {}
+      }
+
+      selectedDeliveryAddress = novoAddr;
       form.style.display = "none";
+      if (confirmar) { confirmar.disabled = false; confirmar.textContent = "Confirmar endereço"; }
       renderCartDeliveryState();
       atualizarCart();
     };
