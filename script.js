@@ -57,6 +57,21 @@ function crmTrack(type, extra = {}) {
   }).catch(() => {});
 }
 
+// Enriquece o CRM com localização precisa (CEP digitado, GPS ou endereço do cliente)
+function crmEnrichLocation({ cep, logradouro, bairro, cidade, lat, lng, source }) {
+  if (getCookieConsent() !== 'accepted') return;
+  const extra = {};
+  if (cep)        extra.cep        = String(cep).replace(/\D/g, '');
+  if (logradouro) extra.logradouro = String(logradouro).trim();
+  if (bairro)     extra.bairro     = String(bairro).trim();
+  if (cidade)     extra.cidade     = String(cidade).trim();
+  if (lat)        extra.lat        = Number(lat);
+  if (lng)        extra.lng        = Number(lng);
+  if (source)     extra.cep_source = source; // 'cart_input' | 'gps' | 'client_address'
+  if (Object.keys(extra).length === 0) return;
+  crmTrack('location_enriched', extra);
+}
+
 // heartbeat de tempo no site
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
@@ -3516,6 +3531,11 @@ async function hydrateClientSession() {
   renderCartDeliveryState();
   await autoLoadDeliveryFromClient();
   atualizarCart();
+  // Enriquece CRM com endereço cadastrado do cliente logado
+  if (currentClientSession && selectedDeliveryAddress?.cep) {
+    const a = selectedDeliveryAddress;
+    crmEnrichLocation({ cep: a.cep, logradouro: a.logradouro || '', bairro: a.bairro || '', cidade: a.cidade || '', source: 'client_address' });
+  }
 }
 
 async function fetchClientAddresses() {
@@ -4989,6 +5009,8 @@ async function calcularEntregaPorCEP(cepRaw) {
     resetFreteUI("CEP não encontrado. Verifique e tente novamente.");
     return;
   }
+  // Enriquece CRM com CEP completo + rua digitados pelo usuário
+  crmEnrichLocation({ cep, logradouro: addr?.rua || '', bairro: addr?.bairro || '', cidade: city || '', lat: hasCoords ? coords.lat : null, lng: hasCoords ? coords.lng : null, source: 'cart_input' });
 
   if (hasCoords && origin) {
     const km = haversineKm(origin.lat, origin.lng, coords.lat, coords.lng);
@@ -5183,11 +5205,14 @@ function bindFreteUIEvents() {
       if (freteMsg) freteMsg.textContent = "Obtendo localização…";
       navigator.geolocation.getCurrentPosition(async (pos) => {
         try {
-          const addr = await reverseGeocodeAddress(pos.coords.latitude, pos.coords.longitude);
+          const { latitude, longitude, accuracy } = pos.coords;
+          const addr = await reverseGeocodeAddress(latitude, longitude);
           if (!addr?.cep || addr.cep.length !== 8) {
             if (freteMsg) freteMsg.textContent = "Não conseguimos identificar seu CEP. Digite manualmente.";
             return;
           }
+          // Enriquece CRM com coordenadas GPS (precisão em metros disponível)
+          crmEnrichLocation({ cep: addr.cep, logradouro: addr.rua || '', bairro: addr.bairro || '', cidade: addr.cidade || '', lat: latitude, lng: longitude, source: `gps_${Math.round(accuracy)}m` });
           if (cepInput) cepInput.value = formatCEPForInput(addr.cep);
           await calcularEntregaPorCEP(addr.cep);
         } catch (_e) {

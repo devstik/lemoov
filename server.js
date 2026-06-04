@@ -2155,6 +2155,76 @@ app.delete('/api/admin/cupons/:code', authRequired, async (req, res) => {
   }
 });
 
+// ── CLIENTES ADMIN ────────────────────────────────────────────────────────
+app.get('/api/admin/clientes', authRequired, async (req, res) => {
+  try {
+    requireMysqlStorage();
+    await initDatabase();
+    const [rows] = await mysqlPool.execute(
+      'SELECT id, nome, email, telefone, cpf, created_at AS createdAt FROM lemoov_clients ORDER BY created_at DESC LIMIT 2000'
+    );
+    return res.json({ ok: true, clientes: rows });
+  } catch (e) {
+    console.error('[admin/clientes]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao buscar clientes.' });
+  }
+});
+
+app.get('/api/admin/clientes/:id', authRequired, async (req, res) => {
+  try {
+    requireMysqlStorage();
+    await initDatabase();
+    const id = Number(req.params.id);
+    const [[client]] = await mysqlPool.execute('SELECT id, nome, email, telefone, cpf, created_at AS createdAt FROM lemoov_clients WHERE id = ?', [id]);
+    if (!client) return res.status(404).json({ ok: false, error: 'Cliente não encontrado.' });
+    const [addresses] = await mysqlPool.execute('SELECT * FROM lemoov_client_addresses WHERE client_id = ? ORDER BY id', [id]);
+    const [orders] = await mysqlPool.execute(`SELECT order_number, data FROM lemoov_orders WHERE JSON_UNQUOTE(JSON_EXTRACT(data,'$.client_id')) = ? ORDER BY created_at DESC LIMIT 20`, [String(id)]);
+    const parsedOrders = orders.map(o => { try { return JSON.parse(o.data); } catch (_) { return { pedido: o.order_number }; } });
+    return res.json({ ok: true, client, addresses, orders: parsedOrders });
+  } catch (e) {
+    console.error('[admin/clientes/:id]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao buscar cliente.' });
+  }
+});
+
+app.post('/api/admin/clientes/:id/whatsapp', authRequired, async (req, res) => {
+  try {
+    requireMysqlStorage();
+    await initDatabase();
+    const id = Number(req.params.id);
+    const { mensagem } = req.body || {};
+    if (!mensagem) return res.status(400).json({ ok: false, error: 'Mensagem obrigatória.' });
+    const [[client]] = await mysqlPool.execute('SELECT telefone, nome FROM lemoov_clients WHERE id = ?', [id]);
+    if (!client?.telefone) return res.status(400).json({ ok: false, error: 'Cliente sem telefone cadastrado.' });
+    await sendWhatsApp(client.telefone, mensagem);
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('[admin/clientes/whatsapp]', e.message);
+    return res.status(500).json({ ok: false, error: e.message || 'Erro ao enviar mensagem.' });
+  }
+});
+
+app.post('/api/admin/clientes/whatsapp-bulk', authRequired, async (req, res) => {
+  try {
+    requireMysqlStorage();
+    await initDatabase();
+    const { ids, mensagem } = req.body || {};
+    if (!mensagem || !Array.isArray(ids) || !ids.length) return res.status(400).json({ ok: false, error: 'IDs e mensagem obrigatórios.' });
+    const placeholders = ids.map(() => '?').join(',');
+    const [rows] = await mysqlPool.execute(`SELECT id, nome, telefone FROM lemoov_clients WHERE id IN (${placeholders}) AND telefone IS NOT NULL AND telefone != ''`, ids.map(Number));
+    let sent = 0; const errors = [];
+    for (const c of rows) {
+      try { await sendWhatsApp(c.telefone, mensagem); sent++; await new Promise(r => setTimeout(r, 400)); }
+      catch (e) { errors.push(`${c.nome}: ${e.message}`); }
+    }
+    return res.json({ ok: true, sent, errors });
+  } catch (e) {
+    console.error('[admin/clientes/whatsapp-bulk]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao enviar mensagens.' });
+  }
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 app.post('/api/descontos/validar', async (req, res) => {
   try {
     const pedidos = await readPedidosStore();
@@ -2642,7 +2712,7 @@ async function ensureCrmTables() {
   try { await mysqlPool.execute('CREATE INDEX idx_crm_session ON lemoov_crm_events (session_id)'); } catch (_) {}
   try { await mysqlPool.execute('CREATE INDEX idx_crm_ts ON lemoov_crm_events (ts)'); } catch (_) {}
   // migrações para tabelas já existentes
-  const newCols = ['bairro VARCHAR(100)','cep VARCHAR(10)','dispositivo VARCHAR(30)','browser VARCHAR(50)','so VARCHAR(30)','origem VARCHAR(300)','utm_source VARCHAR(100)','utm_medium VARCHAR(100)','utm_campaign VARCHAR(100)'];
+  const newCols = ['bairro VARCHAR(100)','cep VARCHAR(10)','dispositivo VARCHAR(30)','browser VARCHAR(50)','so VARCHAR(30)','origem VARCHAR(300)','utm_source VARCHAR(100)','utm_medium VARCHAR(100)','utm_campaign VARCHAR(100)','logradouro VARCHAR(200)','lat DECIMAL(10,7)','lng DECIMAL(10,7)','cep_source VARCHAR(20)'];
   for (const col of newCols) {
     try { await mysqlPool.execute(`ALTER TABLE lemoov_crm_sessions ADD COLUMN ${col}`); } catch (_) {}
   }
@@ -2702,7 +2772,8 @@ app.post('/api/crm/event', async (req, res) => {
     const body = req.body || {};
     const { sessionId, type, cidade, bairro, regiao, pais, cep, clientId, clienteNome,
             productId, productName, orderId, total, timeOnSite, page,
-            origem, utm_source, utm_medium, utm_campaign } = body;
+            origem, utm_source, utm_medium, utm_campaign,
+            logradouro, lat, lng, cep_source } = body;
 
     if (!sessionId || !type) {
       console.warn('[crm/event] body inválido. body:', JSON.stringify(body).slice(0, 200));
@@ -2729,21 +2800,27 @@ app.post('/api/crm/event', async (req, res) => {
       await mysqlPool.execute(
         `INSERT INTO lemoov_crm_sessions
           (session_id, ip, cidade, bairro, regiao, pais, cep, client_id, cliente_nome,
-           dispositivo, browser, so, origem, utm_source, utm_medium, utm_campaign)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+           dispositivo, browser, so, origem, utm_source, utm_medium, utm_campaign,
+           logradouro, lat, lng, cep_source)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [sessionId, ip, finalCidade, finalBairro, finalRegiao, finalPais, finalCep,
          clientId||null, clienteNome||'',
          ua.dispositivo, ua.browser, ua.so,
-         origem||'', utm_source||'', utm_medium||'', utm_campaign||'']
+         origem||'', utm_source||'', utm_medium||'', utm_campaign||'',
+         logradouro||null, lat||null, lng||null, cep_source||null]
       );
       console.log(`[crm] nova sessão: ${sessionId.slice(0,8)}… | ${cidade||'?'}/${bairro||'?'} | ${ua.dispositivo} ${ua.browser} | origem: ${origem||'direto'}`);
     } else {
       const updates = ['last_seen = NOW()'];
       const params = [];
       if (clientId && !existing[0].client_id) { updates.push('client_id = ?', 'cliente_nome = ?'); params.push(clientId, clienteNome||''); }
-      if (cidade)      { updates.push('cidade = COALESCE(NULLIF(cidade,""), ?)');  params.push(cidade); }
-      if (bairro)      { updates.push('bairro = COALESCE(NULLIF(bairro,""), ?)');  params.push(bairro); }
-      if (cep)         { updates.push('cep = COALESCE(NULLIF(cep,""), ?)');         params.push(cep); }
+      if (cidade)      { updates.push('cidade = COALESCE(NULLIF(cidade,""), ?)');       params.push(cidade); }
+      if (bairro)      { updates.push('bairro = COALESCE(NULLIF(bairro,""), ?)');       params.push(bairro); }
+      if (cep)         { updates.push('cep = COALESCE(NULLIF(cep,""), ?)');             params.push(cep); }
+      if (logradouro)  { updates.push('logradouro = COALESCE(NULLIF(logradouro,""), ?)'); params.push(logradouro); }
+      if (lat)         { updates.push('lat = ?');   params.push(Number(lat)); }
+      if (lng)         { updates.push('lng = ?');   params.push(Number(lng)); }
+      if (cep_source)  { updates.push('cep_source = ?'); params.push(cep_source); }
       if (timeOnSite)  { updates.push('time_on_site = ?');  params.push(Number(timeOnSite)); }
       params.push(sessionId);
       await mysqlPool.execute(`UPDATE lemoov_crm_sessions SET ${updates.join(', ')} WHERE session_id = ?`, params);
@@ -2768,7 +2845,8 @@ app.get('/api/crm/sessions', authRequired, async (req, res) => {
     await initDatabase();
     const [rows] = await mysqlPool.execute(`
       SELECT s.session_id AS sessionId, s.cidade, s.bairro, s.regiao, s.pais, s.cep,
-             s.client_id AS clientId, s.cliente_nome AS clienteNome,
+             s.logradouro, s.lat, s.lng, s.cep_source,
+             s.client_id AS clientId, s.cliente_nome AS clienteNome, s.ip,
              s.dispositivo, s.browser, s.so, s.origem, s.utm_source, s.utm_medium, s.utm_campaign,
              s.first_seen AS firstSeen, s.last_seen AS lastSeen, s.time_on_site AS timeOnSite,
              COUNT(e.id) AS eventCount,

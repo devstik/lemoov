@@ -284,6 +284,7 @@
     <button class="tab-btn" data-tab="pedidos">Pedidos</button>
     <button class="tab-btn" data-tab="cupons">Cupons</button>
     <button class="tab-btn" data-tab="relatorio">Relatório</button>
+    <button class="tab-btn" data-tab="clientes">Clientes</button>
     <button class="tab-btn" data-tab="crm">CRM</button>
   </nav>
   <div class="adm-header-right">
@@ -396,7 +397,7 @@
     <div class="card orders-list">
       <div class="orders-toolbar">
         <div class="toolbar-search">
-          <input class="fc" id="orderSearch" placeholder="Buscar por pedido, cliente, telefone ou e-mail" />
+          <input class="fc" id="orderSearch" placeholder="🔍 Pedido, cliente, telefone, e-mail ou cidade…" />
         </div>
         <button class="filter-btn active" data-status="">Todos</button>
         <button class="filter-btn" data-status="confirmado">Confirmado</button>
@@ -2224,8 +2225,10 @@ async function openCrmSession(sid){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px">
       <div><span style="color:#64748b">Cidade:</span> ${s.cidade||'—'}${s.bairro?' · '+s.bairro:''}</div>
       <div><span style="color:#64748b">Estado:</span> ${s.regiao||'—'} · ${s.pais||'—'}</div>
-      <div><span style="color:#64748b">CEP:</span> ${s.cep||'—'}</div>
+      ${s.logradouro?`<div style="grid-column:1/-1"><span style="color:#64748b">Logradouro:</span> <strong>${s.logradouro}</strong>${s.cep?', CEP '+s.cep:''} <span style="font-size:10px;background:#f0fdf4;color:#166534;border-radius:4px;padding:1px 5px">${(s.cep_source||'').replace('cart_input','CEP digitado').replace('client_address','endereço cadastrado').replace(/^gps_(\d+)m$/,'GPS ±$1m')||'IP'}</span></div>`
+      : `<div><span style="color:#64748b">CEP:</span> ${s.cep||'—'} <span style="font-size:10px;color:#94a3b8">${s.cep_source?'('+s.cep_source.replace('cart_input','digitado').replace('client_address','cadastro').replace(/^gps_(\d+)m$/,'GPS ±$1m')+')':''}</span></div>`}
       <div><span style="color:#64748b">Status:</span> <span style="color:${st.color}">${st.label}</span></div>
+      ${s.lat&&s.lng?`<div style="grid-column:1/-1"><span style="color:#64748b">Coordenadas GPS:</span> <a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="color:#2563eb">${Number(s.lat).toFixed(5)}, ${Number(s.lng).toFixed(5)} ↗</a></div>`:''}
       <div><span style="color:#64748b">Dispositivo:</span> ${s.dispositivo||'—'} · ${s.browser||'—'}</div>
       <div><span style="color:#64748b">Sistema:</span> ${s.so||'—'}</div>
       <div><span style="color:#64748b">Origem:</span> ${s.utm_campaign||s.utm_source||s.origem||'direto'}</div>
@@ -2254,7 +2257,263 @@ async function openCrmSession(sid){
 document.querySelectorAll('.tab-btn[data-tab="crm"]').forEach(btn=>{
   btn.addEventListener('click', loadCRM);
 });
+
+// ── CLIENTES ─────────────────────────────────────────────────────────────────
+let _clientes = [];
+let _clientesFiltrados = [];
+
+function fmtPhone(t){ if(!t)return '—'; const d=t.replace(/\D/g,''); if(d.length===11)return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`; if(d.length===10)return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`; return t; }
+function fmtDate(v){ if(!v)return '—'; return new Date(v).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtBRL2(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+
+async function loadClientes(){
+  const body=$('clientesBody');
+  if(body) body.innerHTML='<div class="form-empty">Carregando…</div>';
+  try{
+    const r=await fetch('/api/admin/clientes');
+    if(r.status===401){redirect401();return;}
+    const d=await r.json();
+    _clientes=Array.isArray(d.clientes)?d.clientes:[];
+    renderClientesList();
+  }catch(e){console.error(e); if(body)body.innerHTML='<div class="form-empty" style="color:#e8445a">Erro ao carregar clientes.</div>';}
+}
+
+function renderClientesList(){
+  const q=($('clienteSearch')?.value||'').toLowerCase();
+  const sort=$('clienteSort')?.value||'newest';
+  let list=[..._clientes];
+  if(q) list=list.filter(c=>
+    (c.nome||'').toLowerCase().includes(q)||
+    (c.email||'').toLowerCase().includes(q)||
+    (c.telefone||'').includes(q)||
+    (c.cpf||'').replace(/\D/g,'').includes(q.replace(/\D/g,''))
+  );
+  if(sort==='oldest') list.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  else if(sort==='name') list.sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+  _clientesFiltrados=list;
+  const body=$('clientesBody');
+  if(!body) return;
+  if(!list.length){body.innerHTML='<div class="form-empty">Nenhum cliente encontrado.</div>';return;}
+  body.innerHTML=`
+    <div style="font-size:12px;color:#64748b;margin-bottom:10px">${list.length} cliente${list.length!==1?'s':''}</div>
+    <div style="overflow-x:auto">
+    <table class="orders-tbl">
+      <thead><tr>
+        <th>Nome</th>
+        <th>E-mail</th>
+        <th>Telefone / WhatsApp</th>
+        <th>CPF</th>
+        <th>Cadastro</th>
+        <th style="text-align:right">Ações</th>
+      </tr></thead>
+      <tbody>
+        ${list.map(c=>`<tr>
+          <td><strong>${esc(c.nome||'—')}</strong></td>
+          <td style="font-size:12px">${esc(c.email||'—')}</td>
+          <td style="font-family:monospace;font-size:12px">${c.telefone?fmtPhone(c.telefone):'<span style="color:#94a3b8">—</span>'}</td>
+          <td style="font-family:monospace;font-size:11px">${c.cpf?c.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):'—'}</td>
+          <td style="font-size:12px;color:#64748b">${fmtDate(c.createdAt)}</td>
+          <td style="text-align:right">
+            <div style="display:inline-flex;gap:6px">
+              <button class="btn btn--secondary btn--sm" data-cliente-id="${c.id}" type="button">Endereços</button>
+              ${c.telefone?`<button class="btn btn--primary btn--sm" data-wpp-id="${c.id}" data-wpp-nome="${esc(c.nome||'')}" type="button">📲 WhatsApp</button>`:''}
+            </div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  $$('[data-cliente-id]').forEach(btn=>btn.addEventListener('click',()=>openClienteModal(Number(btn.dataset.clienteId))));
+  $$('[data-wpp-id]').forEach(btn=>btn.addEventListener('click',()=>openWppModal(Number(btn.dataset.wppId), btn.dataset.wppNome)));
+}
+
+async function openClienteModal(id){
+  const r=await fetch(`/api/admin/clientes/${id}`);
+  const d=await r.json().catch(()=>({}));
+  if(!d.ok){toast(d.error||'Erro ao carregar cliente','error');return;}
+  const {client:c,addresses}=d;
+  const addrHtml=addresses.length?addresses.map(a=>`
+    <div style="padding:10px 12px;background:#f8faff;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;margin-bottom:8px">
+      <strong>${esc(a.logradouro)}, ${esc(a.numero)}${a.complemento?' – '+esc(a.complemento):''}</strong><br>
+      <span style="color:#64748b">${a.bairro?esc(a.bairro)+' · ':''}${esc(a.cidade)}/${esc(a.uf)} — CEP ${a.cep.replace(/(\d{5})(\d{3})/,'$1-$2')}</span>
+    </div>`).join(''):`<p style="color:#94a3b8;font-size:12px;padding:8px 0">Nenhum endereço cadastrado.</p>`;
+  const dlg=document.createElement('dialog');
+  dlg.style.cssText='background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(15,23,42,.22)';
+  dlg.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:17px;font-weight:700">${esc(c.nome||'—')}</div>
+        <div style="font-size:12px;color:#64748b">Cliente #${c.id} — cadastro em ${fmtDate(c.createdAt)}</div>
+      </div>
+      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="background:#f8faff;border-radius:10px;padding:14px;margin-bottom:16px;display:grid;gap:8px;font-size:13px">
+      <div><span style="color:#64748b;min-width:80px;display:inline-block">E-mail</span> ${esc(c.email||'—')}</div>
+      <div><span style="color:#64748b;min-width:80px;display:inline-block">Telefone</span> <strong>${c.telefone?fmtPhone(c.telefone):'<span style="color:#94a3b8;font-weight:400">não informado</span>'}</strong></div>
+      <div><span style="color:#64748b;min-width:80px;display:inline-block">CPF</span> <span style="font-family:monospace">${c.cpf?c.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):'—'}</span></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:8px">Endereços de entrega</div>
+    ${addrHtml}
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      ${c.telefone?`<button class="btn btn--primary btn--sm" id="btnWppCliente">📲 Enviar WhatsApp</button>`:''}
+      <button onclick="this.closest('dialog').close()" style="background:#f1f5f9;border:none;color:#475569;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Fechar</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  dlg.querySelector('#btnWppCliente')?.addEventListener('click',()=>{ dlg.close(); openWppModal(c.id,c.nome); });
+  dlg.addEventListener('close',()=>dlg.remove());
+}
+
+const WPP_TEMPLATES=[
+  {label:'Boas-vindas',texto:(n)=>`Olá, ${n}! 👋 Seja bem-vindo(a) à Lemoov Fitness! Estamos felizes em ter você conosco. Acesse nossa loja e confira as novidades: https://lemoov.com.br`},
+  {label:'Lembrete de carrinho',texto:(n)=>`Oi, ${n}! 🛍️ Você deixou itens no seu carrinho na Lemoov. Que tal finalizar sua compra? Estamos com estoque limitado! 💚`},
+  {label:'Nova coleção',texto:(n)=>`Olá, ${n}! ✨ Chegou nossa nova coleção Fitness! Peças lindas esperando por você: https://lemoov.com.br 💚`},
+  {label:'Promoção',texto:(n)=>`Ei, ${n}! 🎉 Promoção especial na Lemoov! Aproveite descontos imperdíveis hoje. Acesse: https://lemoov.com.br`},
+  {label:'Pós-compra / avaliação',texto:(n)=>`Olá, ${n}! 💚 Esperamos que tenha adorado sua compra da Lemoov! Sua opinião é muito importante para nós. Quando tiver um momento, adoraríamos saber o que achou. 😊`},
+  {label:'Personalizado',texto:()=>''},
+];
+
+function openWppModal(id, nome){
+  const dlg=document.createElement('dialog');
+  dlg.style.cssText='background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;box-shadow:0 24px 64px rgba(15,23,42,.22)';
+  dlg.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <strong>📲 WhatsApp para ${esc(nome||'cliente')}</strong>
+      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="margin-bottom:10px">
+      <label class="fl">Template</label>
+      <select class="fc" id="wppTemplate">
+        ${WPP_TEMPLATES.map((t,i)=>`<option value="${i}">${t.label}</option>`).join('')}
+      </select>
+    </div>
+    <div>
+      <label class="fl">Mensagem</label>
+      <textarea id="wppMsg" class="fc" rows="5" style="resize:vertical;font-size:13px"></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+      <button class="btn btn--ghost btn--sm" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button class="btn btn--primary btn--sm" id="btnEnviarWpp">Enviar</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  const sel=dlg.querySelector('#wppTemplate');
+  const txt=dlg.querySelector('#wppMsg');
+  const applyTpl=()=>{ const t=WPP_TEMPLATES[Number(sel.value)]; txt.value=t.texto(nome?.split(' ')[0]||''); };
+  applyTpl();
+  sel.addEventListener('change',applyTpl);
+  dlg.querySelector('#btnEnviarWpp').addEventListener('click',async()=>{
+    const msg=txt.value.trim();
+    if(!msg){toast('Escreva a mensagem','error');return;}
+    const btn=dlg.querySelector('#btnEnviarWpp'); btn.disabled=true; btn.textContent='Enviando…';
+    try{
+      const r=await fetch(`/api/admin/clientes/${id}/whatsapp`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mensagem:msg})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Erro ao enviar');
+      toast('Mensagem enviada via WhatsApp!','success'); dlg.close();
+    }catch(e){toast(e.message,'error'); btn.disabled=false; btn.textContent='Enviar';}
+  });
+  dlg.addEventListener('close',()=>dlg.remove());
+}
+
+function openWppMassa(){
+  const lista=_clientesFiltrados.filter(c=>c.telefone);
+  if(!lista.length){toast('Nenhum cliente com telefone no filtro atual','error');return;}
+  const dlg=document.createElement('dialog');
+  dlg.style.cssText='background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;box-shadow:0 24px 64px rgba(15,23,42,.22)';
+  dlg.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <strong>📲 WhatsApp em massa — ${lista.length} cliente${lista.length!==1?'s':''}</strong>
+      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="background:#fef9c3;border-radius:8px;padding:10px 12px;font-size:12px;color:#854d0e;margin-bottom:14px">⚠️ Mensagem será enviada para <strong>${lista.length} contatos</strong> com intervalo de 400ms entre cada. Certifique-se que sua conta Z-API está ativa.</div>
+    <div style="margin-bottom:10px">
+      <label class="fl">Template</label>
+      <select class="fc" id="wppMassaTpl">
+        ${WPP_TEMPLATES.map((t,i)=>`<option value="${i}">${t.label}</option>`).join('')}
+      </select>
+    </div>
+    <div>
+      <label class="fl">Mensagem <span style="color:#64748b;font-size:11px">(use {nome} para personalizar)</span></label>
+      <textarea id="wppMassaMsg" class="fc" rows="5" style="resize:vertical;font-size:13px"></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+      <button class="btn btn--ghost btn--sm" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button class="btn btn--danger btn--sm" id="btnEnviarMassa">Enviar para ${lista.length}</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  const sel=dlg.querySelector('#wppMassaTpl');
+  const txt=dlg.querySelector('#wppMassaMsg');
+  const applyTpl=()=>{ const t=WPP_TEMPLATES[Number(sel.value)]; txt.value=t.texto('{nome}'); };
+  applyTpl(); sel.addEventListener('change',applyTpl);
+  dlg.querySelector('#btnEnviarMassa').addEventListener('click',async()=>{
+    const template=txt.value.trim();
+    if(!template){toast('Escreva a mensagem','error');return;}
+    if(!confirm(`Confirma envio para ${lista.length} clientes?`)) return;
+    const btn=dlg.querySelector('#btnEnviarMassa'); btn.disabled=true; btn.textContent='Enviando…';
+    try{
+      const ids=lista.map(c=>c.id);
+      const r=await fetch('/api/admin/clientes/whatsapp-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,mensagem:template.replace(/{nome}/g,'')})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Erro');
+      toast(`✅ ${d.sent} enviados${d.errors?.length?' | '+d.errors.length+' falhas':''}`,d.errors?.length?'warn':'success');
+      dlg.close();
+    }catch(e){toast(e.message,'error'); btn.disabled=false; btn.textContent=`Enviar para ${lista.length}`;}
+  });
+  dlg.addEventListener('close',()=>dlg.remove());
+}
+
+document.querySelectorAll('.tab-btn[data-tab="clientes"]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ loadClientes(); });
+});
+['clienteSearch','clienteSort'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('input', renderClientesList);
+  document.getElementById(id)?.addEventListener('change', renderClientesList);
+});
+document.getElementById('btnWppTodos')?.addEventListener('click', openWppMassa);
 </script>
+
+<!-- ── CLIENTES ── -->
+<div id="tab-clientes" class="tab-panel">
+  <div class="screen-hero">
+    <div>
+      <div class="screen-kicker">Gestão de clientes</div>
+      <h1 class="screen-title">Clientes cadastrados</h1>
+      <p class="screen-copy">Visualize, pesquise e entre em contato com seus clientes via WhatsApp.</p>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 160px;gap:12px;align-items:end">
+        <div>
+          <label class="fl">Buscar</label>
+          <input class="fc" id="clienteSearch" placeholder="Nome, e-mail, telefone ou CPF…" autocomplete="off">
+        </div>
+        <div>
+          <label class="fl">Ordenar</label>
+          <select class="fc" id="clienteSort">
+            <option value="newest">Mais recentes</option>
+            <option value="oldest">Mais antigos</option>
+            <option value="name">Nome A–Z</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px;background:#f0fdf4;border:1px solid #bbf7d0">
+    <div class="card-body" style="padding:10px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <span style="font-size:13px;color:#166534">📲 <strong>WhatsApp em massa</strong> — envie mensagem para todos os clientes filtrados com telefone</span>
+        <button class="btn btn--primary btn--sm" id="btnWppTodos">Enviar</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body" id="clientesBody">
+      <div class="form-empty">Carregando clientes…</div>
+    </div>
+  </div>
+</div>
 
 <!-- ── CRM ── -->
 <div id="tab-crm" class="tab-panel"></div>
