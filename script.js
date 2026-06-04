@@ -1317,6 +1317,12 @@ function computeColorPrice(prod, colorObj){
     outline: none;
   }
   .frete__ui input:focus{ border-color: #009C3B !important; box-shadow: 0 0 0 3px rgba(0,156,59,.1) !important; }
+  .frete__numero-form{ margin-top:8px; display:flex; flex-direction:column; gap:7px; }
+  .frete__numero-row{ display:grid; grid-template-columns:1fr 1.4fr; gap:8px; }
+  .frete__numero-row input{ width:100%; box-sizing:border-box; border:1.5px solid #dbe3ea; border-radius:10px; padding:9px 11px; font:inherit; font-size:.84rem; }
+  .frete__numero-row input:focus{ border-color:#009C3B; outline:none; box-shadow:0 0 0 2px rgba(0,156,59,.12); }
+  .frete__endereco-preview{ font-size:.75rem; color:#56677c; line-height:1.35; min-height:14px; }
+  .frete__confirmar-btn{ width:100%; padding:10px; font-size:.82rem; font-weight:800; border-radius:12px; }
   .frete__ui .btn{
     padding: 11px 14px !important;
     font-size: 0.75rem !important; font-weight: 700;
@@ -3025,7 +3031,15 @@ function ensureFreteUI() {
         <button id="btnUseLocation" class="btn">📍 Localização</button>
       </div>
       <div id="freteMsg" class="frete__msg">
-        Entre para carregar o frete a partir do endereço cadastrado.
+        Informe o CEP para calcular o frete (estimativa).
+      </div>
+      <div id="freteNumeroForm" class="frete__numero-form" style="display:none;">
+        <div class="frete__numero-row">
+          <input id="freteNumeroInput" type="text" inputmode="numeric" placeholder="Número *" maxlength="10">
+          <input id="freteComplementoInput" type="text" placeholder="Complemento (opcional)" maxlength="40">
+        </div>
+        <div id="freteEnderecoPreview" class="frete__endereco-preview"></div>
+        <button id="btnConfirmarNumero" type="button" class="btn btn--primary frete__confirmar-btn">Confirmar endereço</button>
       </div>
       <div id="cartAddressSummary" class="cart-address-summary" style="display:none;"></div>
       <div id="freteOpcoes" class="frete__opcoes" style="display:none;"></div>
@@ -4868,6 +4882,8 @@ function resetFreteUI(message = "Informe o CEP para calcular a entrega.") {
   esconderOpcoesTransportadora();
   const freteMsg = el("#freteMsg");
   if (freteMsg) freteMsg.textContent = message;
+  const form = el("#freteNumeroForm");
+  if (form) { form.style.display = "none"; }
   atualizarCart();
 }
 
@@ -4884,6 +4900,7 @@ async function setPickupMode(enabled, { recalculateDelivery = false } = {}) {
     freteModo = "retirada";
     esconderOpcoesTransportadora();
     if (cepInput) cepInput.value = "";
+    const _nf = el("#freteNumeroForm"); if (_nf) _nf.style.display = "none";
   } else {
     freteAtual = 0;
     cepAtual = "";
@@ -5011,7 +5028,64 @@ async function calcularEntregaPorCEP(cepRaw) {
     if (freteMsg) freteMsg.textContent = "Não foi possível calcular o frete. Consulte via WhatsApp.";
     atualizarCart();
   } else {
-    if (freteMsg) freteMsg.textContent = "Escolha a transportadora:";
+    if (freteMsg) freteMsg.textContent = freteOpcoesCache.length > 1 ? "Escolha a transportadora:" : "";
+    showFreteNumeroForm(cep);
+  }
+}
+
+function showFreteNumeroForm(cep) {
+  const form = el("#freteNumeroForm");
+  if (!form) return;
+  const preview = el("#freteEnderecoPreview");
+  const addr = enderecoAutofill;
+
+  // Verifica se o CEP digitado é diferente do endereço salvo do cliente
+  const savedCep = (selectedDeliveryAddress?.cep || "").replace(/\D/g, "");
+  const typedCep  = (cep || "").replace(/\D/g, "");
+  const isSameCep = savedCep && savedCep === typedCep;
+
+  if (isSameCep && selectedDeliveryAddress?.numero) {
+    // CEP igual ao endereço já cadastrado — mantém e não pede número novamente
+    form.style.display = "none";
+    return;
+  }
+
+  if (preview && addr) {
+    const line = [addr.logradouro, addr.bairro, addr.cidade + (addr.uf ? "/" + addr.uf : "")].filter(Boolean).join(", ");
+    preview.textContent = line;
+  }
+
+  // Pré-preenche o número se o endereço salvo tiver o mesmo CEP
+  const numInput  = el("#freteNumeroInput");
+  const compInput = el("#freteComplementoInput");
+  if (numInput  && !numInput.value  && isSameCep) numInput.value  = selectedDeliveryAddress?.numero  || "";
+  if (compInput && !compInput.value && isSameCep) compInput.value = selectedDeliveryAddress?.complemento || "";
+
+  form.style.display = "";
+  if (!form._lemoovBound) {
+    form._lemoovBound = true;
+    const confirmar = el("#btnConfirmarNumero");
+    const confirmAddr = () => {
+      const numero = (el("#freteNumeroInput")?.value || "").trim();
+      if (!numero) { el("#freteNumeroInput")?.focus(); return; }
+      const complemento = (el("#freteComplementoInput")?.value || "").trim();
+      const a = enderecoAutofill || {};
+      selectedDeliveryAddress = {
+        cep: (a.cep || cepAtual || "").replace(/\D/g, ""),
+        logradouro: a.logradouro || a.rua || "",
+        numero,
+        complemento,
+        bairro: a.bairro || "",
+        cidade: a.cidade || "",
+        uf: a.uf || ""
+      };
+      form.style.display = "none";
+      renderCartDeliveryState();
+      atualizarCart();
+    };
+    if (confirmar) confirmar.addEventListener("click", confirmAddr);
+    el("#freteNumeroInput")?.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); el("#freteComplementoInput")?.focus(); } });
+    el("#freteComplementoInput")?.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); confirmAddr(); } });
   }
 }
 
