@@ -11,7 +11,7 @@
   <meta property="og:site_name" content="Lemoov Fitness" />
   <meta property="og:locale" content="pt_BR" />
   <meta property="og:image" content="image/capa/WhatsApp Image 2026-06-14 at 22.06.18.jpeg" />
-  <link rel="stylesheet" href="styles.css?v=17" />
+  <link rel="stylesheet" href="styles.css?v=18" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -32,7 +32,7 @@
       overflow: hidden;
       line-height: 0;
       position: relative;
-      min-height: clamp(330px, 42vw, 560px);
+      min-height: clamp(500px, 54vw, 740px);
       background: #383838;
       border-bottom: 1px solid rgba(235, 216, 199, 0.42);
       isolation: isolate;
@@ -41,11 +41,11 @@
       content: "";
       position: absolute;
       inset: 0;
-      z-index: 3;
+      z-index: 1;
       pointer-events: none;
       background:
-        linear-gradient(90deg, rgba(56,56,56,0.72), rgba(56,56,56,0.14) 36%, rgba(56,56,56,0.14) 64%, rgba(56,56,56,0.72)),
-        linear-gradient(0deg, rgba(56,56,56,0.42), transparent 34%, rgba(56,56,56,0.22));
+        linear-gradient(90deg, rgba(56,56,56,0.64), rgba(56,56,56,0.08) 36%, rgba(56,56,56,0.08) 64%, rgba(56,56,56,0.64)),
+        linear-gradient(0deg, rgba(56,56,56,0.34), transparent 38%, rgba(56,56,56,0.18));
     }
     .catalog-cover {
       position: absolute;
@@ -60,6 +60,7 @@
       display: grid;
       place-items: center;
       pointer-events: none;
+      z-index: 2;
     }
     .catalog-cover__bg,
     .catalog-cover__photo {
@@ -71,10 +72,11 @@
       height: 100%;
       object-fit: cover;
       object-position: center 18%;
-      filter: blur(26px) brightness(0.66) saturate(0.92);
+      filter: blur(24px) brightness(0.74) saturate(0.94);
       transform: scale(1.12);
       opacity: 0;
       transition: opacity 1s ease;
+      z-index: 0;
     }
     .catalog-cover__slide.is-active .catalog-cover__bg {
       opacity: 0.9;
@@ -86,8 +88,8 @@
       top: 50%;
       left: 50%;
       width: auto;
-      max-width: min(28vw, 410px);
-      height: clamp(230px, 62%, 430px);
+      max-width: min(34vw, 560px);
+      height: clamp(330px, 72%, 580px);
       margin: auto;
       object-fit: contain;
       object-position: center top;
@@ -102,58 +104,51 @@
     }
     .catalog-cover__slide.is-active {
       pointer-events: auto;
-      z-index: 4;
+      z-index: 5;
     }
     .catalog-cover__slide.is-active .catalog-cover__photo {
       --x: 0px;
       --scale: 1;
       --rotate: 0deg;
       opacity: 1;
-      height: clamp(290px, 74%, 520px);
-      max-width: min(34vw, 500px);
+      height: clamp(430px, 88%, 700px);
+      max-width: min(44vw, 720px);
       filter: contrast(1.06) saturate(1);
     }
     .site-banner:hover .catalog-cover__slide.is-active .catalog-cover__photo {
       --scale: 1.12;
-      height: clamp(330px, 84%, 600px);
-      max-width: min(42vw, 620px);
+      height: clamp(460px, 92%, 740px);
+      max-width: min(48vw, 780px);
     }
     .catalog-cover__slide.is-prev .catalog-cover__photo,
     .catalog-cover__slide.is-next .catalog-cover__photo,
     .catalog-cover__slide.is-far-prev .catalog-cover__photo,
     .catalog-cover__slide.is-far-next .catalog-cover__photo {
       opacity: .62;
-      z-index: 1;
+      z-index: 3;
       filter: grayscale(.18) brightness(.82) contrast(1.02);
     }
     .catalog-cover__slide.is-prev .catalog-cover__photo {
       --x: clamp(-340px, -22vw, -190px);
-      --scale: .76;
+      --scale: .72;
       --rotate: 12deg;
     }
     .catalog-cover__slide.is-next .catalog-cover__photo {
       --x: clamp(190px, 22vw, 340px);
-      --scale: .76;
+      --scale: .72;
       --rotate: -12deg;
     }
     .catalog-cover__slide.is-far-prev .catalog-cover__photo {
       --x: clamp(-520px, -36vw, -300px);
-      --scale: .58;
+      --scale: .54;
       --rotate: 18deg;
       opacity: .34;
     }
     .catalog-cover__slide.is-far-next .catalog-cover__photo {
       --x: clamp(300px, 36vw, 520px);
-      --scale: .58;
+      --scale: .54;
       --rotate: -18deg;
       opacity: .34;
-    }
-    .catalog-cover__slide.is-active .catalog-cover__photo {
-      animation: catalogCoverDrift 5.8s ease-out both;
-    }
-    @keyframes catalogCoverDrift {
-      from { transform: scale(1) translate3d(0,0,0); }
-      to { transform: scale(1.035) translate3d(0,-1%,0); }
     }
     .catalog-cover__dots {
       position: absolute;
@@ -629,7 +624,7 @@
     }
     @media (max-width: 520px) {
       .site-banner {
-        min-height: clamp(430px, 118vw, 640px);
+        min-height: clamp(520px, 138vw, 720px);
       }
       .site-banner::after {
         background:
@@ -637,16 +632,16 @@
           linear-gradient(90deg, rgba(56,56,56,0.42), transparent 24%, transparent 76%, rgba(56,56,56,0.42));
       }
       .catalog-cover__photo {
-        max-width: 72vw;
-        height: clamp(250px, 70%, 480px);
+        max-width: 78vw;
+        height: clamp(330px, 76%, 560px);
       }
       .catalog-cover__slide.is-active .catalog-cover__photo {
-        height: clamp(320px, 82%, 560px);
-        max-width: 86vw;
+        height: clamp(430px, 88%, 650px);
+        max-width: 92vw;
       }
       .site-banner:hover .catalog-cover__slide.is-active .catalog-cover__photo {
         --scale: 1.04;
-        height: clamp(330px, 84%, 580px);
+        height: clamp(440px, 90%, 670px);
       }
       .catalog-cover__slide.is-prev .catalog-cover__photo {
         --x: -34vw;
