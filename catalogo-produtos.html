@@ -56,7 +56,7 @@
       position: absolute;
       inset: 0;
       opacity: 1;
-      transition: opacity 1s ease;
+      transition: opacity .55s ease;
       display: grid;
       place-items: center;
       pointer-events: none;
@@ -75,7 +75,7 @@
       filter: blur(24px) brightness(0.74) saturate(0.94);
       transform: scale(1.12);
       opacity: 0;
-      transition: opacity 1s ease;
+      transition: opacity .55s ease;
       z-index: 0;
     }
     .catalog-cover__slide.is-active .catalog-cover__bg {
@@ -99,7 +99,7 @@
       border-radius: 22px;
       box-shadow: 0 26px 70px rgba(0,0,0,0.34);
       transform: translate(-50%, -50%) translateX(var(--x)) scale(var(--scale)) rotateY(var(--rotate));
-      transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity .45s ease, height .55s ease, max-width .55s ease, filter .45s ease;
+      transition: transform .38s cubic-bezier(.16,.9,.18,1), opacity .28s ease, height .38s ease, max-width .38s ease, filter .28s ease;
       will-change: transform;
     }
     .catalog-cover__slide.is-active {
@@ -149,6 +149,22 @@
       --scale: .54;
       --rotate: -18deg;
       opacity: .34;
+    }
+    .catalog-cover__slide.is-active .catalog-cover__photo {
+      animation: catalogCoverPop .46s cubic-bezier(.16,.9,.18,1) both;
+    }
+    @keyframes catalogCoverPop {
+      0% {
+        opacity: .45;
+        transform: translate(-50%, -50%) translateX(var(--x)) scale(.86) rotateY(var(--rotate));
+      }
+      58% {
+        transform: translate(-50%, -50%) translateX(var(--x)) scale(calc(var(--scale) + .045)) rotateY(var(--rotate));
+      }
+      100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) translateX(var(--x)) scale(var(--scale)) rotateY(var(--rotate));
+      }
     }
     .catalog-cover__dots {
       position: absolute;
@@ -624,7 +640,7 @@
     }
     @media (max-width: 520px) {
       .site-banner {
-        min-height: clamp(520px, 138vw, 720px);
+        min-height: clamp(640px, 176vw, 860px);
       }
       .site-banner::after {
         background:
@@ -632,24 +648,30 @@
           linear-gradient(90deg, rgba(56,56,56,0.42), transparent 24%, transparent 76%, rgba(56,56,56,0.42));
       }
       .catalog-cover__photo {
-        max-width: 78vw;
-        height: clamp(330px, 76%, 560px);
+        max-width: 90vw;
+        height: clamp(440px, 82%, 720px);
+        border-radius: 18px;
       }
       .catalog-cover__slide.is-active .catalog-cover__photo {
-        height: clamp(430px, 88%, 650px);
-        max-width: 92vw;
+        --scale: 1.05;
+        height: clamp(560px, 94%, 820px);
+        max-width: 102vw;
       }
       .site-banner:hover .catalog-cover__slide.is-active .catalog-cover__photo {
-        --scale: 1.04;
-        height: clamp(440px, 90%, 670px);
+        --scale: 1.1;
+        height: clamp(590px, 96%, 850px);
       }
       .catalog-cover__slide.is-prev .catalog-cover__photo {
-        --x: -34vw;
-        --scale: .58;
+        --x: -46vw;
+        --scale: .7;
+        --rotate: 16deg;
+        opacity: .46;
       }
       .catalog-cover__slide.is-next .catalog-cover__photo {
-        --x: 34vw;
-        --scale: .58;
+        --x: 46vw;
+        --scale: .7;
+        --rotate: -16deg;
+        opacity: .46;
       }
       .catalog-cover__slide.is-far-prev .catalog-cover__photo,
       .catalog-cover__slide.is-far-next .catalog-cover__photo {
@@ -810,7 +832,7 @@
     }
     function start(){
       if (timer) clearInterval(timer);
-      if (!reducedMotion && slides.length > 1) timer = setInterval(() => show(current + 1), 5200);
+      if (!reducedMotion && slides.length > 1) timer = setInterval(() => show(current + 1), 3000);
     }
     show(0);
     start();
