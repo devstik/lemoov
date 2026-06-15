@@ -97,7 +97,8 @@
 
     /* ──────── Products layout ──────── */
     /* 116px = padding(48) + screen-hero(68) */
-    .prod-layout{display:grid;grid-template-columns:300px 1fr;grid-template-rows:1fr;gap:16px;height:calc(100vh - 116px)}
+    .prod-layout{display:grid;grid-template-columns:minmax(320px,320px) minmax(0,1fr);grid-template-rows:1fr;gap:16px;height:calc(100vh - 116px);align-items:stretch}
+    .prod-layout>.card{min-width:0}
     .prod-sidebar{height:100%;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box}
     .prod-sidebar .card-head{flex-shrink:0}
     .prod-sidebar-search{padding:10px 12px;border-bottom:1px solid var(--brd);flex-shrink:0;position:relative}
@@ -131,6 +132,13 @@
     .img-preview{width:54px;height:54px;border-radius:8px;object-fit:cover;border:1.5px solid var(--brd);display:block;background:var(--bg);cursor:pointer}
     .img-placeholder{width:54px;height:54px;border-radius:8px;border:2px dashed var(--brd2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:10px;cursor:pointer;background:var(--bg);transition:all .15s}
     .img-placeholder:hover{border-color:var(--p);background:var(--pl);color:var(--p)}
+    .combo-derived-note{font-size:11px;color:var(--muted);margin:0 0 8px}
+    .combo-color-swatches{display:flex;gap:8px;flex-wrap:wrap;min-height:38px;align-items:center}
+    .combo-color-swatch{width:34px;height:34px;border-radius:999px;border:2px solid #fff;box-shadow:0 0 0 1.5px var(--brd2);background:var(--tone,#e2e8f0);cursor:pointer;padding:0;position:relative;transition:transform .15s,box-shadow .15s}
+    .combo-color-swatch:hover{transform:scale(1.06);box-shadow:0 0 0 2px var(--pm)}
+    .combo-color-swatch[data-selected="true"]{box-shadow:0 0 0 2px var(--p),0 0 0 5px var(--pl)}
+    .combo-color-swatch img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+    .combo-color-empty{font-size:12px;color:var(--muted)}
 
     /* ──────── Toast ──────── */
     #toastRoot{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
@@ -1200,6 +1208,26 @@ async function loadCombos(){
 function getProductColor(p, ci){
   return Array.isArray(p?.cores) ? p.cores[Number(ci)||0] : null;
 }
+function getColorImagesForAdmin(cor){
+  if(!cor) return [];
+  const imgs=Array.isArray(cor.imagens)?cor.imagens.filter(Boolean):[];
+  return Array.from(new Set([cor.imagem,...imgs].filter(Boolean)));
+}
+function getComboDerivedImages(combo){
+  const components=Array.isArray(combo?.components)?combo.components:[];
+  const imgs=[];
+  components.forEach(it=>{
+    const p=produtos.find(p=>Number(p.id)===Number(it.productId));
+    const cor=getProductColor(p,it.colorIndex);
+    getColorImagesForAdmin(cor).forEach(src=>{if(src&&!imgs.includes(src)) imgs.push(src)});
+  });
+  return imgs.slice(0,6);
+}
+function getComboImageList(combo){
+  const saved=Array.isArray(combo?.imagens)?combo.imagens.filter(Boolean):[];
+  const derived=getComboDerivedImages(combo);
+  return derived.length?derived:saved;
+}
 function getProductSizes(p, ci){
   const c=getProductColor(p, ci);
   const stock=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
@@ -1221,7 +1249,7 @@ function comboStockLocal(combo){
 }
 function comboAsSellable(combo){
   const stock=Number.isFinite(Number(combo?.estoqueCalculado))?Number(combo.estoqueCalculado):comboStockLocal(combo);
-  const imgs=Array.isArray(combo?.imagens)?combo.imagens.filter(Boolean):[];
+  const imgs=getComboImageList(combo);
   return {
     ...combo,
     id:`combo-${combo.id}`,
@@ -1251,7 +1279,7 @@ function renderComboList(){
   $('comboCount').textContent=`${sorted.length}`;
   $('listaCombos').innerHTML=sorted.map(c=>{
     const inativo=c.ativo===false;
-    const img=(Array.isArray(c.imagens)?c.imagens[0]:'')||c.imagem||'';
+    const img=getComboImageList(c)[0]||c.imagem||'';
     const src=img?(img.startsWith('http')?img:'/'+img):'';
     const stock=Number.isFinite(Number(c.estoqueCalculado))?Number(c.estoqueCalculado):comboStockLocal(c);
     const active=String(c.id)===String(activeComboId);
@@ -1295,8 +1323,6 @@ function renderComboForm(combo){
   $('comboFormTitle').textContent=combo?combo.nome:'Novo combo';
   $('comboFormActions').innerHTML=combo?`<button class="btn btn--danger btn--sm" id="btnExcluirCombo">Excluir</button>`:'';
   if(combo) $('btnExcluirCombo').addEventListener('click',()=>excluirCombo(combo.id));
-  const imgs=Array.isArray(combo?.imagens)?combo.imagens.filter(Boolean):[];
-  const i1=combo?.imagem||imgs[0]||'', i2=imgs[1]||'', i3=imgs[2]||'';
   $('comboFormPanel').innerHTML=`
     <form id="comboForm">
       <div class="frow">
@@ -1319,7 +1345,11 @@ function renderComboForm(combo){
         <span id="cb_stock_hint" class="badge badge--na"></span>
       </div>
       <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="cb_desc"></textarea></div>
-      <div class="color-images" id="comboImages" style="margin-bottom:14px"></div>
+      <div class="fg">
+        <label class="fl">Fotos do combo</label>
+        <p class="combo-derived-note">Geradas automaticamente pelas fotos dos produtos e cores selecionados nos itens.</p>
+        <div class="color-images" id="comboImages"></div>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px">
         <span style="font-size:11px;font-weight:600;text-transform:uppercase;color:#475569;letter-spacing:.04em">Itens do combo</span>
         <button type="button" class="btn btn--secondary btn--sm" id="btnAddComboItem">+ Item</button>
@@ -1343,32 +1373,21 @@ function renderComboForm(combo){
   setToggle($('cb_lancamento'),$('cb_lancamento_lbl'),Boolean(combo?.lancamento),'Lançamento','Não é lançamento');
   $('cb_ativo').onclick=()=>setToggle($('cb_ativo'),$('cb_ativo_lbl'),$('cb_ativo').dataset.state!=='on','Visível no site','Oculto no site');
   $('cb_lancamento').onclick=()=>setToggle($('cb_lancamento'),$('cb_lancamento_lbl'),$('cb_lancamento').dataset.state!=='on','Lançamento','Não é lançamento');
-  renderComboImageSlots([i1,i2,i3]);
   (Array.isArray(combo?.components)&&combo.components.length?combo.components:[{}]).forEach(addComboItemRow);
   $('btnAddComboItem').addEventListener('click',()=>addComboItemRow({}));
   $('btnCancelCombo').addEventListener('click',cancelComboForm);
   $('comboForm').addEventListener('submit',async e=>{e.preventDefault();await salvarCombo(combo?.id)});
   updateComboStockHint();
 }
-function renderComboImageSlots(values){
-  $('comboImages').innerHTML=values.map((src,idx)=>`
-    <div class="img-slot" data-combo-img="${idx+1}" data-src="${esc(src||'')}">
-      <div class="img-placeholder" data-cb-ph="${idx+1}" ${src?'style="display:none"':''}>+ Foto</div>
-      <img class="img-preview" data-cb-pv="${idx+1}" src="${src?(src.startsWith('http')?esc(src):'/'+esc(src)):''}" style="${src?'':'display:none'}" />
-      <input type="file" data-cb-file="${idx+1}" accept="image/jpeg,image/png" style="display:none" />
-      <label class="img-slot-label">${idx===0?'Principal':'Foto '+(idx+1)}</label>
-    </div>`).join('');
-  $$('#comboImages [data-combo-img]').forEach(slot=>{
-    const inp=slot.querySelector('[data-cb-file]');
-    const ph=slot.querySelector('[data-cb-ph]');
-    const pv=slot.querySelector('[data-cb-pv]');
-    ph?.addEventListener('click',()=>inp.click());
-    pv?.addEventListener('click',()=>inp.click());
-    inp.addEventListener('change',()=>{
-      const f=inp.files?.[0]; if(!f) return;
-      pv.src=URL.createObjectURL(f); pv.style.display=''; if(ph) ph.style.display='none';
-    });
-  });
+function renderComboImageSlots(values=[]){
+  const wrap=$('comboImages');
+  if(!wrap) return;
+  const imgs=values.filter(Boolean);
+  wrap.innerHTML=imgs.length?imgs.map((src,idx)=>`
+    <div class="img-slot">
+      <img class="img-preview" src="${src.startsWith('http')?esc(src):'/'+esc(src)}" />
+      <span class="img-slot-label">${idx===0?'Principal':'Foto '+(idx+1)}</span>
+    </div>`).join(''):`<div class="combo-color-empty">Selecione produto e cor nos itens para carregar as fotos.</div>`;
 }
 function addComboItemRow(item={}){
   const row=document.createElement('div');
@@ -1377,7 +1396,7 @@ function addComboItemRow(item={}){
     <div class="color-row-head"><span class="color-row-title">Item do combo</span><button type="button" class="btn btn--danger btn--sm" data-cb-rm>Remover</button></div>
     <div class="fg"><label class="fl">Produto</label><select class="fc" data-cb-prod><option value="">— Selecione —</option>${produtos.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('')}</select></div>
     <div class="frow">
-      <div class="fg"><label class="fl">Cor</label><select class="fc" data-cb-cor></select></div>
+      <div class="fg"><label class="fl">Cor</label><input type="hidden" data-cb-cor value="0" /><div class="combo-color-swatches" data-cb-swatches></div></div>
       <div class="fg"><label class="fl">Tamanho</label><select class="fc" data-cb-size></select></div>
     </div>
     <div class="frow">
@@ -1386,31 +1405,41 @@ function addComboItemRow(item={}){
     </div>`;
   $('comboItems').appendChild(row);
   const prodSel=row.querySelector('[data-cb-prod]');
-  const corSel=row.querySelector('[data-cb-cor]');
+  const corInput=row.querySelector('[data-cb-cor]');
+  const swatches=row.querySelector('[data-cb-swatches]');
   const sizeSel=row.querySelector('[data-cb-size]');
   const qtyInp=row.querySelector('[data-cb-qty]');
   function fillColors(){
     const p=produtos.find(p=>String(p.id)===String(prodSel.value));
-    corSel.innerHTML='';
-    if(!p?.cores?.length){corSel.innerHTML='<option value="0">Única</option>'}
-    else p.cores.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.nome||`Cor ${i+1}`;corSel.appendChild(o)});
+    const colors=Array.isArray(p?.cores)&&p.cores.length?p.cores:[{nome:'Única',swatch:'#e2e8f0'}];
+    const desired=Number(item.colorIndex)||Number(corInput.value)||0;
+    corInput.value=String(Math.min(desired,colors.length-1));
+    swatches.innerHTML=colors.map((c,i)=>{
+      const tone=isHexColor(c?.swatch)?c.swatch:defaultSwatchForName(c?.nome);
+      const thumb=getColorImagesForAdmin(c)[0];
+      return `<button type="button" class="combo-color-swatch" data-cb-color-index="${i}" data-selected="${i===Number(corInput.value)?'true':'false'}" title="${esc(c?.nome||'Cor '+(i+1))}" aria-label="${esc(c?.nome||'Cor '+(i+1))}" style="--tone:${esc(tone)}">${thumb?`<img src="${thumb.startsWith('http')?esc(thumb):'/'+esc(thumb)}" alt="">`:''}</button>`;
+    }).join('');
+    swatches.querySelectorAll('[data-cb-color-index]').forEach(btn=>btn.addEventListener('click',()=>{
+      corInput.value=btn.dataset.cbColorIndex;
+      swatches.querySelectorAll('[data-cb-color-index]').forEach(b=>b.dataset.selected=b===btn?'true':'false');
+      fillSizes();
+    }));
     fillSizes();
   }
   function fillSizes(){
     const p=produtos.find(p=>String(p.id)===String(prodSel.value));
-    const sizes=getProductSizes(p,Number(corSel.value)||0);
+    const sizes=getProductSizes(p,Number(corInput.value)||0);
     sizeSel.innerHTML=sizes.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
     if(item.tamanhoSelecionado) sizeSel.value=item.tamanhoSelecionado;
-    updateItemStock(row); updateComboStockHint();
+    updateItemStock(row); updateComboStockHint(); updateComboImagePreview();
   }
   prodSel.addEventListener('change',fillColors);
-  corSel.addEventListener('change',fillSizes);
-  sizeSel.addEventListener('change',()=>{updateItemStock(row);updateComboStockHint()});
+  sizeSel.addEventListener('change',()=>{updateItemStock(row);updateComboStockHint();updateComboImagePreview()});
   qtyInp.addEventListener('input',()=>{updateItemStock(row);updateComboStockHint()});
-  row.querySelector('[data-cb-rm]').addEventListener('click',()=>{row.remove();updateComboStockHint()});
+  row.querySelector('[data-cb-rm]').addEventListener('click',()=>{row.remove();updateComboStockHint();updateComboImagePreview()});
   prodSel.value=item.productId||'';
   fillColors();
-  corSel.value=String(Number(item.colorIndex)||0);
+  corInput.value=String(Number(item.colorIndex)||0);
   fillSizes();
   if(item.tamanhoSelecionado) sizeSel.value=item.tamanhoSelecionado;
   qtyInp.value=Math.max(1,Number(item.quantidade)||1);
@@ -1445,21 +1474,14 @@ function updateComboStockHint(){
   hint.textContent=`Saldo calculado: ${Number.isFinite(stock)?stock:0} un.`;
   hint.className=`badge ${stock>0?'badge--ok':'badge--out'}`;
 }
-async function buildComboImages(){
-  const out=[];
-  for(const slot of $$('#comboImages [data-combo-img]')){
-    let src=slot.dataset.src||'';
-    const inp=slot.querySelector('[data-cb-file]');
-    if(inp?.files?.[0]) src=await uploadImg(inp.files[0]);
-    if(src) out.push(src);
-  }
-  return out;
+function updateComboImagePreview(){
+  renderComboImageSlots(getComboDerivedImages({components:collectComboComponents()}));
 }
 async function salvarCombo(id){
   const btn=$('btnSalvarCombo'); btn.disabled=true; btn.textContent='Salvando…';
   try{
     const components=collectComboComponents();
-    const imagens=await buildComboImages();
+    const imagens=getComboDerivedImages({components});
     const payload={
       nome:$('cb_nome').value.trim(),
       categoria:$('cb_cat').value.trim()||'Combo',

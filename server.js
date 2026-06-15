@@ -598,6 +598,24 @@ function getProductStockQty(produtos, item) {
   const tamanho = normalizeKey(item.tamanhoSelecionado || item.tamanho || 'UNICO');
   return Number(stock?.[tamanho]) || 0;
 }
+function getProductColorImages(cor) {
+  if (!cor) return [];
+  const imgs = Array.isArray(cor.imagens) ? cor.imagens.filter(Boolean) : [];
+  return Array.from(new Set([cor.imagem, ...imgs].filter(Boolean)));
+}
+function getComboImages(combo, produtos) {
+  const components = normalizeComboComponents(combo?.components);
+  const derived = [];
+  components.forEach((component) => {
+    const prod = produtos.find((p) => Number(p.id) === Number(component.productId));
+    const cor = Array.isArray(prod?.cores) ? prod.cores[Number(component.colorIndex) || 0] : null;
+    getProductColorImages(cor).forEach((src) => {
+      if (src && !derived.includes(src)) derived.push(src);
+    });
+  });
+  const saved = Array.isArray(combo?.imagens) ? combo.imagens.filter(Boolean) : [];
+  return (derived.length ? derived : saved).slice(0, 6);
+}
 function getComboAvailableQty(combo, produtos) {
   const components = normalizeComboComponents(combo?.components);
   if (!components.length) return 0;
@@ -608,7 +626,7 @@ function getComboAvailableQty(combo, produtos) {
 }
 function comboToPublicProduct(combo, produtos) {
   const available = getComboAvailableQty(combo, produtos);
-  const images = Array.isArray(combo.imagens) ? combo.imagens.filter(Boolean) : [];
+  const images = getComboImages(combo, produtos);
   const firstImage = combo.imagem || images[0] || '';
   return {
     ...combo,
