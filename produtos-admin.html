@@ -166,17 +166,14 @@
     .quick-stat__hint{font-size:12px;color:var(--muted);margin-top:2px}
 
     /* ──────── Stock ──────── */
-    /* 220px = padding(48) + screen-hero(68) + quick-stats(90) + gap(14) */
-    .stock-layout{display:grid;grid-template-columns:300px 1fr;grid-template-rows:1fr;gap:14px;height:calc(100vh - 220px)}
-    .stock-card--catalog{height:100%;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box}
+    .stock-layout{display:grid;grid-template-columns:300px 1fr;grid-template-rows:auto;gap:14px;align-items:start;min-height:calc(100vh - 220px)}
+    .stock-card--catalog{height:calc(100vh - 220px);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;position:sticky;top:14px}
     .stock-card--catalog .card-head{flex-shrink:0}
     .stock-card--catalog .card-body{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px}
-    .stock-right{height:100%;display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
+    .stock-right{display:flex;flex-direction:column;gap:14px;box-sizing:border-box;min-width:0}
     .stock-card{display:flex;flex-direction:column;min-height:0}
-    .stock-card--detail{flex:1;min-height:0;overflow:hidden}
-    .stock-card--entry{flex:1;min-height:0;overflow:hidden}
-    .stock-card--movement{flex:1;min-height:0;overflow:hidden}
-    .stock-card--detail .card-body,.stock-card--entry .card-body,.stock-card--movement .card-body{flex:1;overflow-y:auto;min-height:0}
+    .stock-card--detail,.stock-card--entry,.stock-card--movement{overflow:visible}
+    .stock-card--detail .card-body,.stock-card--entry .card-body,.stock-card--movement .card-body{overflow:visible;min-height:0}
     .stock-card .card-head{flex-shrink:0}
     .stock-head-sub{font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
     .stock-command{display:flex;flex-direction:column;gap:10px}
@@ -199,7 +196,12 @@
     .stock-list__row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd)}
     .stock-list__row:last-child{border-bottom:0}
     .stock-list__qty{margin-left:auto;font-weight:700;color:var(--p)}
-    .stock-ledger{display:grid;gap:6px;max-height:340px;overflow:auto}
+    .stock-ledger{display:grid;gap:6px}
+    .stock-audit{border:1.5px solid var(--brd);border-radius:10px;background:#f8fafc;padding:10px;margin:0 0 12px}
+    .stock-audit__title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:5px}
+    .stock-audit__line{display:flex;gap:8px;align-items:center;justify-content:space-between;border-top:1px solid #e2e8f0;padding:7px 0;font-size:12px;color:var(--t2)}
+    .stock-audit__line:first-of-type{border-top:0}
+    .stock-audit__diff{font-weight:900;color:#b45309}
     .stock-move{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--brd);border-radius:10px;background:#fff;transition:all .15s}
     .stock-move:hover{border-color:var(--brd2);box-shadow:var(--sh-md)}
     .stock-move__type{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
@@ -354,7 +356,7 @@
     ::-webkit-scrollbar-track{background:transparent}
 
     /* ──────── Responsive ──────── */
-    @media(max-width:1100px){.stock-layout{grid-template-columns:1fr}.crm-grid{grid-template-columns:1fr}.crm-kpis{grid-template-columns:repeat(2,1fr)}.client-form-grid,.client-form-grid--address{grid-template-columns:repeat(2,minmax(0,1fr))}.client-form-actions{grid-template-columns:1fr auto}}
+    @media(max-width:1100px){.stock-layout{grid-template-columns:1fr}.stock-card--catalog{height:auto;position:static}.crm-grid{grid-template-columns:1fr}.crm-kpis{grid-template-columns:repeat(2,1fr)}.client-form-grid,.client-form-grid--address{grid-template-columns:repeat(2,minmax(0,1fr))}.client-form-actions{grid-template-columns:1fr auto}}
     @media(max-width:1000px){.prod-layout{grid-template-columns:1fr}.prod-sidebar{max-height:280px}.quick-stats{grid-template-columns:1fr}.screen-hero{flex-direction:column;align-items:flex-start;gap:12px}}
     @media(max-width:900px){.tab-panel{padding:12px}.rel-grid{grid-template-columns:1fr}.orders-shell{grid-template-columns:1fr;grid-template-areas:"kpis" "list" "detail"}.orders-kpis{grid-template-columns:1fr}.chart-donut-wrap{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr 1fr}}
     @media(max-width:768px){body{--sb:66px}.logo-text-wrap,.sidebar-search,.nav-label{display:none}.tab-btn{padding:10px;justify-content:center}.sidebar-logo{justify-content:center;padding:0}}
@@ -557,6 +559,7 @@
               </div>
             </div>
             <div id="stockMovementSummary" style="font-size:12px;color:var(--muted);margin:-4px 0 10px"></div>
+            <div id="stockMovementAudit"></div>
             <div id="stockMovements"></div>
           </div>
         </div>
@@ -1738,6 +1741,53 @@ function movementLabel(m){
   return m.type==='saida'?'Saída':'Entrada';
 }
 
+function renderStockMovementAudit(){
+  const el=$('stockMovementAudit');
+  if(!el) return;
+  const selectedProductId=$('estoq_prod')?.value||'';
+  if(!selectedProductId){
+    el.innerHTML='<div class="stock-audit"><div class="stock-audit__title">Auditoria</div><div style="font-size:12px;color:var(--muted)">Selecione um produto para comparar saldo atual e movimentações.</div></div>';
+    return;
+  }
+  const prod=produtos.find(p=>String(p.id)===String(selectedProductId));
+  if(!prod){
+    el.innerHTML='';
+    return;
+  }
+  const current=new Map();
+  (Array.isArray(prod.cores)?prod.cores:[]).forEach((cor,ci)=>{
+    const stock=(cor?.estoque&&typeof cor.estoque==='object'&&!Array.isArray(cor.estoque))?cor.estoque:{};
+    Object.entries(stock).forEach(([size,qty])=>{
+      const key=[ci,String(size||'UNICO').toUpperCase()].join('|');
+      current.set(key,{colorIndex:ci,colorName:cor?.nome||`Cor ${ci+1}`,size:String(size||'UNICO').toUpperCase(),current:Number(qty)||0,ledger:0});
+    });
+  });
+  stockMovimentos.filter(m=>String(m.productId)===String(selectedProductId)).forEach(m=>{
+    const ci=Number(m.colorIndex)||0;
+    const size=String(m.size||'UNICO').toUpperCase();
+    const key=[ci,size].join('|');
+    const cor=(Array.isArray(prod.cores)?prod.cores[ci]:null)||{};
+    const row=current.get(key)||{colorIndex:ci,colorName:m.colorName||cor.nome||`Cor ${ci+1}`,size,current:0,ledger:0};
+    const raw=Number(m.quantity)||0;
+    const signed=(m.type==='saida'&&raw>0)?-raw:raw;
+    row.ledger+=signed;
+    current.set(key,row);
+  });
+  const rows=Array.from(current.values()).sort((a,b)=>String(a.colorName).localeCompare(String(b.colorName))||String(a.size).localeCompare(String(b.size)));
+  const currentTotal=rows.reduce((s,r)=>s+r.current,0);
+  const ledgerTotal=rows.reduce((s,r)=>s+r.ledger,0);
+  const mismatches=rows.filter(r=>r.current!==r.ledger);
+  const movementCount=stockMovimentos.filter(m=>String(m.productId)===String(selectedProductId)).length;
+  el.innerHTML=`<div class="stock-audit">
+    <div class="stock-audit__title">Auditoria do produto selecionado</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">ID ${esc(String(selectedProductId))} · ${movementCount} movimento${movementCount!==1?'s':''} carregado${movementCount!==1?'s':''} · saldo atual ${currentTotal} un. · líquido movimentações ${ledgerTotal} un.</div>
+    ${mismatches.length?mismatches.map(r=>`<div class="stock-audit__line">
+      <span>Cor #${r.colorIndex} · ${esc(r.colorName)} · ${esc(r.size)}</span>
+      <span>saldo ${r.current} · mov. ${r.ledger} · <span class="stock-audit__diff">dif. ${r.current-r.ledger}</span></span>
+    </div>`).join(''):`<div style="font-size:12px;color:#047857;font-weight:700">Saldo atual bate com as movimentações carregadas.</div>`}
+  </div>`;
+}
+
 function renderStockMovements(){
   const el=$('stockMovements');
   if(!el) return;
@@ -1769,6 +1819,7 @@ function renderStockMovements(){
     const selectedNote=selectedProductId&&!q?' · produto selecionado':'';
     summary.textContent=`${filtered.length} movimento${filtered.length!==1?'s':''}${selectedNote} · entradas ${totals.entradas} un. · saídas ${totals.saidas} un. · líquido ${totals.entradas-totals.saidas} un.`;
   }
+  renderStockMovementAudit();
   const rows=filtered.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,120);
   el.innerHTML=rows.length?`<div class="stock-ledger">${rows.map(m=>{
     const quantity=Number(m.quantity)||0;
