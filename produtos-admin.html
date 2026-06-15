@@ -806,12 +806,14 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   $$('.tab-btn').forEach(b=>b.classList.remove('active'));
   $$('.tab-panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
-  $(`tab-${tab}`).classList.add('active');
+  const panel = $(`tab-${tab}`);
+  if(panel) panel.classList.add('active');
   if(tab==='combos') loadCombos();
   if(tab==='pedidos') { loadCupons(); loadPedidos(); }
   if(tab==='cupons') loadCupons();
   if(tab==='estoque') refreshStockScreen();
   if(tab==='relatorio') loadRelatorio();
+  if(tab==='crm') loadCRM();
 }));
 
 // ── Logout ───────────────────────────────────────────────────
@@ -3476,7 +3478,9 @@ function bindNovoCliente(){
 </script>
 
 <!-- ── CRM ── -->
-<div id="tab-crm" class="tab-panel"></div>
+<div id="tab-crm" class="tab-panel">
+  <div class="form-empty">Carregando CRM...</div>
+</div>
 
 <style>
   .cookie-banner{position:fixed;bottom:0;left:0;right:0;background:rgba(3,23,20,.97);color:#e9fff5;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;z-index:9999;box-shadow:0 -4px 24px rgba(0,0,0,.35)}
