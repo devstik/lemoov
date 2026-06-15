@@ -65,6 +65,45 @@
       color: #383838; font-weight: 800; border: none;
     }
     .hero__actions .btn--ghost { border-color: rgba(168,198,58,.45); color: #7E9826; }
+    .home-floating-actions {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 230;
+      display: block;
+    }
+    .home-floating-actions a {
+      width: 46px;
+      height: 46px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: #383838;
+      text-decoration: none;
+      box-shadow: 0 16px 34px rgba(56,56,56,.26);
+      border: 1px solid rgba(255,255,255,.42);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .home-floating-actions a:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 20px 42px rgba(56,56,56,.32);
+    }
+    .home-floating-actions__buy {
+      background: linear-gradient(135deg,#A8C63A,#EBD8C7);
+    }
+    .home-floating-actions i {
+      font-size: 1.05rem;
+    }
+    @media (max-width: 640px) {
+      .home-floating-actions {
+        right: 12px;
+        bottom: 12px;
+      }
+      .home-floating-actions a {
+        width: 44px;
+        height: 44px;
+      }
+    }
 
     /* ── Benefits ── */
     .benefits { background: linear-gradient(135deg, #fbf8f4 0%, #f3e8dd 100%); }
@@ -129,12 +168,7 @@
       <h1 class="logo">
         <a href="index.html">Lemoov <span>Fitness</span></a>
       </h1>
-      <nav class="nav" aria-label="Ações principais">
-        <a href="catalogo-produtos.html" class="header__link header__link--account" aria-label="Abrir catálogo">
-          <i class="fas fa-table-cells-large" aria-hidden="true"></i>
-          <span>Catálogo</span>
-        </a>
-      </nav>
+      <nav class="nav" aria-label="Ações principais"></nav>
     </div>
   </header>
   <!-- Hero -->
@@ -183,8 +217,8 @@
         Uma seleção fitness com visual marcante, caimento seguro e acabamento premium para treinar, circular e se sentir pronta para qualquer ritmo.
       </p>
       <div class="hero__actions">
-        <a href="catalogo-produtos.html" class="btn btn--primary">Compre aqui</a>
-        <a href="quem-somos.html" class="btn btn--ghost hero__btn-collections">Conheça a Lemoov</a>
+        <a href="quem-somos.html" class="btn btn--primary">Conheça a Lemoov</a>
+        <a href="#depoimentos" class="btn btn--ghost hero__btn-collections">Ver experiências</a>
       </div>
     </div>
   </section>
@@ -211,17 +245,6 @@
         <h4>Acabamento premium</h4>
         <p>Costuras reforçadas, toque macio e detalhes limpos para uma rotina mais sofisticada.</p>
       </article>
-    </div>
-  </section>
-
-  <section style="background:#fff;padding:34px 0;border-top:1px solid rgba(168,198,58,.14);border-bottom:1px solid rgba(168,198,58,.14);">
-    <div class="container" style="display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;">
-      <div>
-        <p class="section-eyebrow" style="margin:0 0 6px;">Catálogo online</p>
-        <h3 style="margin:0;color:#383838;font-size:clamp(1.35rem,3vw,2rem);">Escolha seu look Lemoov.</h3>
-        <p style="margin:8px 0 0;color:#7A7068;max-width:560px;">Veja cores, tamanhos disponíveis e finalize pelo checkout seguro.</p>
-      </div>
-      <a href="catalogo-produtos.html" class="btn btn--primary" style="background:linear-gradient(120deg,#A8C63A,#7E9826);color:#383838;font-weight:900;border:none;">Compre aqui</a>
     </div>
   </section>
 
@@ -261,9 +284,6 @@
           <small>@glausaldanha20 • Fortaleza/CE</small>
         </article>
       </div>
-      <div style="text-align:center;margin-top:28px;">
-        <a href="catalogo-produtos.html" class="btn btn--primary" style="background:linear-gradient(120deg,#A8C63A,#7E9826);color:#383838;font-weight:900;border:none;">Ver catálogo</a>
-      </div>
     </div>
   </section>
   <section class="trust-block" id="faq">
@@ -293,7 +313,6 @@
         <div class="policy-links">
           <a class="policy-link" href="trocas.html" target="_blank" rel="noopener">Trocas</a>
           <a class="policy-link" href="privacidade.html" target="_blank" rel="noopener">Privacidade</a>
-          <a class="policy-link" href="catalogo-produtos.html">Compre aqui</a>
         </div>
       </article>
     </div>
@@ -333,12 +352,14 @@
         style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(120deg,#A8C63A,#EBD8C7);color:#383838;font-weight:800;padding:14px 32px;border-radius:14px;text-decoration:none;font-size:.95rem;">
         <i class="fab fa-instagram" style="font-size:1.2rem;"></i> Seguir no Instagram
       </a>
-      <a href="catalogo-produtos.html"
-        style="display:inline-flex;align-items:center;gap:10px;background:#fff;color:#383838;font-weight:900;padding:14px 32px;border-radius:14px;text-decoration:none;font-size:.95rem;margin-left:10px;margin-top:10px;">
-        <i class="fas fa-bag-shopping" style="font-size:1.1rem;"></i> Compre aqui
-      </a>
     </div>
   </section>
+
+  <div class="home-floating-actions" aria-label="Ações rápidas">
+    <a class="home-floating-actions__buy" href="catalogo-produtos.html" aria-label="Abrir catálogo">
+      <i class="fas fa-bag-shopping" aria-hidden="true"></i>
+    </a>
+  </div>
 
   <!-- Modal Produto -->
   <dialog id="modal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalNome" aria-describedby="modalDesc">
