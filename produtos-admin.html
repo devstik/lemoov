@@ -251,7 +251,7 @@
     /* ──────── Modal ──────── */
     .modal-ov{position:fixed;inset:0;background:rgba(15,10,30,.65);z-index:300;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto;backdrop-filter:blur(6px)}
     .modal-box{background:#fff;border-radius:16px;border:1px solid var(--brd);width:100%;max-width:760px;box-shadow:var(--sh-lg);overflow:hidden;margin:auto}
-    .modal-head{padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center;background:linear-gradient(to right,#1E1B4B,#312E81)}
+    .modal-head{padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center;background:linear-gradient(to right,#383838,#4A4A4A)}
     .modal-head h2{font-size:14px;font-weight:700;color:#fff}
     .modal-head .btn--ghost{color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2)}
     .modal-head .btn--ghost:hover{background:rgba(255,255,255,.12);color:#fff}
@@ -260,7 +260,7 @@
     /* ──────── Relatório ──────── */
     .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px}
     .kpi-card{background:var(--sur);border-radius:12px;border:1px solid var(--brd);padding:18px;box-shadow:var(--sh);position:relative;overflow:hidden}
-    .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--p),#EC4899)}
+    .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--p),#C6A88F)}
     .kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
     .kpi-val{font-size:26px;font-weight:800;color:var(--text);letter-spacing:-.02em}
     .rel-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -288,7 +288,7 @@
     .pipeline-step__label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
     .pipeline-step__value{font-size:24px;font-weight:800;margin-top:4px;color:var(--text)}
     .pipeline-step__bar{height:4px;background:var(--bg);border-radius:99px;margin-top:10px;overflow:hidden}
-    .pipeline-step__bar span{display:block;height:100%;width:var(--w);background:linear-gradient(90deg,var(--p),#EC4899);border-radius:99px}
+    .pipeline-step__bar span{display:block;height:100%;width:var(--w);background:linear-gradient(90deg,var(--p),#C6A88F);border-radius:99px}
     .report-filters{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px}
     .report-filters .fg{margin-bottom:0;min-width:150px}
 
@@ -959,7 +959,7 @@ function renderProdForm(p){
     fLancamento.dataset.state=on?'on':'off';
     fLancamento.setAttribute('aria-checked',String(on));
     fLancamentoLbl.textContent=on?'Lançamento':'Não é lançamento';
-    fLancamentoLbl.style.color=on?'#2563eb':'#64748b';
+    fLancamentoLbl.style.color=on?'#6F8522':'#64748b';
   }
   setFAtivo(p?.ativo!==false);
   setFLancamento(Boolean(p?.lancamento));
@@ -2085,7 +2085,7 @@ function renderCouponsPanel(){
             return `<tr>
               <td><strong style="letter-spacing:.04em">${esc(c.code)}</strong>${badge}</td>
               <td style="font-size:12px;color:#64748b">${esc(c.description||'—')}</td>
-              <td style="text-align:center;font-weight:700;color:#0f172a">${Number(c.percent||0).toLocaleString('pt-BR')}%</td>
+              <td style="text-align:center;font-weight:700;color:#383838">${Number(c.percent||0).toLocaleString('pt-BR')}%</td>
               <td style="text-align:center">${statusDot}</td>
               <td style="text-align:right">
                 <div style="display:inline-flex;gap:6px">
@@ -2612,7 +2612,7 @@ async function loadRelatorio(){
     // Status operacional: cada pedido aparece em apenas um status atual.
     const byStatus={};
     peds.forEach(p=>{const s=p.status||'reservado';byStatus[s]=(byStatus[s]||0)+1});
-    const statusColors={confirmado:'#2563eb',enviado:'#7c3aed',entregue:'#16a34a',cancelado:'#64748b',reservado:'#d97706'};
+    const statusColors={confirmado:'#6F8522',enviado:'#8EAA2F',entregue:'#16a34a',cancelado:'#64748b',reservado:'#d97706'};
     const statusEntries=Object.entries(byStatus).sort((a,b)=>b[1]-a[1]);
     const statusTotal=Math.max(statusEntries.reduce((s,[,n])=>s+n,0),1);
     let acc=0;
@@ -2734,9 +2734,9 @@ const CRM_EVENT_LABELS = {
 };
 const CRM_STATUS = (s) => {
   if (s.purchased) return { label: 'Comprou', color: '#16a34a' };
-  if (s.checkout)  return { label: 'Checkout', color: '#2563eb' };
+  if (s.checkout)  return { label: 'Checkout', color: '#6F8522' };
   if (s.carted)    return { label: 'Carrinho', color: '#d97706' };
-  if (s.viewed)    return { label: 'Viu produto', color: '#7c3aed' };
+  if (s.viewed)    return { label: 'Viu produto', color: '#8EAA2F' };
   return             { label: 'Visitou', color: '#6b7280' };
 };
 function fmtTime(s){ if(!s)return '—'; if(s<60)return s+'s'; if(s<3600)return Math.floor(s/60)+'min'; return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'min'; }
@@ -2835,7 +2835,7 @@ function renderCRM(sessions, funnel){
           <div class="crm-funnel">
             ${[
               {label:'Visitantes',val:f.total,color:'#111827'},
-              {label:'Viram produto',val:f.viewed,color:'#2563eb'},
+              {label:'Viram produto',val:f.viewed,color:'#6F8522'},
               {label:'Carrinho',val:f.carted,color:'#d97706'},
               {label:'Checkout',val:f.checkout,color:'#0891b2'},
               {label:'Compraram',val:f.purchased,color:'#16a34a'},
@@ -2961,7 +2961,7 @@ async function openCrmSession(sid){
     </div>`).join('') || '<p style="color:#64748b">Nenhum evento registrado.</p>';
 
   const dlg = document.createElement('dialog');
-  dlg.style.cssText = 'background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:620px;width:90%;max-height:82vh;overflow-y:auto;box-shadow:0 24px 64px rgba(15,23,42,.22)';
+  dlg.style.cssText = 'background:#fff;color:#383838;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:620px;width:90%;max-height:82vh;overflow-y:auto;box-shadow:0 24px 64px rgba(56,56,56,.22)';
   dlg.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <strong>Sessão — ${s.clienteNome||'Anônimo'}</strong>
@@ -2973,7 +2973,7 @@ async function openCrmSession(sid){
       ${s.logradouro?`<div style="grid-column:1/-1"><span style="color:#64748b">Logradouro:</span> <strong>${s.logradouro}</strong>${s.cep?', CEP '+s.cep:''} <span style="font-size:10px;background:#f0fdf4;color:#166534;border-radius:4px;padding:1px 5px">${(s.cep_source||'').replace('cart_input','CEP digitado').replace('client_address','endereço cadastrado').replace(/^gps_(\d+)m$/,'GPS ±$1m')||'IP'}</span></div>`
       : `<div><span style="color:#64748b">CEP:</span> ${s.cep||'—'} <span style="font-size:10px;color:#94a3b8">${s.cep_source?'('+s.cep_source.replace('cart_input','digitado').replace('client_address','cadastro').replace(/^gps_(\d+)m$/,'GPS ±$1m')+')':''}</span></div>`}
       <div><span style="color:#64748b">Status:</span> <span style="color:${st.color}">${st.label}</span></div>
-      ${s.lat&&s.lng?`<div style="grid-column:1/-1"><span style="color:#64748b">Coordenadas GPS:</span> <a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="color:#2563eb">${Number(s.lat).toFixed(5)}, ${Number(s.lng).toFixed(5)} ↗</a></div>`:''}
+      ${s.lat&&s.lng?`<div style="grid-column:1/-1"><span style="color:#64748b">Coordenadas GPS:</span> <a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="color:#6F8522">${Number(s.lat).toFixed(5)}, ${Number(s.lng).toFixed(5)} ↗</a></div>`:''}
       <div><span style="color:#64748b">Dispositivo:</span> ${s.dispositivo||'—'} · ${s.browser||'—'}</div>
       <div><span style="color:#64748b">Sistema:</span> ${s.so||'—'}</div>
       <div><span style="color:#64748b">Origem:</span> ${s.utm_campaign||s.utm_source||s.origem||'direto'}</div>
@@ -3082,7 +3082,7 @@ async function openClienteModal(id){
       <span style="color:#64748b">${a.bairro?esc(a.bairro)+' · ':''}${esc(a.cidade)}/${esc(a.uf)} — CEP ${a.cep.replace(/(\d{5})(\d{3})/,'$1-$2')}</span>
     </div>`).join(''):`<p style="color:#94a3b8;font-size:12px;padding:8px 0">Nenhum endereço cadastrado.</p>`;
   const dlg=document.createElement('dialog');
-  dlg.style.cssText='background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(15,23,42,.22)';
+  dlg.style.cssText='background:#fff;color:#383838;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(56,56,56,.22)';
   dlg.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div>
@@ -3119,7 +3119,7 @@ const WPP_TEMPLATES=[
 
 function openWppModal(id, nome){
   const dlg=document.createElement('dialog');
-  dlg.style.cssText='background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;box-shadow:0 24px 64px rgba(15,23,42,.22)';
+  dlg.style.cssText='background:#fff;color:#383838;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;box-shadow:0 24px 64px rgba(56,56,56,.22)';
   dlg.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <strong>📲 WhatsApp para ${esc(nome||'cliente')}</strong>
@@ -3164,7 +3164,7 @@ function openWppMassa(){
   const lista=_clientesFiltrados.filter(c=>c.telefone);
   if(!lista.length){toast('Nenhum cliente com telefone no filtro atual','error');return;}
   const dlg=document.createElement('dialog');
-  dlg.style.cssText='background:#fff;color:#0f172a;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;box-shadow:0 24px 64px rgba(15,23,42,.22)';
+  dlg.style.cssText='background:#fff;color:#383838;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;box-shadow:0 24px 64px rgba(56,56,56,.22)';
   dlg.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <strong>📲 WhatsApp em massa — ${lista.length} cliente${lista.length!==1?'s':''}</strong>
@@ -3213,10 +3213,10 @@ function adminPopup(titulo, mensagem, tipo='warn'){
   const existing=document.getElementById('adminPopupDlg');
   if(existing) existing.remove();
   const icon={'error':'⛔','warn':'⚠️','success':'✅','info':'ℹ️'}[tipo]||'ℹ️';
-  const color={'error':'#dc2626','warn':'#d97706','success':'#16a34a','info':'#2563eb'}[tipo]||'#0f172a';
+  const color={'error':'#dc2626','warn':'#d97706','success':'#16a34a','info':'#6F8522'}[tipo]||'#383838';
   const dlg=document.createElement('dialog');
   dlg.id='adminPopupDlg';
-  dlg.style.cssText='background:#fff;border:none;border-radius:16px;padding:0;max-width:420px;width:92%;box-shadow:0 24px 64px rgba(15,23,42,.28);overflow:hidden';
+  dlg.style.cssText='background:#fff;border:none;border-radius:16px;padding:0;max-width:420px;width:92%;box-shadow:0 24px 64px rgba(56,56,56,.28);overflow:hidden';
   dlg.innerHTML=`
     <div style="background:${color};padding:16px 20px;display:flex;align-items:center;gap:10px">
       <span style="font-size:1.4rem">${icon}</span>
@@ -3238,9 +3238,9 @@ function adminConfirm(titulo, mensagem, btnConfirmar='Confirmar', btnCancelar='C
     if(existing) existing.remove();
     const dlg=document.createElement('dialog');
     dlg.id='adminConfirmDlg';
-    dlg.style.cssText='background:#fff;border:none;border-radius:16px;padding:0;max-width:420px;width:92%;box-shadow:0 24px 64px rgba(15,23,42,.28);overflow:hidden';
+    dlg.style.cssText='background:#fff;border:none;border-radius:16px;padding:0;max-width:420px;width:92%;box-shadow:0 24px 64px rgba(56,56,56,.28);overflow:hidden';
     dlg.innerHTML=`
-      <div style="background:#0f172a;padding:16px 20px">
+      <div style="background:#383838;padding:16px 20px">
         <strong style="color:#fff;font-size:1rem">⚠️ ${esc(titulo)}</strong>
       </div>
       <div style="padding:20px;font-size:.9rem;color:#1e293b;white-space:pre-line">${esc(mensagem)}</div>
