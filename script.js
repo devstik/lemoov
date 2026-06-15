@@ -1081,7 +1081,7 @@ function computeColorPrice(prod, colorObj){
 ------------------------------------------------------------ */
 (function injectCartStyles(){
   const css = `
-  /* ── Carrinho – paleta bandeira do Brasil ── */
+  /* ── Carrinho – paleta Lemoov ── */
   #cart {
     position: fixed !important;
     top: 0 !important; right: 0 !important; left: auto !important;
@@ -1389,14 +1389,17 @@ function computeColorPrice(prod, colorObj){
     display:flex;
     align-items:center;
     justify-content:center;
-    background:#A8C63A;
+    background:
+      radial-gradient(circle at 20% 18%, rgba(168,198,58,.26), transparent 34%),
+      radial-gradient(circle at 78% 76%, rgba(235,216,199,.34), transparent 38%),
+      linear-gradient(135deg,#383838 0%,#2f3326 54%,#6F8522 100%);
     opacity:0;
     animation:ptFadeIn .4s ease forwards;
     overflow:hidden;
   }
   @keyframes ptFadeIn{ to{ opacity:1; } }
 
-  /* estrelas fixas de fundo */
+  /* pontos de luz da nova identidade */
   #payment-transition .pt-stars{
     position:absolute;
     inset:0;
@@ -1404,64 +1407,71 @@ function computeColorPrice(prod, colorObj){
   }
   #payment-transition .pt-stars span{
     position:absolute;
-    color:rgba(255,255,255,.55);
-    font-size:.45rem;
-    animation:ptTwinkle 2.4s ease-in-out infinite;
+    width:5px;
+    height:5px;
+    border-radius:999px;
+    background:rgba(235,216,199,.72);
+    color:transparent;
+    box-shadow:0 0 18px rgba(235,216,199,.65);
+    animation:ptTwinkle 2.1s ease-in-out infinite;
   }
   @keyframes ptTwinkle{
     0%,100%{ opacity:.3; transform:scale(1); }
     50%    { opacity:.9; transform:scale(1.6); }
   }
 
-  /* losango amarelo */
+  /* moldura editorial */
   #payment-transition .pt-diamond{
     position:absolute;
-    width:min(82vw,460px);
-    aspect-ratio:1/.7;
-    background:#A8C63A;
-    clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+    width:min(82vw,430px);
+    aspect-ratio:1.18/.78;
+    border-radius:34px;
+    background:
+      linear-gradient(135deg,rgba(235,216,199,.9),rgba(168,198,58,.78)),
+      #EBD8C7;
+    transform:rotate(-5deg);
+    box-shadow:0 34px 90px rgba(0,0,0,.32), inset 0 0 0 1px rgba(255,255,255,.34);
     animation:ptDiamondIn .5s .1s cubic-bezier(.22,1,.36,1) both;
   }
   @keyframes ptDiamondIn{
-    from{ clip-path:polygon(50% 50%,50% 50%,50% 50%,50% 50%); opacity:0; }
-    to  { clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%); opacity:1; }
+    from{ transform:rotate(-5deg) scale(.82); opacity:0; }
+    to  { transform:rotate(-5deg) scale(1); opacity:1; }
   }
 
-  /* círculo azul */
+  /* selo central */
   #payment-transition .pt-circle{
     position:relative;
-    width:min(44vw,200px);
+    width:min(58vw,240px);
     aspect-ratio:1;
-    border-radius:50%;
-    background:#383838;
+    border-radius:32px;
+    background:linear-gradient(145deg,#383838,#242424);
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:center;
     gap:10px;
     animation:ptCircleIn .5s .25s cubic-bezier(.22,1,.36,1) both;
-    box-shadow:0 0 0 2px rgba(255,255,255,.18);
+    box-shadow:0 0 0 1px rgba(235,216,199,.28),0 22px 60px rgba(56,56,56,.36);
   }
   @keyframes ptCircleIn{
     from{ transform:scale(0); opacity:0; }
     to  { transform:scale(1); opacity:1; }
   }
 
-  /* faixa branca dentro do círculo */
   #payment-transition .pt-circle::before{
     content:'';
     position:absolute;
-    left:0; right:0;
-    top:50%; transform:translateY(-50%);
-    height:14%;
-    background:rgba(255,255,255,.12);
+    inset:12px;
+    border-radius:24px;
+    border:1px solid rgba(235,216,199,.18);
+    background:linear-gradient(135deg,rgba(235,216,199,.08),transparent 54%);
   }
 
   #payment-transition .pt-ordem{
-    font-size:clamp(.48rem,1.8vw,.62rem);
+    font-size:clamp(.62rem,2.2vw,.78rem);
     font-weight:900;
     letter-spacing:.18em;
-    color:rgba(255,255,255,.9);
+    color:#EBD8C7;
     text-transform:uppercase;
     text-align:center;
     line-height:1.3;
@@ -1488,7 +1498,7 @@ function computeColorPrice(prod, colorObj){
   #payment-transition .pt-bar{
     height:100%;
     border-radius:99px;
-    background:#A8C63A;
+    background:linear-gradient(90deg,#A8C63A,#EBD8C7);
     animation:ptSlide 1.3s ease-in-out infinite;
     width:45%;
   }
@@ -2420,7 +2430,7 @@ function renderGrid(){
     }
     function updatePhotoHint(){
       const imgs = getColorGroupImages(p, selectedColorIndex);
-      const hasMorePhotos = imgs.length > 1;
+      const hasMorePhotos = imgs.length > 1 || (Array.isArray(p.cores) && p.cores.length > 1);
       if (photoHint) photoHint.dataset.visible = hasMorePhotos ? "true" : "false";
       const media = artigo.querySelector(".product-card__media");
       if (media) media.dataset.clickable = hasMorePhotos ? "true" : "false";
@@ -5872,23 +5882,22 @@ function openWhatsAppWithMessage(message) {
 function showPaymentTransition(){
   const existing = document.getElementById("payment-transition");
   if (existing) { existing.style.display = "flex"; return; }
-  // Posições das estrelas da bandeira do Brasil
-  const starPositions = [
+  const lightPositions = [
     [12,18,0],[22,72,.17],[38,8,.34],[55,85,.51],[68,14,.68],
     [80,60,.85],[90,30,1.02],[6,50,1.19],[45,42,1.36],[75,78,1.53],
     [30,92,1.7],[60,5,1.87],[15,65,2.04],[85,45,2.21],[50,22,2.38],
     [35,35,.9],[65,55,1.1],[25,55,.6],[70,30,.4],[48,70,1.6]
   ];
-  const stars = starPositions.map(([l,t,d]) =>
-    `<span style="left:${l}%;top:${t}%;animation-delay:${d}s">★</span>`
+  const lights = lightPositions.map(([l,t,d]) =>
+    `<span style="left:${l}%;top:${t}%;animation-delay:${d}s"></span>`
   ).join("");
   const div = document.createElement("div");
   div.id = "payment-transition";
   div.innerHTML = `
-    <div class="pt-stars">${stars}</div>
+    <div class="pt-stars">${lights}</div>
     <div class="pt-diamond"></div>
     <div class="pt-circle">
-      <div class="pt-ordem">ORDEM E PROGRESSO</div>
+      <div class="pt-ordem">LEMOOV FITNESS</div>
       <div class="pt-lock">🔒</div>
       <div class="pt-bar-wrap"><div class="pt-bar"></div></div>
     </div>
