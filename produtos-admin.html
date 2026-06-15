@@ -540,7 +540,25 @@
         </div>
         <div class="card stock-card stock-card--movement">
           <div class="card-head"><h2>Movimentações</h2><span class="stock-head-sub">Entradas, saídas e devoluções</span></div>
-          <div class="card-body" id="stockMovements"></div>
+          <div class="card-body">
+            <div class="frow">
+              <div class="fg">
+                <label class="fl">Filtrar movimentações</label>
+                <input class="fc" id="stockMovementSearch" placeholder="Produto, cor, tamanho, pedido..." />
+              </div>
+              <div class="fg">
+                <label class="fl">Tipo</label>
+                <select class="fc" id="stockMovementType">
+                  <option value="">Todas</option>
+                  <option value="entrada">Entradas</option>
+                  <option value="saida">Saídas</option>
+                  <option value="ajuste">Ajustes</option>
+                </select>
+              </div>
+            </div>
+            <div id="stockMovementSummary" style="font-size:12px;color:var(--muted);margin:-4px 0 10px"></div>
+            <div id="stockMovements"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -776,7 +794,7 @@ function showNotice(_el,msg,type='success'){toast(msg,type)}
 function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
-let produtos=[], combos=[], pedidos=[], cupons=[], stockMovimentos=[], activeProdId=null, activeComboId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', relDateStart='', relDateEnd='';
+let produtos=[], combos=[], pedidos=[], cupons=[], stockMovimentos=[], activeProdId=null, activeComboId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', stockMovementSearch='', stockMovementType='', relDateStart='', relDateEnd='';
 let colorCounter=0, newOrderItems=[], prodListSortable=null, comboListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
@@ -1537,12 +1555,14 @@ $('estoq_prod').addEventListener('change',()=>{
   renderSizes(p,0);
   renderStockPreview();
   renderStockProductResults();
+  renderStockMovements();
 });
 
 $('estoq_cor').addEventListener('change',()=>{
   const p=produtos.find(p=>String(p.id)===$('estoq_prod').value);
   if(p) renderSizes(p,Number($('estoq_cor').value)||0);
   renderStockPreview();
+  renderStockMovements();
 });
 
 const stockSearchInput=$('stockSearch');
@@ -1550,6 +1570,20 @@ if(stockSearchInput){
   stockSearchInput.addEventListener('input',()=>{
     stockSearch=stockSearchInput.value;
     renderStockProductResults();
+  });
+}
+const stockMovementSearchInput=$('stockMovementSearch');
+if(stockMovementSearchInput){
+  stockMovementSearchInput.addEventListener('input',()=>{
+    stockMovementSearch=stockMovementSearchInput.value;
+    renderStockMovements();
+  });
+}
+const stockMovementTypeInput=$('stockMovementType');
+if(stockMovementTypeInput){
+  stockMovementTypeInput.addEventListener('change',()=>{
+    stockMovementType=stockMovementTypeInput.value;
+    renderStockMovements();
   });
 }
 
@@ -1560,6 +1594,7 @@ async function refreshStockScreen(){
   renderStockSummary();
   renderStockProductResults();
   renderStockPreview();
+  renderStockMovements();
 }
 
 async function loadStockMovements(){
@@ -1706,7 +1741,35 @@ function movementLabel(m){
 function renderStockMovements(){
   const el=$('stockMovements');
   if(!el) return;
-  const rows=[...stockMovimentos].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,80);
+  const selectedProductId=$('estoq_prod')?.value||'';
+  const q=normalizeColorKey(stockMovementSearch);
+  let filtered=[...stockMovimentos].filter(m=>{
+    if(stockMovementType){
+      if(stockMovementType==='entrada' && !(m.type==='entrada' || Number(m.quantity)>0)) return false;
+      if(stockMovementType==='saida' && !(m.type==='saida' || Number(m.quantity)<0)) return false;
+      if(stockMovementType==='ajuste' && m.type!=='ajuste') return false;
+    }
+    if(selectedProductId && !q && String(m.productId)!==String(selectedProductId)) return false;
+    if(q){
+      const hay=[
+        m.productId,m.productName,m.colorIndex,m.colorName,m.size,m.reason,m.type,m.orderNumber,m.source
+      ].filter(v=>v!=null).join(' ');
+      if(!normalizeColorKey(hay).includes(q)) return false;
+    }
+    return true;
+  });
+  const totals=filtered.reduce((acc,m)=>{
+    const q=Number(m.quantity)||0;
+    if(m.type==='saida'||q<0) acc.saidas+=Math.abs(q);
+    else acc.entradas+=q;
+    return acc;
+  },{entradas:0,saidas:0});
+  const summary=$('stockMovementSummary');
+  if(summary){
+    const selectedNote=selectedProductId&&!q?' · produto selecionado':'';
+    summary.textContent=`${filtered.length} movimento${filtered.length!==1?'s':''}${selectedNote} · entradas ${totals.entradas} un. · saídas ${totals.saidas} un. · líquido ${totals.entradas-totals.saidas} un.`;
+  }
+  const rows=filtered.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,120);
   el.innerHTML=rows.length?`<div class="stock-ledger">${rows.map(m=>{
     const quantity=Number(m.quantity)||0;
     const isOut=m.type==='saida'||quantity<0;
@@ -1718,11 +1781,11 @@ function renderStockMovements(){
       <div class="stock-move__type ${isOut?'out':'in'}">${isAdjust?'±':(isOut?'−':'+')}</div>
       <div>
         <div class="stock-move__name">${esc(m.productName||'Produto')}</div>
-        <div class="stock-move__meta">${movementLabel(m)}${ref} · ${esc(m.colorName||'Variação')} · ${esc(m.size||'UNICO')} · ${fmtD(m.createdAt)}</div>
+        <div class="stock-move__meta">ID ${esc(String(m.productId||'—'))} · Cor #${esc(String(Number(m.colorIndex)||0))} · ${movementLabel(m)}${ref} · ${esc(m.colorName||'Variação')} · ${esc(m.size||'UNICO')} · ${fmtD(m.createdAt)}</div>
       </div>
       <div class="stock-move__qty">${qty}<div style="font-size:11px;color:#64748b;font-weight:700">${Number(m.before)||0} → ${Number(m.after)||0}</div></div>
     </div>`;
-  }).join('')}</div>`:'<div style="color:#64748b;font-size:13px">Nenhuma movimentação registrada ainda.</div>';
+  }).join('')}</div>`:'<div style="color:#64748b;font-size:13px">Nenhuma movimentação encontrada para os filtros.</div>';
 }
 
 function renderSizes(prod,ci){
@@ -1809,6 +1872,7 @@ $('btnStockOperation').addEventListener('click',async()=>{
     const p=produtos.find(p=>String(p.id)===prodId);
     if(p) renderSizes(p,ci);
     renderStockPreview();
+    renderStockMovements();
   }catch(e){ showNotice($('estoqueNotice'),'Erro: '+e.message,'error') }
 });
 
