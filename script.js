@@ -21,11 +21,23 @@ let freteOpcoesCache = [];      // opções retornadas pelo Melhor Envio
 // ── CRM ──────────────────────────────────────────────────────────────────
 let _crmSessionId = null;
 let _crmStartTime = Date.now();
+const CRM_SESSION_KEY = 'lemoov_crm_session_id';
 
 function getCrmSessionId() {
   if (_crmSessionId) return _crmSessionId;
+  try {
+    const stored = sessionStorage.getItem(CRM_SESSION_KEY) || localStorage.getItem(CRM_SESSION_KEY);
+    if (stored) {
+      _crmSessionId = stored;
+      return _crmSessionId;
+    }
+  } catch (_) {}
   const sid = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
   _crmSessionId = sid;
+  try {
+    sessionStorage.setItem(CRM_SESSION_KEY, sid);
+    localStorage.setItem(CRM_SESSION_KEY, sid);
+  } catch (_) {}
   return sid;
 }
 
@@ -43,7 +55,7 @@ function crmTrack(type, extra = {}) {
     cep:          region?.postal  || '',
     clientId:     currentClientSession?.id   || null,
     clienteNome:  currentClientSession?.nome || '',
-    origem:       document.referrer ? new URL(document.referrer).hostname : '',
+    origem:       qs.get('origem') || qs.get('utm_source') || (document.referrer ? new URL(document.referrer).hostname : ''),
     utm_source:   qs.get('utm_source')   || '',
     utm_medium:   qs.get('utm_medium')   || '',
     utm_campaign: qs.get('utm_campaign') || '',

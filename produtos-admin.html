@@ -2730,7 +2730,7 @@ let crmSessions = [];
 
 const CRM_EVENT_LABELS = {
   page_view: 'Visitou', product_view: 'Viu produto', add_to_cart: 'Adicionou ao carrinho',
-  checkout_start: 'Iniciou checkout', purchase: 'Comprou', heartbeat: '—'
+  checkout_start: 'Iniciou checkout', purchase: 'Comprou', instagram_link_click: 'Clicou no link do Instagram', heartbeat: '—'
 };
 const CRM_STATUS = (s) => {
   if (s.purchased) return { label: 'Comprou', color: '#16a34a' };
@@ -2793,6 +2793,8 @@ async function loadCRM(){
       fetch(`/api/crm/funnel?days=${crmDays}`)
     ]);
     const [sesData, funData] = await Promise.all([sesRes.json(), funRes.json()]);
+    if(!sesRes.ok || sesData.ok === false) throw new Error(sesData.error || 'Não foi possível carregar sessões.');
+    if(!funRes.ok || funData.ok === false) throw new Error(funData.error || 'Não foi possível carregar funil.');
     crmSessions = sesData.sessions || [];
     renderCRM(crmSessions, funData);
   } catch(e){ panel.innerHTML = `<p style="color:#f87171">Erro ao carregar CRM: ${e.message}</p>`; }

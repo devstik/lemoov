@@ -3368,15 +3368,23 @@ app.get('/api/crm/sessions', authRequired, async (req, res) => {
              s.client_id AS clientId, s.cliente_nome AS clienteNome, s.ip,
              s.dispositivo, s.browser, s.so, s.origem, s.utm_source, s.utm_medium, s.utm_campaign,
              s.first_seen AS firstSeen, s.last_seen AS lastSeen, s.time_on_site AS timeOnSite,
-             COUNT(e.id) AS eventCount,
-             MAX(CASE WHEN e.type='product_view'   THEN 1 ELSE 0 END) AS viewed,
-             MAX(CASE WHEN e.type='add_to_cart'    THEN 1 ELSE 0 END) AS carted,
-             MAX(CASE WHEN e.type='checkout_start' THEN 1 ELSE 0 END) AS \`checkout\`,
-             MAX(CASE WHEN e.type='purchase'       THEN 1 ELSE 0 END) AS purchased
+             COALESCE(ev.eventCount, 0) AS eventCount,
+             COALESCE(ev.viewed, 0) AS viewed,
+             COALESCE(ev.carted, 0) AS carted,
+             COALESCE(ev.checkoutStarted, 0) AS \`checkout\`,
+             COALESCE(ev.purchased, 0) AS purchased
       FROM lemoov_crm_sessions s
-      LEFT JOIN lemoov_crm_events e ON e.session_id = s.session_id
+      LEFT JOIN (
+        SELECT session_id,
+               COUNT(id) AS eventCount,
+               MAX(CASE WHEN type='product_view'   THEN 1 ELSE 0 END) AS viewed,
+               MAX(CASE WHEN type='add_to_cart'    THEN 1 ELSE 0 END) AS carted,
+               MAX(CASE WHEN type='checkout_start' THEN 1 ELSE 0 END) AS checkoutStarted,
+               MAX(CASE WHEN type='purchase'       THEN 1 ELSE 0 END) AS purchased
+        FROM lemoov_crm_events
+        GROUP BY session_id
+      ) ev ON ev.session_id = s.session_id
       WHERE s.first_seen >= NOW() - INTERVAL ? DAY
-      GROUP BY s.session_id
       ORDER BY s.last_seen DESC
       LIMIT 2000
     `, [days]);
@@ -3404,6 +3412,10 @@ app.get('/api/crm/sessions/:id', authRequired, async (req, res) => {
       regiao:       session.regiao,
       pais:         session.pais,
       cep:          session.cep,
+      logradouro:   session.logradouro,
+      lat:          session.lat,
+      lng:          session.lng,
+      cep_source:   session.cep_source,
       clientId:     session.client_id,
       clienteNome:  session.cliente_nome,
       dispositivo:  session.dispositivo,

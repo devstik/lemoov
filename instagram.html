@@ -265,7 +265,7 @@
     <!-- Botões bem abaixo, sobre a área escura -->
     <div class="links">
 
-      <a class="cta cta--green" href="https://lemoov.com.br/catalogo-produtos.html" target="_blank" rel="noopener">
+      <a class="cta cta--green" href="https://lemoov.com.br/catalogo-produtos.html?utm_source=instagram&utm_medium=bio&utm_campaign=link_bio&origem=instagram_bio" target="_blank" rel="noopener">
         <span class="cta__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
             <rect x="3" y="3" width="7" height="7" rx="1.5" fill="#fff"/>
@@ -278,7 +278,7 @@
         <span class="cta__arrow">›</span>
       </a>
 
-      <a class="cta cta--yellow" href="https://wa.me/558587408457" target="_blank" rel="noopener">
+      <a class="cta cta--yellow" href="https://wa.me/558587408457?text=Ol%C3%A1%2C%20vim%20pelo%20Instagram%20e%20quero%20atendimento%20personalizado." target="_blank" rel="noopener">
         <span class="cta__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
             <path d="M20.4 3.6A11.2 11.2 0 0 0 12 0a11.3 11.3 0 0 0-9.8 16.9L0 24l7.4-2a11.3 11.3 0 0 0 4.6 1 11.3 11.3 0 0 0 8-3.3 11.2 11.2 0 0 0 3.3-8 11.2 11.2 0 0 0-3.3-8.1Z" fill="#383838" opacity="0.15"/>
@@ -289,7 +289,7 @@
         <span class="cta__arrow">›</span>
       </a>
 
-      <a class="cta cta--green" href="https://lemoov.com.br/" target="_blank" rel="noopener">
+      <a class="cta cta--green" href="https://lemoov.com.br/?utm_source=instagram&utm_medium=bio&utm_campaign=link_bio&origem=instagram_bio" target="_blank" rel="noopener">
         <span class="cta__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
             <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.5Z" fill="#fff"/>
@@ -302,5 +302,55 @@
     </div>
 
   </main>
+  <script>
+    (function(){
+      const CRM_SESSION_KEY = 'lemoov_crm_session_id';
+      const qs = new URLSearchParams(location.search);
+      function makeId(){
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return Date.now().toString(36) + Math.random().toString(36).slice(2);
+      }
+      function getSessionId(){
+        try {
+          const stored = sessionStorage.getItem(CRM_SESSION_KEY) || localStorage.getItem(CRM_SESSION_KEY);
+          if (stored) return stored;
+          const sid = makeId();
+          sessionStorage.setItem(CRM_SESSION_KEY, sid);
+          localStorage.setItem(CRM_SESSION_KEY, sid);
+          return sid;
+        } catch (_) {
+          return makeId();
+        }
+      }
+      function track(type, extra){
+        fetch('/api/crm/event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({
+            sessionId: getSessionId(),
+            type,
+            page: location.pathname,
+            origem: 'instagram_bio',
+            utm_source: qs.get('utm_source') || 'instagram',
+            utm_medium: qs.get('utm_medium') || 'bio',
+            utm_campaign: qs.get('utm_campaign') || 'link_bio',
+            ...extra
+          })
+        }).catch(function(){});
+      }
+      track('page_view');
+      document.querySelectorAll('.cta').forEach(function(link){
+        link.addEventListener('click', function(){
+          track('instagram_link_click', { page: link.href, productName: link.textContent.trim() });
+        });
+      });
+      document.addEventListener('visibilitychange', function(){
+        if (document.visibilityState === 'hidden') {
+          track('heartbeat', { timeOnSite: Math.round(performance.now() / 1000) });
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
