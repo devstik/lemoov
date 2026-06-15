@@ -85,6 +85,28 @@
     .policy-page .header__back:hover {
       color: #EBD8C7;
     }
+    .policy-page .catalog-floating {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 920;
+      width: 46px;
+      height: 46px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: #383838;
+      background: linear-gradient(135deg,#A8C63A,#EBD8C7);
+      text-decoration: none;
+      box-shadow: 0 16px 34px rgba(56,56,56,.26);
+      border: 1px solid rgba(255,255,255,.42);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .policy-page .catalog-floating:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 20px 42px rgba(56,56,56,.32);
+    }
+    .policy-page .catalog-floating i { font-size: 1.05rem; }
 
     /* ---- Page Hero ---- */
     .policy-page .page-hero {
@@ -545,7 +567,7 @@
 
   <header class="header">
     <div class="container header__wrap">
-      <a href="catalogo-produtos.html" class="header__back">&#8592; Catálogo</a>
+      <a href="index.html" class="header__back">&#8592; Início</a>
       <h1 class="logo">
         <a href="index.html">Lemoov <span>Fitness</span></a>
       </h1>
@@ -677,6 +699,9 @@
     </section>
 
   </main>
+  <a class="catalog-floating" href="catalogo-produtos.html" aria-label="Abrir catálogo">
+    <i class="fas fa-bag-shopping" aria-hidden="true"></i>
+  </a>
 
   <footer class="footer">
     <div class="container">
@@ -727,7 +752,7 @@
   </script>
 
   <div class="cookie-banner" id="cookieBanner" role="region" aria-label="Aviso de cookies" style="display:none;">
-    <p>Usamos cookies para melhorar sua experiência, calcular frete e, com sua permissão, personalizar ofertas. Veja nossa <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
+    <p>Usamos cookies para melhorar sua experiência, calcular frete e, com sua permissão, personalizar ofertas. Veja nossa <a href="privacidade.html">Política de Privacidade</a>.</p>
     <div class="cookie-banner__actions">
       <button class="cookie-banner__btn-reject" id="btnRejectCookies">Recusar</button>
       <button class="cookie-banner__btn-accept" id="btnAcceptCookies">Aceitar cookies</button>

@@ -94,6 +94,9 @@ document.addEventListener('visibilitychange', () => {
 let enderecoAutofill = null;
 let selectedDeliveryAddress = null;
 let currentClientSession = null;
+let clientSessionCheckPromise = null;
+const CLIENT_SESSION_CACHE_KEY = "lemoov_client_session_cache";
+const CLIENT_SESSION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 let originCoordsCache = null;
 let freteCepRequestSeq = 0;
 let freteCepDebounceTimer = null;
@@ -119,6 +122,53 @@ function trackEvent(name, params = {}) {
       else fbq("trackCustom", name, params);
     }
   } catch (_e) {}
+}
+
+function readCachedClientSession() {
+  try {
+    const raw = localStorage.getItem(CLIENT_SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (!cached || !cached.updatedAt) {
+      localStorage.removeItem(CLIENT_SESSION_CACHE_KEY);
+      return null;
+    }
+    if (Date.now() - Number(cached.updatedAt) > CLIENT_SESSION_CACHE_TTL_MS) {
+      localStorage.removeItem(CLIENT_SESSION_CACHE_KEY);
+      return null;
+    }
+    if (cached.client === null) return false;
+    if (!cached.client?.id) {
+      localStorage.removeItem(CLIENT_SESSION_CACHE_KEY);
+      return null;
+    }
+    return cached.client;
+  } catch (_) {
+    try { localStorage.removeItem(CLIENT_SESSION_CACHE_KEY); } catch (_) {}
+    return null;
+  }
+}
+
+function writeCachedClientSession(client) {
+  try {
+    if (!client?.id) {
+      localStorage.setItem(CLIENT_SESSION_CACHE_KEY, JSON.stringify({
+        client: null,
+        updatedAt: Date.now()
+      }));
+      return;
+    }
+    localStorage.setItem(CLIENT_SESSION_CACHE_KEY, JSON.stringify({
+      client,
+      updatedAt: Date.now()
+    }));
+  } catch (_) {}
+}
+
+function setCurrentClientSession(client) {
+  currentClientSession = client || null;
+  writeCachedClientSession(currentClientSession);
+  return currentClientSession;
 }
 
 /* ------------------------------------------------------------
@@ -3272,15 +3322,42 @@ async function calcularFreteBackend(addr, options = {}) {
   }
 }
 
-async function checkClientSession() {
-  try {
-    const res = await fetch('/api/client/me', { credentials: 'same-origin' });
-    if (!res.ok) return { ok: false };
-    const data = await res.json();
-    return data.ok ? { ok: true, client: data.client } : { ok: false };
-  } catch (_) {
-    return { ok: false };
+async function checkClientSession(options = {}) {
+  const { force = false } = options;
+  if (!force) {
+    if (currentClientSession?.id) return { ok: true, client: currentClientSession, cached: true };
+    const cachedClient = readCachedClientSession();
+    if (cachedClient === false) return { ok: false, cached: true };
+    if (cachedClient?.id) {
+      setCurrentClientSession(cachedClient);
+      return { ok: true, client: cachedClient, cached: true };
+    }
   }
+
+  if (clientSessionCheckPromise) return clientSessionCheckPromise;
+
+  clientSessionCheckPromise = (async () => {
+    try {
+      const res = await fetch('/api/client/me', { credentials: 'same-origin' });
+      if (!res.ok) {
+        setCurrentClientSession(null);
+        return { ok: false };
+      }
+      const data = await res.json();
+      if (data.ok && data.client) {
+        setCurrentClientSession(data.client);
+        return { ok: true, client: data.client };
+      }
+      setCurrentClientSession(null);
+      return { ok: false };
+    } catch (_) {
+      return { ok: false };
+    } finally {
+      clientSessionCheckPromise = null;
+    }
+  })();
+
+  return clientSessionCheckPromise;
 }
 
 async function initiateCheckout() {
@@ -3298,7 +3375,7 @@ async function initiateCheckout() {
     });
     return;
   }
-  currentClientSession = sessionResult.client;
+  setCurrentClientSession(sessionResult.client);
   ensureCartClientSummary();
   atualizarCart();
   await autoLoadDeliveryFromClient();
@@ -3613,7 +3690,7 @@ function ensureCartClientSummary() {
 
 async function hydrateClientSession() {
   const result = await checkClientSession();
-  currentClientSession = result.ok ? result.client : null;
+  setCurrentClientSession(result.ok ? result.client : null);
   ensureCartClientSummary();
   renderCartDeliveryState();
   await autoLoadDeliveryFromClient();
@@ -3805,7 +3882,7 @@ function bindAccountModal(dlg) {
     try {
       await fetch('/api/client/logout', { method: 'POST', credentials: 'same-origin' });
     } catch (_) {}
-    currentClientSession = null;
+    setCurrentClientSession(null);
     ensureCartClientSummary();
     dlg.close();
     showAppMessage("Você saiu da sua conta.");
@@ -3972,7 +4049,7 @@ function bindAccountModal(dlg) {
           if (status) status.textContent = data.error || "Não foi possível salvar.";
           return;
         }
-        currentClientSession = data.client;
+        setCurrentClientSession(data.client);
         ensureCartClientSummary();
         const [addresses, orders] = await Promise.all([fetchClientAddresses(), fetchClientOrders()]);
         const body = dlg.querySelector(".account__body");
@@ -3994,7 +4071,7 @@ async function openAccountModal() {
       window.location.href = "cliente-login.html";
       return;
     }
-    currentClientSession = session.client;
+    setCurrentClientSession(session.client);
   }
 
   let dlg = document.getElementById("accountModal");
@@ -4039,7 +4116,7 @@ function bindAccountLinks() {
           window.location.href = link.getAttribute("href") || "cliente-login.html";
           return;
         }
-        currentClientSession = session.client;
+        setCurrentClientSession(session.client);
       }
       openAccountModal();
     });
@@ -4400,7 +4477,7 @@ function openLoginModal(onSuccess) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { amMsg('amLoginMsg', data.error || 'E-mail ou senha incorretos.'); return; }
-      currentClientSession = data.client;
+      setCurrentClientSession(data.client);
       dlg.close();
       atualizarCart();
       if (typeof onSuccess === 'function') onSuccess();
@@ -4451,7 +4528,7 @@ function openLoginModal(onSuccess) {
         amShowPanel('amPanelVerify');
         return;
       }
-      currentClientSession = data.client;
+      setCurrentClientSession(data.client);
       if (_amWelcomeCoupon) {
         amMsg('amCadastroMsg', `Conta criada! Cupom de 1ª compra: ${_amWelcomeCoupon}`, 'ok');
         await new Promise(r => setTimeout(r, 1800));
@@ -4478,7 +4555,7 @@ function openLoginModal(onSuccess) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { amMsg('amVerifyMsg', data.error || 'Código inválido.'); return; }
-      currentClientSession = data.client;
+      setCurrentClientSession(data.client);
       if (_amWelcomeCoupon || data.welcomeCoupon) {
         const c = _amWelcomeCoupon || data.welcomeCoupon;
         amMsg('amVerifyMsg', `E-mail confirmado! Cupom de 1ª compra: ${c}`, 'ok');
