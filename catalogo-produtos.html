@@ -10,8 +10,8 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Lemoov Fitness" />
   <meta property="og:locale" content="pt_BR" />
-  <meta property="og:image" content="image/Conjunto_Calca/iris_branco_0384.jpg" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <meta property="og:image" content="image/capa/WhatsApp Image 2026-06-14 at 22.06.18.jpeg" />
+  <link rel="stylesheet" href="styles.css?v=16" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -31,22 +31,95 @@
       width: 100%;
       overflow: hidden;
       line-height: 0;
+      position: relative;
+      min-height: clamp(330px, 42vw, 560px);
+      background: #383838;
+      border-bottom: 1px solid rgba(235, 216, 199, 0.42);
+      isolation: isolate;
+    }
+    .site-banner::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(56,56,56,0.72), rgba(56,56,56,0.14) 36%, rgba(56,56,56,0.14) 64%, rgba(56,56,56,0.72)),
+        linear-gradient(0deg, rgba(56,56,56,0.42), transparent 34%, rgba(56,56,56,0.22));
+    }
+    .catalog-cover {
+      position: absolute;
+      inset: 0;
+    }
+    .catalog-cover__slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 1s ease, transform 1.2s ease;
+      transform: scale(1.02);
       display: grid;
       place-items: center;
-      min-height: clamp(210px, 36vw, 430px);
-      background:
-        radial-gradient(circle at 18% 45%, rgba(168, 198, 58, 0.2), transparent 32%),
-        linear-gradient(120deg, #383838 0%, #2f3326 52%, #6F8522 100%);
-      border-bottom: 1px solid rgba(235, 216, 199, 0.42);
+      pointer-events: none;
     }
-    .site-banner img {
-      width: min(100%, 1080px);
-      height: auto;
-      max-height: 42vh;
+    .catalog-cover__slide.is-active {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+    .catalog-cover__bg,
+    .catalog-cover__photo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .catalog-cover__bg {
+      object-fit: cover;
+      object-position: center 18%;
+      filter: blur(26px) brightness(0.66) saturate(0.92);
+      transform: scale(1.12);
+      opacity: 0.9;
+    }
+    .catalog-cover__photo {
+      width: auto;
+      max-width: min(58vw, 720px);
+      height: calc(100% - clamp(28px, 5vw, 64px));
+      margin: auto;
       object-fit: contain;
-      object-position: center;
-      display: block;
-      box-shadow: 0 24px 80px rgba(2, 23, 35, 0.28);
+      object-position: center top;
+      filter: contrast(1.05) saturate(0.98);
+      z-index: 2;
+      box-shadow: 0 28px 90px rgba(0,0,0,0.32);
+    }
+    .catalog-cover__slide.is-active .catalog-cover__photo {
+      animation: catalogCoverDrift 5.8s ease-out both;
+    }
+    @keyframes catalogCoverDrift {
+      from { transform: scale(1) translate3d(0,0,0); }
+      to { transform: scale(1.035) translate3d(0,-1%,0); }
+    }
+    .catalog-cover__dots {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      z-index: 5;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+    }
+    .catalog-cover__dot {
+      width: 8px;
+      height: 8px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(235,216,199,0.56);
+      padding: 0;
+      cursor: pointer;
+      transition: width .2s ease, background .2s ease;
+    }
+    .catalog-cover__dot.is-active {
+      width: 28px;
+      background: #A8C63A;
     }
     .catalog-landing .header {
       position: sticky;
@@ -430,16 +503,85 @@
       background: linear-gradient(120deg, #A8C63A, #EBD8C7);
       color: #383838;
     }
+    .catalog-landing .floating-toggle {
+      border-color: rgba(168,198,58,0.38);
+      background: rgba(56,56,56,0.92);
+      color: #EBD8C7;
+      box-shadow: 0 16px 34px rgba(56,56,56,0.18);
+    }
+    .catalog-landing .floating-toggle--whats[data-active="true"],
+    .catalog-landing .floating-toggle:hover {
+      background: linear-gradient(120deg, #A8C63A, #6F8522);
+      color: #383838;
+      border-color: transparent;
+    }
+    .catalog-landing .modal::backdrop {
+      background: rgba(56,56,56,0.72);
+      backdrop-filter: blur(8px);
+    }
+    .catalog-landing .modal__content,
+    .catalog-landing .cart {
+      background: #fff;
+      border-color: rgba(168,198,58,0.24);
+      box-shadow: 0 28px 80px rgba(56,56,56,0.24);
+    }
+    .catalog-landing .modal__close,
+    .catalog-landing .cart__close {
+      color: #383838;
+      background: rgba(235,216,199,0.42);
+      border-color: rgba(168,198,58,0.22);
+    }
+    .catalog-landing .modal__close:hover,
+    .catalog-landing .cart__close:hover {
+      background: rgba(168,198,58,0.22);
+    }
+    .catalog-landing .modal__options fieldset,
+    .catalog-landing .cart__footer {
+      border-color: rgba(56,56,56,0.1);
+    }
+    .catalog-landing #btnAdd,
+    .catalog-landing #btnWhats,
+    .catalog-landing .cookie-banner__btn-accept {
+      background: linear-gradient(120deg, #A8C63A, #6F8522);
+      color: #383838;
+      border-color: transparent;
+      font-weight: 800;
+    }
+    .catalog-landing #btnWhats {
+      color: #383838;
+    }
+    .catalog-landing .cookie-banner {
+      background: #383838;
+      color: rgba(255,255,255,0.86);
+      border-top-color: rgba(168,198,58,0.34);
+    }
+    .catalog-landing .cookie-banner a {
+      color: #A8C63A;
+    }
+    .catalog-landing .cookie-banner__btn-reject {
+      border-color: rgba(235,216,199,0.32);
+      color: #EBD8C7;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .catalog-cover__slide,
+      .catalog-cover__photo,
+      .catalog-cover__dot {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
     @media (max-width: 520px) {
       .site-banner {
-        min-height: clamp(190px, 58vw, 280px);
+        min-height: clamp(430px, 118vw, 640px);
       }
-      .site-banner img {
-        width: 100%;
-        max-height: 34vh;
-        min-height: 190px;
-        object-fit: cover;
-        box-shadow: none;
+      .site-banner::after {
+        background:
+          linear-gradient(0deg, rgba(56,56,56,0.62), transparent 42%, rgba(56,56,56,0.2)),
+          linear-gradient(90deg, rgba(56,56,56,0.42), transparent 24%, transparent 76%, rgba(56,56,56,0.42));
+      }
+      .catalog-cover__photo {
+        max-width: 86vw;
+        height: calc(100% - 46px);
       }
       .catalog-landing .header__wrap {
         min-height: 54px;
@@ -534,114 +676,67 @@
 </head>
 <body class="catalog-landing">
 
-  <div class="site-banner" style="position:relative;">
-    <a href="#grid" aria-label="Ver coleção" style="display:contents;">
-      <img src="image/banner.jpeg" alt="Coleção Arena Lemoov Fitness" width="1536" height="1024" loading="eager" fetchpriority="high" />
+  <div class="site-banner">
+    <a class="catalog-cover" href="#grid" aria-label="Ver coleção">
+      <figure class="catalog-cover__slide is-active">
+        <img class="catalog-cover__bg" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.18.jpeg" alt="" aria-hidden="true" loading="eager" decoding="async" fetchpriority="high">
+        <img class="catalog-cover__photo" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.18.jpeg" alt="Editorial Lemoov Fitness com look premium em estúdio claro" width="1064" height="1600" loading="eager" decoding="async" fetchpriority="high">
+      </figure>
+      <figure class="catalog-cover__slide">
+        <img class="catalog-cover__bg" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.18-2.jpeg" alt="" aria-hidden="true" loading="lazy" decoding="async">
+        <img class="catalog-cover__photo" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.18-2.jpeg" alt="Campanha Lemoov Fitness com peça de alta performance" width="1064" height="1600" loading="lazy" decoding="async">
+      </figure>
+      <figure class="catalog-cover__slide">
+        <img class="catalog-cover__bg" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.19.jpeg" alt="" aria-hidden="true" loading="lazy" decoding="async">
+        <img class="catalog-cover__photo" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.19.jpeg" alt="Modelo em look Lemoov Fitness para capa de campanha" width="1064" height="1600" loading="lazy" decoding="async">
+      </figure>
+      <figure class="catalog-cover__slide">
+        <img class="catalog-cover__bg" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.21.jpeg" alt="" aria-hidden="true" loading="lazy" decoding="async">
+        <img class="catalog-cover__photo" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.21.jpeg" alt="Editorial moderno da Lemoov Fitness com moda fitness premium" width="1064" height="1600" loading="lazy" decoding="async">
+      </figure>
+      <figure class="catalog-cover__slide">
+        <img class="catalog-cover__bg" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.22.jpeg" alt="" aria-hidden="true" loading="lazy" decoding="async">
+        <img class="catalog-cover__photo" src="image/capa/WhatsApp Image 2026-06-14 at 22.06.22.jpeg" alt="Capa Lemoov Fitness com look em movimento e acabamento sofisticado" width="1064" height="1600" loading="lazy" decoding="async">
+      </figure>
     </a>
-    <canvas id="confettiCanvas" aria-hidden="true" style="
-      position:absolute;inset:0;width:100%;height:100%;
-      pointer-events:none;z-index:10;"></canvas>
+    <div class="catalog-cover__dots" data-cover-dots aria-label="Selecionar capa"></div>
   </div>
 
   <script>
   (function(){
-    const canvas = document.getElementById('confettiCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const COLORS = ['#383838','#383838','#A8C63A','#A8C63A','#EBD8C7','#EBD8C7','#ffffff'];
+    const banner = document.querySelector('.site-banner');
+    const slides = Array.from(document.querySelectorAll('.catalog-cover__slide'));
+    const dotsWrap = document.querySelector('[data-cover-dots]');
+    if (!banner || !slides.length || !dotsWrap) return;
     const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const isMobile = window.matchMedia && window.matchMedia('(max-width: 620px)').matches;
-    const TOTAL  = reducedMotion ? 0 : (isMobile ? 90 : 220);
-    let pieces   = [];
-    let raf      = null;
-    let running  = false;
-
-    function resize(){
-      canvas.width  = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
+    let current = 0;
+    let timer = null;
+    const dots = slides.map((_, index) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'catalog-cover__dot';
+      dot.setAttribute('aria-label', `Ver capa ${index + 1}`);
+      dot.addEventListener('click', (event) => {
+        event.preventDefault();
+        show(index);
+        start();
+      });
+      dotsWrap.appendChild(dot);
+      return dot;
+    });
+    function show(index){
+      current = (index + slides.length) % slides.length;
+      slides.forEach((slide, i) => slide.classList.toggle('is-active', i === current));
+      dots.forEach((dot, i) => dot.classList.toggle('is-active', i === current));
     }
-
-    function randomBetween(a,b){ return a + Math.random()*(b-a); }
-
-    function spawn(){
-      pieces = [];
-      for(let i=0;i<TOTAL;i++){
-        const burst = Math.random();
-        const side = Math.random() < 0.5 ? -1 : 1;
-        const fromSide = burst < 0.34;
-        const size = randomBetween(5,15);
-        pieces.push({
-          x:      fromSide ? (side < 0 ? randomBetween(-40, 80) : randomBetween(canvas.width - 80, canvas.width + 40)) : randomBetween(0, canvas.width),
-          y:      fromSide ? randomBetween(canvas.height * 0.12, canvas.height * 0.78) : randomBetween(-canvas.height*0.85, -10),
-          w:      size,
-          h:      size * randomBetween(0.35,1.15),
-          r:      randomBetween(0, Math.PI*2),
-          dr:     randomBetween(-0.18,0.18),
-          vx:     fromSide ? randomBetween(2.8,7.4) * -side : randomBetween(-1.8,1.8),
-          vy:     fromSide ? randomBetween(-5.8,-1.2) : randomBetween(2.8,6.8),
-          color:  COLORS[Math.floor(Math.random()*COLORS.length)],
-          alpha:  1,
-          fade:   randomBetween(0.0022,0.0065),
-          gravity: randomBetween(0.045,0.095),
-          swing:  randomBetween(0.018,0.06),
-          wave:   randomBetween(0, Math.PI*2),
-          shape:  Math.random()<0.62?'rect':(Math.random()<0.5?'circle':'stripe'),
-        });
-      }
+    function start(){
+      if (timer) clearInterval(timer);
+      if (!reducedMotion && slides.length > 1) timer = setInterval(() => show(current + 1), 5200);
     }
-
-    function draw(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      let alive = false;
-      for(const p of pieces){
-        p.wave += p.swing;
-        p.x  += p.vx + Math.sin(p.wave) * 0.45;
-        p.y  += p.vy;
-        p.vy += p.gravity; // gravidade suave
-        p.r  += p.dr;
-        p.alpha -= p.fade;
-        if(p.alpha<=0) continue;
-        alive = true;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0,p.alpha);
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.r);
-        ctx.fillStyle = p.color;
-        if(p.shape==='circle'){
-          ctx.beginPath();
-          ctx.arc(0,0,p.w/2,0,Math.PI*2);
-          ctx.fill();
-        } else if (p.shape === 'stripe') {
-          ctx.fillRect(-p.w/2,-p.h/2,p.w*1.7,Math.max(2,p.h*0.35));
-        } else {
-          ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
-        }
-        ctx.restore();
-      }
-      if(alive){ raf=requestAnimationFrame(draw); }
-      else { running=false; ctx.clearRect(0,0,canvas.width,canvas.height); }
-    }
-
-    function launch(){
-      if (!TOTAL || reducedMotion) return;
-      if(running && pieces.length) {
-        const extra = pieces.slice(0, Math.floor(TOTAL * 0.12)).map(p => ({ ...p, y: randomBetween(-canvas.height * 0.35, -10), alpha: 1 }));
-        pieces.push(...extra);
-        return;
-      }
-      running=true;
-      resize();
-      spawn();
-      raf=requestAnimationFrame(draw);
-    }
-
-    // dispara ao carregar e ao hover/touch no banner, com intensidade reduzida
-    window.addEventListener('load', ()=>{ setTimeout(launch, 450); });
-    canvas.parentElement.addEventListener('mouseenter', launch);
-    canvas.parentElement.addEventListener('touchstart', launch, {passive:true});
-
-    // redimensiona sem parar animação
-    window.addEventListener('resize', resize, {passive:true});
+    banner.addEventListener('mouseenter', () => { if (timer) clearInterval(timer); });
+    banner.addEventListener('mouseleave', start);
+    show(0);
+    start();
   })();
   </script>
 
@@ -747,6 +842,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=23"></script>
+  <script src="script.js?v=24"></script>
 </body>
 </html>
