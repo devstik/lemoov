@@ -16,17 +16,17 @@
       --primary:      #A8C63A;
       --primary-dark: #6F8522;
       --primary-glow: rgba(168,198,58,.2);
-      --text:         #0a1628;
-      --muted:        #5a6a80;
+      --text:         #383838;
+      --muted:        #6f6258;
       --surface:      #ffffff;
-      --border:       rgba(0,39,118,.1);
-      --border-focus: rgba(0,156,59,.45);
-      --bg:           #0d1b2a;
+      --border:       rgba(56,56,56,.12);
+      --border-focus: rgba(168,198,58,.45);
+      --bg:           #383838;
       --danger:       #e8445a;
       --danger-bg:    rgba(232,68,90,.08);
       --radius:       20px;
       --radius-sm:    12px;
-      --shadow:       0 28px 80px rgba(0,20,80,.35);
+      --shadow:       0 28px 80px rgba(56,56,56,.28);
     }
 
     html { scroll-behavior: smooth; }
@@ -34,7 +34,7 @@
     body {
       font-family: 'Inter', sans-serif;
       min-height: 100dvh;
-      background: linear-gradient(145deg, #071a10 0%, #0a1628 50%, #071020 100%);
+      background: linear-gradient(145deg, #383838 0%, #2f3326 52%, #EBD8C7 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -50,7 +50,7 @@
       width: 100%;
       max-width: 480px;
       background: var(--surface);
-      border: 1.5px solid rgba(0,156,59,.25);
+      border: 1.5px solid rgba(168,198,58,.28);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       overflow: hidden;
@@ -256,13 +256,13 @@
       cursor: pointer;
       margin-top: 20px;
       transition: filter .15s, transform .1s, box-shadow .15s;
-      box-shadow: 0 8px 24px rgba(0,39,118,.28);
+      box-shadow: 0 8px 24px rgba(168,198,58,.25);
     }
-    .btn-submit:hover { filter: brightness(1.08); box-shadow: 0 12px 32px rgba(0,39,118,.36); }
+    .btn-submit:hover { filter: brightness(1.08); box-shadow: 0 12px 32px rgba(168,198,58,.34); }
     .btn-submit:active { transform: scale(.98); }
     .btn-submit:disabled { opacity: .55; cursor: not-allowed; transform: none; filter: saturate(.5); }
     .btn-submit.ok {
-      background: linear-gradient(120deg, #007a2e, #001a55);
+      background: linear-gradient(120deg, #6F8522, #383838);
     }
 
     /* ── Banner offline ── */

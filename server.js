@@ -391,6 +391,19 @@ async function readStockMovementsStore(conn = null) {
     return { ...item, id: item.id || row.id, createdAt: item.createdAt || row.created_at };
   });
 }
+async function readStockMovementsForProductStore(productId, conn = null) {
+  requireMysqlStorage();
+  await initDatabase();
+  const db = conn || mysqlPool;
+  const targetId = String(productId);
+  const [rows] = await db.execute('SELECT id, data, created_at FROM lemoov_stock_movements ORDER BY id DESC LIMIT 5000');
+  return rows
+    .map((row) => {
+      const item = JSON.parse(row.data);
+      return { ...item, id: item.id || row.id, createdAt: item.createdAt || row.created_at };
+    })
+    .filter((item) => String(item.productId) === targetId);
+}
 async function appendStockMovementsStore(items = [], conn = null) {
   const list = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!list.length) return;
@@ -576,6 +589,61 @@ function getColorStock(cor) {
   return cor && cor.estoque && typeof cor.estoque === 'object' && !Array.isArray(cor.estoque)
     ? cor.estoque
     : null;
+}
+function normalizeStockMatchKey(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+function copyStock(stock) {
+  if (!stock || typeof stock !== 'object' || Array.isArray(stock)) return null;
+  return Object.fromEntries(
+    Object.entries(stock)
+      .map(([size, qty]) => [normalizeKey(size || 'UNICO'), Math.max(0, Number(qty) || 0)])
+      .filter(([size]) => size)
+  );
+}
+function applyStockState(cor = {}, stock = null) {
+  const cleanStock = copyStock(stock);
+  if (!cleanStock) return cor;
+  const activeSizes = Object.entries(cleanStock)
+    .filter(([, qty]) => Number(qty) > 0)
+    .map(([size]) => size);
+  return {
+    ...cor,
+    estoque: cleanStock,
+    tamanhos: activeSizes.length ? activeSizes : (Array.isArray(cor.tamanhos) ? cor.tamanhos : []),
+    soldOut: activeSizes.length === 0
+  };
+}
+function preserveProductStock(existing = {}, incoming = {}) {
+  if (!Array.isArray(incoming.cores)) return incoming;
+  const oldCores = Array.isArray(existing.cores) ? existing.cores : [];
+  const usedOldIndexes = new Set();
+  const findOldColor = (newCor, index) => {
+    const newName = normalizeStockMatchKey(newCor?.nome);
+    const sameIndex = oldCores[index];
+    if (sameIndex && !usedOldIndexes.has(index) && normalizeStockMatchKey(sameIndex.nome) === newName) {
+      return { cor: sameIndex, index };
+    }
+    const byNameIndex = oldCores.findIndex((oldCor, oldIndex) => (
+      !usedOldIndexes.has(oldIndex)
+      && normalizeStockMatchKey(oldCor?.nome) === newName
+      && getColorStock(oldCor)
+    ));
+    if (byNameIndex >= 0) return { cor: oldCores[byNameIndex], index: byNameIndex };
+    if (sameIndex && !usedOldIndexes.has(index) && getColorStock(sameIndex)) return { cor: sameIndex, index };
+    return null;
+  };
+  const nextCores = incoming.cores.map((newCor, index) => {
+    const match = findOldColor(newCor, index);
+    if (!match) return newCor;
+    usedOldIndexes.add(match.index);
+    return applyStockState(newCor, getColorStock(match.cor));
+  });
+  return { ...incoming, cores: nextCores };
 }
 function comboPublicId(id) {
   return `combo-${Number(id)}`;
@@ -2605,7 +2673,8 @@ app.put('/api/admin/produtos/:id', authRequired, async (req, res) => {
     const produtos = ensureProductIds(await readProdutosStore());
     const idx = produtos.findIndex((p) => Number(p.id) === id);
     if (idx === -1) return res.status(404).json({ ok: false, error: 'Produto não encontrado' });
-    produtos[idx] = { ...produtos[idx], ...req.body, id, updatedAt: new Date().toISOString() };
+    const incoming = preserveProductStock(produtos[idx], req.body || {});
+    produtos[idx] = { ...produtos[idx], ...incoming, id, updatedAt: new Date().toISOString() };
     const coresLog = (produtos[idx].cores || []).map(c => `${c.nome}:ativo=${c.ativo}`).join(', ');
     console.log(`[PUT produto ${id}] cores: ${coresLog}`);
     await writeProdutosStore(produtos);
@@ -2735,6 +2804,66 @@ app.get('/api/admin/estoque-movimentos', authRequired, async (_req, res) => {
     const items = await readStockMovementsStore();
     res.json(items);
   } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/admin/estoque-auditoria/:produtoId', authRequired, async (req, res) => {
+  try {
+    const produtoId = Number(req.params.produtoId);
+    const produtos = ensureProductIds(await readProdutosStore());
+    const produto = produtos.find((p) => Number(p.id) === produtoId);
+    if (!produto) return res.status(404).json({ ok: false, error: 'Produto não encontrado' });
+    const movements = await readStockMovementsForProductStore(produtoId);
+    const rowsMap = new Map();
+    (Array.isArray(produto.cores) ? produto.cores : []).forEach((cor, colorIndex) => {
+      const stock = getColorStock(cor) || {};
+      Object.entries(stock).forEach(([size, qty]) => {
+        const key = [colorIndex, normalizeKey(size || 'UNICO')].join('|');
+        rowsMap.set(key, {
+          colorIndex,
+          colorName: cor?.nome || `Cor ${colorIndex + 1}`,
+          size: normalizeKey(size || 'UNICO'),
+          current: Number(qty) || 0,
+          ledger: 0
+        });
+      });
+    });
+    movements.forEach((movement) => {
+      const colorIndex = Number(movement.colorIndex) || 0;
+      const size = normalizeKey(movement.size || 'UNICO');
+      const key = [colorIndex, size].join('|');
+      const cor = Array.isArray(produto.cores) ? produto.cores[colorIndex] : null;
+      const row = rowsMap.get(key) || {
+        colorIndex,
+        colorName: movement.colorName || cor?.nome || `Cor ${colorIndex + 1}`,
+        size,
+        current: 0,
+        ledger: 0
+      };
+      const rawQty = Number(movement.quantity) || 0;
+      row.ledger += movement.type === 'saida' && rawQty > 0 ? -rawQty : rawQty;
+      rowsMap.set(key, row);
+    });
+    const rows = Array.from(rowsMap.values()).sort((a, b) => (
+      String(a.colorName).localeCompare(String(b.colorName))
+      || String(a.size).localeCompare(String(b.size))
+    ));
+    const currentTotal = rows.reduce((sum, row) => sum + row.current, 0);
+    const ledgerTotal = rows.reduce((sum, row) => sum + row.ledger, 0);
+    res.json({
+      ok: true,
+      produtoId,
+      productName: produto.nome || '',
+      movementCount: movements.length,
+      currentTotal,
+      ledgerTotal,
+      difference: currentTotal - ledgerTotal,
+      rows,
+      mismatches: rows.filter((row) => row.current !== row.ledger)
+    });
+  } catch (e) {
+    console.error('[estoque-auditoria]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

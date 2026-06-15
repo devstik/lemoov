@@ -797,7 +797,7 @@ function showNotice(_el,msg,type='success'){toast(msg,type)}
 function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
-let produtos=[], combos=[], pedidos=[], cupons=[], stockMovimentos=[], activeProdId=null, activeComboId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', stockMovementSearch='', stockMovementType='', relDateStart='', relDateEnd='';
+let produtos=[], combos=[], pedidos=[], cupons=[], stockMovimentos=[], stockAuditData=null, stockAuditProductId='', activeProdId=null, activeComboId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', stockMovementSearch='', stockMovementType='', relDateStart='', relDateEnd='';
 let colorCounter=0, newOrderItems=[], prodListSortable=null, comboListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
@@ -1550,15 +1550,16 @@ function fillEstoqueSelect(){
   renderStockProductResults();
 }
 
-$('estoq_prod').addEventListener('change',()=>{
+$('estoq_prod').addEventListener('change',async()=>{
   const p=produtos.find(p=>String(p.id)===$('estoq_prod').value);
   const cs=$('estoq_cor'); cs.innerHTML=''; $('estoq_sizes').innerHTML='';
-  if(!p?.cores?.length){cs.innerHTML='<option value="">— Sem cores —</option>';renderStockPreview();return}
+  if(!p?.cores?.length){cs.innerHTML='<option value="">— Sem cores —</option>';renderStockPreview();await loadStockAudit();return}
   p.cores.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.nome||`Cor ${i+1}`;cs.appendChild(o)});
   renderSizes(p,0);
   renderStockPreview();
   renderStockProductResults();
   renderStockMovements();
+  await loadStockAudit();
 });
 
 $('estoq_cor').addEventListener('change',()=>{
@@ -1594,6 +1595,7 @@ async function refreshStockScreen(){
   await loadProdutos();
   await loadCombos();
   await loadStockMovements();
+  await loadStockAudit();
   renderStockSummary();
   renderStockProductResults();
   renderStockPreview();
@@ -1608,6 +1610,21 @@ async function loadStockMovements(){
     stockMovimentos=await r.json();
     renderStockMovements();
   }catch(e){console.error('[estoque-movimentos]',e)}
+}
+
+async function loadStockAudit(){
+  const selectedProductId=$('estoq_prod')?.value||'';
+  stockAuditProductId=selectedProductId;
+  stockAuditData=null;
+  if(!selectedProductId){renderStockMovements();return}
+  try{
+    const r=await fetch(`/api/admin/estoque-auditoria/${encodeURIComponent(selectedProductId)}`);
+    if(r.status===401){redirect401();return}
+    if(!r.ok){renderStockMovements();return}
+    const data=await r.json();
+    if(String(stockAuditProductId)===String(selectedProductId)) stockAuditData=data;
+  }catch(e){console.error('[estoque-auditoria]',e)}
+  renderStockMovements();
 }
 
 function stockEntries(){
@@ -1752,6 +1769,19 @@ function renderStockMovementAudit(){
   const prod=produtos.find(p=>String(p.id)===String(selectedProductId));
   if(!prod){
     el.innerHTML='';
+    return;
+  }
+  if(stockAuditData?.ok&&String(stockAuditProductId)===String(selectedProductId)){
+    const rows=Array.isArray(stockAuditData.rows)?stockAuditData.rows:[];
+    const mismatches=Array.isArray(stockAuditData.mismatches)?stockAuditData.mismatches:rows.filter(r=>Number(r.current)!==Number(r.ledger));
+    el.innerHTML=`<div class="stock-audit">
+      <div class="stock-audit__title">Auditoria do produto selecionado</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">ID ${esc(String(selectedProductId))} · ${Number(stockAuditData.movementCount)||0} movimento${Number(stockAuditData.movementCount)===1?'':'s'} no histórico · saldo atual ${Number(stockAuditData.currentTotal)||0} un. · líquido movimentações ${Number(stockAuditData.ledgerTotal)||0} un.</div>
+      ${mismatches.length?mismatches.map(r=>`<div class="stock-audit__line">
+        <span>Cor #${esc(String(Number(r.colorIndex)||0))} · ${esc(r.colorName||'Variação')} · ${esc(r.size||'UNICO')}</span>
+        <span>saldo ${Number(r.current)||0} · mov. ${Number(r.ledger)||0} · <span class="stock-audit__diff">dif. ${(Number(r.current)||0)-(Number(r.ledger)||0)}</span></span>
+      </div>`).join(''):`<div style="font-size:12px;color:#047857;font-weight:700">Saldo atual bate com o histórico completo deste produto.</div>`}
+    </div>`;
     return;
   }
   const current=new Map();
@@ -1920,6 +1950,7 @@ $('btnStockOperation').addEventListener('click',async()=>{
     await loadProdutos();
     await loadCombos();
     await loadStockMovements();
+    await loadStockAudit();
     const p=produtos.find(p=>String(p.id)===prodId);
     if(p) renderSizes(p,ci);
     renderStockPreview();
