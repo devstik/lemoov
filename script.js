@@ -865,6 +865,15 @@ function getColorGroupImages(prod, colorIndex) {
     return true;
   });
 }
+function getProductGalleryImages(prod) {
+  const seen = new Set();
+  const colors = Array.isArray(prod?.cores) ? prod.cores : [];
+  return colors.flatMap(getColorImages).filter(src => {
+    if (!src || seen.has(src)) return false;
+    seen.add(src);
+    return true;
+  });
+}
 function getColorImageForProduct(prod, colorIndex) {
   return getColorGroupImages(prod, colorIndex)[0] || "";
 }
@@ -2430,10 +2439,11 @@ function renderGrid(){
     }
     function updatePhotoHint(){
       const imgs = getColorGroupImages(p, selectedColorIndex);
-      const hasMorePhotos = imgs.length > 1 || (Array.isArray(p.cores) && p.cores.length > 1);
-      if (photoHint) photoHint.dataset.visible = hasMorePhotos ? "true" : "false";
+      const gallery = getProductGalleryImages(p);
+      const hasPhotoAction = imgs.length > 1 || gallery.length > 0 || (Array.isArray(p.cores) && p.cores.length > 1);
+      if (photoHint) photoHint.dataset.visible = hasPhotoAction ? "true" : "false";
       const media = artigo.querySelector(".product-card__media");
-      if (media) media.dataset.clickable = hasMorePhotos ? "true" : "false";
+      if (media) media.dataset.clickable = hasPhotoAction ? "true" : "false";
     }
 
     const mainImage = artigo.querySelector(".product-card__media img");
@@ -2541,13 +2551,16 @@ function renderGrid(){
           if (!swatches.length) return;
           const nextIndex = (selectedColorIndex + 1) % swatches.length;
           swatches[nextIndex]?.click();
+          return;
         }
+        abrirModal(p);
       });
     }
 
     artigo.querySelector(".product-card__link").addEventListener("click", (e) => {
       if (e.target.closest(".swatch, .size")) return;
       e.preventDefault();
+      abrirModal(p);
     });
 
     grid.appendChild(artigo);
