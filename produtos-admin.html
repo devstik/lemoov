@@ -1775,13 +1775,17 @@ function renderStockMovementAudit(){
     const rows=Array.isArray(stockAuditData.rows)?stockAuditData.rows:[];
     const mismatches=Array.isArray(stockAuditData.mismatches)?stockAuditData.mismatches:rows.filter(r=>Number(r.current)!==Number(r.ledger));
     el.innerHTML=`<div class="stock-audit">
-      <div class="stock-audit__title">Auditoria do produto selecionado</div>
+      <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:5px">
+        <div class="stock-audit__title" style="margin-bottom:0">Auditoria do produto selecionado</div>
+        ${mismatches.length?`<button type="button" class="btn btn--primary btn--sm" data-stock-reconcile="${esc(String(selectedProductId))}">Sincronizar saldo</button>`:''}
+      </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:8px">ID ${esc(String(selectedProductId))} · ${Number(stockAuditData.movementCount)||0} movimento${Number(stockAuditData.movementCount)===1?'':'s'} no histórico · saldo atual ${Number(stockAuditData.currentTotal)||0} un. · líquido movimentações ${Number(stockAuditData.ledgerTotal)||0} un.</div>
       ${mismatches.length?mismatches.map(r=>`<div class="stock-audit__line">
         <span>Cor #${esc(String(Number(r.colorIndex)||0))} · ${esc(r.colorName||'Variação')} · ${esc(r.size||'UNICO')}</span>
         <span>saldo ${Number(r.current)||0} · mov. ${Number(r.ledger)||0} · <span class="stock-audit__diff">dif. ${(Number(r.current)||0)-(Number(r.ledger)||0)}</span></span>
       </div>`).join(''):`<div style="font-size:12px;color:#047857;font-weight:700">Saldo atual bate com o histórico completo deste produto.</div>`}
     </div>`;
+    bindStockAuditActions();
     return;
   }
   const current=new Map();
@@ -1809,13 +1813,56 @@ function renderStockMovementAudit(){
   const mismatches=rows.filter(r=>r.current!==r.ledger);
   const movementCount=stockMovimentos.filter(m=>String(m.productId)===String(selectedProductId)).length;
   el.innerHTML=`<div class="stock-audit">
-    <div class="stock-audit__title">Auditoria do produto selecionado</div>
+    <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:5px">
+      <div class="stock-audit__title" style="margin-bottom:0">Auditoria do produto selecionado</div>
+      ${mismatches.length?`<button type="button" class="btn btn--primary btn--sm" data-stock-reconcile="${esc(String(selectedProductId))}">Sincronizar saldo</button>`:''}
+    </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:8px">ID ${esc(String(selectedProductId))} · ${movementCount} movimento${movementCount!==1?'s':''} carregado${movementCount!==1?'s':''} · saldo atual ${currentTotal} un. · líquido movimentações ${ledgerTotal} un.</div>
     ${mismatches.length?mismatches.map(r=>`<div class="stock-audit__line">
       <span>Cor #${r.colorIndex} · ${esc(r.colorName)} · ${esc(r.size)}</span>
       <span>saldo ${r.current} · mov. ${r.ledger} · <span class="stock-audit__diff">dif. ${r.current-r.ledger}</span></span>
     </div>`).join(''):`<div style="font-size:12px;color:#047857;font-weight:700">Saldo atual bate com as movimentações carregadas.</div>`}
   </div>`;
+  bindStockAuditActions();
+}
+
+function bindStockAuditActions(){
+  $$('[data-stock-reconcile]').forEach(btn=>{
+    if(btn.dataset.bound==='1') return;
+    btn.dataset.bound='1';
+    btn.addEventListener('click',async()=>{
+      const prodId=btn.dataset.stockReconcile;
+      const prod=produtos.find(p=>String(p.id)===String(prodId));
+      const ok=confirm(`Sincronizar o saldo atual de "${prod?.nome||'produto'}" pelo histórico de movimentações?\n\nIsso não cria nova entrada. Apenas corrige o saldo salvo no produto para bater com o histórico.`);
+      if(!ok) return;
+      btn.disabled=true;
+      btn.textContent='Sincronizando...';
+      try{
+        const r=await fetch(`/api/admin/estoque-reconciliar/${encodeURIComponent(prodId)}`,{method:'POST'});
+        if(r.status===401){redirect401();return}
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok||!data.ok) throw new Error(data.error||'Falha ao sincronizar');
+        const sel=$('estoq_prod');
+        if(sel) sel.value=prodId;
+        await loadProdutos();
+        if(sel) sel.value=prodId;
+        const refreshed=produtos.find(p=>String(p.id)===String(prodId));
+        const ci=Number($('estoq_cor')?.value)||0;
+        if(refreshed) renderSizes(refreshed,ci);
+        await loadStockMovements();
+        await loadStockAudit();
+        renderStockSummary();
+        renderStockProductResults();
+        renderStockPreview();
+        renderStockMovements();
+        toast('Saldo sincronizado pelo histórico.','success');
+      }catch(e){
+        toast(e.message,'error');
+        btn.disabled=false;
+        btn.textContent='Sincronizar saldo pelo histórico';
+      }
+    });
+  });
 }
 
 function renderStockMovements(){

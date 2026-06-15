@@ -2868,6 +2868,78 @@ app.get('/api/admin/estoque-auditoria/:produtoId', authRequired, async (req, res
   }
 });
 
+app.post('/api/admin/estoque-reconciliar/:produtoId', authRequired, async (req, res) => {
+  let conn = null;
+  try {
+    requireStockMovementDatabase();
+    if (MYSQL_ENABLED) {
+      await initDatabase();
+      conn = await mysqlPool.getConnection();
+      await conn.beginTransaction();
+      await conn.execute('SELECT id FROM lemoov_products FOR UPDATE');
+    }
+    const produtoId = Number(req.params.produtoId);
+    const produtos = ensureProductIds(await readProdutosStore(conn));
+    const produto = produtos.find((p) => Number(p.id) === produtoId);
+    if (!produto) {
+      const err = new Error('Produto não encontrado');
+      err.status = 404;
+      throw err;
+    }
+    if (!Array.isArray(produto.cores) || !produto.cores.length) {
+      const err = new Error('Produto sem variações para reconciliar');
+      err.status = 400;
+      throw err;
+    }
+    const movements = await readStockMovementsForProductStore(produtoId, conn);
+    if (!movements.length) {
+      const err = new Error('Produto sem histórico de movimentações');
+      err.status = 400;
+      throw err;
+    }
+    const ledger = new Map();
+    movements.forEach((movement) => {
+      const colorIndex = Number(movement.colorIndex) || 0;
+      const size = normalizeKey(movement.size || 'UNICO');
+      const key = [colorIndex, size].join('|');
+      const rawQty = Number(movement.quantity) || 0;
+      const signedQty = movement.type === 'saida' && rawQty > 0 ? -rawQty : rawQty;
+      ledger.set(key, (ledger.get(key) || 0) + signedQty);
+    });
+    let changed = 0;
+    produto.cores.forEach((cor, colorIndex) => {
+      const nextStock = {};
+      ledger.forEach((qty, key) => {
+        const [idx, size] = key.split('|');
+        if (Number(idx) !== Number(colorIndex)) return;
+        const safeQty = Math.max(0, Number(qty) || 0);
+        if (safeQty > 0) nextStock[size] = safeQty;
+      });
+      const beforeStock = copyStock(getColorStock(cor) || {}) || {};
+      if (JSON.stringify(beforeStock) !== JSON.stringify(nextStock)) changed += 1;
+      cor.estoque = nextStock;
+      cor.tamanhos = Object.keys(nextStock).filter((size) => Number(nextStock[size]) > 0);
+      cor.soldOut = cor.tamanhos.length === 0;
+    });
+    produto.soldOut = produto.cores.every((cor) => {
+      const stock = getColorStock(cor) || {};
+      return Object.values(stock).every((qty) => Number(qty) <= 0);
+    });
+    produto.updatedAt = new Date().toISOString();
+    await writeProdutosStore(produtos, conn);
+    if (conn) await conn.commit();
+    res.json({ ok: true, produto, changed, movementCount: movements.length });
+  } catch (e) {
+    if (conn) {
+      try { await conn.rollback(); } catch (_rollbackError) {}
+    }
+    console.error('[estoque-reconciliar]', e.message);
+    res.status(e.status || 500).json({ ok: false, error: e.message });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.post('/api/admin/operacao-estoque', authRequired, async (req, res) => {
   let conn = null;
   try {
