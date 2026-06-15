@@ -420,9 +420,9 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 const heroHighlights = [
-  "Compressão inteligente para treinos intensos",
-  "Proteção UV50+ para treinos ao ar livre",
-  "Tecidos que respiram e secam rápido"
+  "Nova campanha Lemoov em estética editorial",
+  "Peças que moldam, sustentam e acompanham",
+  "Performance com presença para todos os dias"
 ];
 let heroHighlightIndex = 0;
 function cycleHeroHighlight(){
