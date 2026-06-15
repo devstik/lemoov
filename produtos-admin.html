@@ -375,6 +375,10 @@
       <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="7" height="7" rx="1"/><rect x="15" y="3" width="7" height="7" rx="1"/><rect x="2" y="14" width="7" height="7" rx="1"/><rect x="15" y="14" width="7" height="7" rx="1"/></svg>
       <span class="nav-label">Produtos</span>
     </button>
+    <button class="tab-btn" data-tab="combos" title="Combos">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17h7"/><path d="M17.5 13.5v7"/></svg>
+      <span class="nav-label">Combos</span>
+    </button>
     <button class="tab-btn" data-tab="estoque" title="Estoque">
       <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       <span class="nav-label">Estoque</span>
@@ -433,6 +437,36 @@
       <div id="saveNotice" class="notice" style="margin:12px 16px 0"></div>
       <div id="formPanel" class="form-panel">
         <div class="form-empty">Selecione um produto no catálogo ao lado para editar,<br>ou clique em "+ Novo" para cadastrar.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── COMBOS ───────────────────────────────────── -->
+<div id="tab-combos" class="tab-panel">
+  <div class="screen-hero">
+    <div><h1 class="screen-title">Combos</h1></div>
+  </div>
+  <div class="prod-layout">
+    <div class="card prod-sidebar">
+      <div class="card-head">
+        <h2>Ofertas</h2>
+        <span id="comboCount" style="font-size:12px;color:var(--muted);margin-left:4px"></span>
+        <button class="btn btn--primary btn--sm" id="btnNovoCombo" style="margin-left:auto">+ Novo</button>
+      </div>
+      <div class="prod-sidebar-search">
+        <input class="fc" id="comboSearch" placeholder="Buscar combo..." autocomplete="off" />
+      </div>
+      <div id="listaCombos" class="prod-list"></div>
+    </div>
+    <div class="card prod-form-panel">
+      <div class="card-head">
+        <h2 id="comboFormTitle">Selecione um combo</h2>
+        <div id="comboFormActions" style="margin-left:auto;display:flex;gap:6px;"></div>
+      </div>
+      <div id="comboNotice" class="notice" style="margin:12px 16px 0"></div>
+      <div id="comboFormPanel" class="form-panel">
+        <div class="form-empty">Selecione um combo ao lado para editar,<br>ou clique em "+ Novo" para cadastrar.</div>
       </div>
     </div>
   </div>
@@ -734,8 +768,8 @@ function showNotice(_el,msg,type='success'){toast(msg,type)}
 function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
-let produtos=[], pedidos=[], cupons=[], stockMovimentos=[], activeProdId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', relDateStart='', relDateEnd='';
-let colorCounter=0, newOrderItems=[], prodListSortable=null;
+let produtos=[], combos=[], pedidos=[], cupons=[], stockMovimentos=[], activeProdId=null, activeComboId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', relDateStart='', relDateEnd='';
+let colorCounter=0, newOrderItems=[], prodListSortable=null, comboListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
 $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
@@ -744,6 +778,7 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   $$('.tab-panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   $(`tab-${tab}`).classList.add('active');
+  if(tab==='combos') loadCombos();
   if(tab==='pedidos') { loadCupons(); loadPedidos(); }
   if(tab==='cupons') loadCupons();
   if(tab==='estoque') refreshStockScreen();
@@ -1148,6 +1183,318 @@ async function excluirProd(id){
 }
 
 // ═══════════════════════════════════════════════════════════
+// COMBOS
+// ═══════════════════════════════════════════════════════════
+async function loadCombos(){
+  const r=await fetch('/api/admin/combos');
+  if(r.status===401){redirect401();return}
+  if(!r.ok) return;
+  combos=await r.json();
+  renderComboList();
+  if(activeComboId){
+    const combo=combos.find(c=>String(c.id)===String(activeComboId));
+    if(combo) renderComboForm(combo);
+  }
+}
+
+function getProductColor(p, ci){
+  return Array.isArray(p?.cores) ? p.cores[Number(ci)||0] : null;
+}
+function getProductSizes(p, ci){
+  const c=getProductColor(p, ci);
+  const stock=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+  const base=c?.tamanhos?.length?c.tamanhos:(p?.tamanhos?.length?p.tamanhos:[]);
+  const sizes=Array.from(new Set([...base,...Object.keys(stock)]));
+  return sizes.length?sizes:['UNICO'];
+}
+function comboStockLocal(combo){
+  const components=Array.isArray(combo?.components)?combo.components:[];
+  if(!components.length) return 0;
+  return components.reduce((min,it)=>{
+    const p=produtos.find(p=>Number(p.id)===Number(it.productId));
+    const c=getProductColor(p,it.colorIndex);
+    const stock=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+    const size=String(it.tamanhoSelecionado||it.tamanho||'UNICO').toUpperCase();
+    const per=Math.max(1,Number(it.quantidade)||1);
+    return Math.min(min,Math.floor((Number(stock[size])||0)/per));
+  },Infinity);
+}
+function comboAsSellable(combo){
+  const stock=Number.isFinite(Number(combo?.estoqueCalculado))?Number(combo.estoqueCalculado):comboStockLocal(combo);
+  const imgs=Array.isArray(combo?.imagens)?combo.imagens.filter(Boolean):[];
+  return {
+    ...combo,
+    id:`combo-${combo.id}`,
+    comboId:combo.id,
+    tipoProduto:'combo',
+    categoria:combo.categoria||'Combo',
+    tamanhos:['UNICO'],
+    soldOut:stock<=0,
+    cores:[{
+      nome:'Combo',
+      imagem:combo.imagem||imgs[0]||'',
+      imagens:imgs,
+      tamanhos:stock>0?['UNICO']:[],
+      estoque:{UNICO:stock},
+      soldOut:stock<=0,
+      ativo:true
+    }]
+  };
+}
+function sellableItems(){
+  return [...produtos,...combos.map(comboAsSellable)];
+}
+function renderComboList(){
+  const q=($('comboSearch')?.value||'').toLowerCase().trim();
+  const sorted=[...combos].sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999))
+    .filter(c=>!q||[c.nome,c.categoria,...(c.components||[]).map(i=>i.nome)].join(' ').toLowerCase().includes(q));
+  $('comboCount').textContent=`${sorted.length}`;
+  $('listaCombos').innerHTML=sorted.map(c=>{
+    const inativo=c.ativo===false;
+    const img=(Array.isArray(c.imagens)?c.imagens[0]:'')||c.imagem||'';
+    const src=img?(img.startsWith('http')?img:'/'+img):'';
+    const stock=Number.isFinite(Number(c.estoqueCalculado))?Number(c.estoqueCalculado):comboStockLocal(c);
+    const active=String(c.id)===String(activeComboId);
+    return `<div class="prod-item ${active?'active':''} ${inativo?'prod-inativo':''}" data-id="${c.id}">
+      <span class="drag-handle" title="Arrastar para reordenar">⠿</span>
+      ${src?`<img class="prod-item__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:
+             `<div class="prod-item__img" style="font-size:9px;color:#94a3b8;display:flex;align-items:center;justify-content:center">Sem foto</div>`}
+      <div style="flex:1;min-width:0">
+        <div class="prod-item__name">${esc(c.nome)}</div>
+        <div class="prod-item__meta">${esc(c.categoria||'Combo')} · ${fmtR(c.preco)}</div>
+      </div>
+      ${inativo?'<span class="badge badge--out" style="font-size:9px;padding:2px 5px">OFF</span>':`<span class="badge ${stock>0?'badge--ok':'badge--out'}">${stock>0?stock+' un.':'Esgotado'}</span>`}
+    </div>`;
+  }).join('');
+  $$('#listaCombos .prod-item').forEach(el=>el.addEventListener('click',()=>{
+    activeComboId=el.dataset.id;
+    renderComboList();
+    renderComboForm(combos.find(c=>String(c.id)===String(activeComboId)));
+  }));
+  if(typeof Sortable!=='undefined'){
+    if(comboListSortable) comboListSortable.destroy();
+    comboListSortable=Sortable.create($('listaCombos'),{
+      animation:150,handle:'.drag-handle',
+      onEnd:async()=>{
+        const ids=Array.from($$('#listaCombos .prod-item')).map(el=>Number(el.dataset.id));
+        ids.forEach((id,i)=>{const c=combos.find(c=>Number(c.id)===id);if(c)c.ordem=i+1});
+        try{await fetch('/api/admin/combos/ordem',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})})}
+        catch(e){console.error('Erro ao reordenar combos:',e)}
+      }
+    });
+  }
+}
+
+function cancelComboForm(){
+  activeComboId=null; renderComboList();
+  $('comboFormTitle').textContent='Selecione um combo';
+  $('comboFormActions').innerHTML='';
+  $('comboFormPanel').innerHTML='<div class="form-empty">Clique em um combo para editar<br>ou em "+ Novo" para cadastrar.</div>';
+}
+function renderComboForm(combo){
+  $('comboFormTitle').textContent=combo?combo.nome:'Novo combo';
+  $('comboFormActions').innerHTML=combo?`<button class="btn btn--danger btn--sm" id="btnExcluirCombo">Excluir</button>`:'';
+  if(combo) $('btnExcluirCombo').addEventListener('click',()=>excluirCombo(combo.id));
+  const imgs=Array.isArray(combo?.imagens)?combo.imagens.filter(Boolean):[];
+  const i1=combo?.imagem||imgs[0]||'', i2=imgs[1]||'', i3=imgs[2]||'';
+  $('comboFormPanel').innerHTML=`
+    <form id="comboForm">
+      <div class="frow">
+        <div class="fg"><label class="fl">Nome *</label><input class="fc" id="cb_nome" required /></div>
+        <div class="fg"><label class="fl">Categoria</label><input class="fc" id="cb_cat" placeholder="Combo" /></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Preço (R$) *</label><input class="fc" type="number" step="0.01" id="cb_preco" required /></div>
+        <div class="fg"><label class="fl">Preço promo (R$)</label><input class="fc" type="number" step="0.01" id="cb_promo" /></div>
+      </div>
+      <div class="fg" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div class="toggle-wrap" id="cb_ativo" data-state="on" role="switch" aria-checked="true">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span id="cb_ativo_lbl" style="font-size:13px;font-weight:600;color:#22c55e">Visível no site</span>
+        </div>
+        <div class="toggle-wrap" id="cb_lancamento" data-state="off" role="switch" aria-checked="false">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span id="cb_lancamento_lbl" style="font-size:13px;font-weight:600;color:#64748b">Não é lançamento</span>
+        </div>
+        <span id="cb_stock_hint" class="badge badge--na"></span>
+      </div>
+      <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="cb_desc"></textarea></div>
+      <div class="color-images" id="comboImages" style="margin-bottom:14px"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px">
+        <span style="font-size:11px;font-weight:600;text-transform:uppercase;color:#475569;letter-spacing:.04em">Itens do combo</span>
+        <button type="button" class="btn btn--secondary btn--sm" id="btnAddComboItem">+ Item</button>
+      </div>
+      <div id="comboItems"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary" id="btnSalvarCombo">Salvar combo</button>
+        <button type="button" class="btn btn--ghost" id="btnCancelCombo">Cancelar</button>
+      </div>
+    </form>`;
+  $('cb_nome').value=combo?.nome||'';
+  $('cb_cat').value=combo?.categoria||'Combo';
+  $('cb_preco').value=combo?.preco??'';
+  $('cb_promo').value=combo?.precoPromo??'';
+  $('cb_desc').value=combo?.desc?.texto||combo?.descricao||'';
+  function setToggle(el,lbl,on,onText,offText){
+    el.dataset.state=on?'on':'off'; el.setAttribute('aria-checked',String(on));
+    lbl.textContent=on?onText:offText; lbl.style.color=on?'#22c55e':'#64748b';
+  }
+  setToggle($('cb_ativo'),$('cb_ativo_lbl'),combo?.ativo!==false,'Visível no site','Oculto no site');
+  setToggle($('cb_lancamento'),$('cb_lancamento_lbl'),Boolean(combo?.lancamento),'Lançamento','Não é lançamento');
+  $('cb_ativo').onclick=()=>setToggle($('cb_ativo'),$('cb_ativo_lbl'),$('cb_ativo').dataset.state!=='on','Visível no site','Oculto no site');
+  $('cb_lancamento').onclick=()=>setToggle($('cb_lancamento'),$('cb_lancamento_lbl'),$('cb_lancamento').dataset.state!=='on','Lançamento','Não é lançamento');
+  renderComboImageSlots([i1,i2,i3]);
+  (Array.isArray(combo?.components)&&combo.components.length?combo.components:[{}]).forEach(addComboItemRow);
+  $('btnAddComboItem').addEventListener('click',()=>addComboItemRow({}));
+  $('btnCancelCombo').addEventListener('click',cancelComboForm);
+  $('comboForm').addEventListener('submit',async e=>{e.preventDefault();await salvarCombo(combo?.id)});
+  updateComboStockHint();
+}
+function renderComboImageSlots(values){
+  $('comboImages').innerHTML=values.map((src,idx)=>`
+    <div class="img-slot" data-combo-img="${idx+1}" data-src="${esc(src||'')}">
+      <div class="img-placeholder" data-cb-ph="${idx+1}" ${src?'style="display:none"':''}>+ Foto</div>
+      <img class="img-preview" data-cb-pv="${idx+1}" src="${src?(src.startsWith('http')?esc(src):'/'+esc(src)):''}" style="${src?'':'display:none'}" />
+      <input type="file" data-cb-file="${idx+1}" accept="image/jpeg,image/png" style="display:none" />
+      <label class="img-slot-label">${idx===0?'Principal':'Foto '+(idx+1)}</label>
+    </div>`).join('');
+  $$('#comboImages [data-combo-img]').forEach(slot=>{
+    const inp=slot.querySelector('[data-cb-file]');
+    const ph=slot.querySelector('[data-cb-ph]');
+    const pv=slot.querySelector('[data-cb-pv]');
+    ph?.addEventListener('click',()=>inp.click());
+    pv?.addEventListener('click',()=>inp.click());
+    inp.addEventListener('change',()=>{
+      const f=inp.files?.[0]; if(!f) return;
+      pv.src=URL.createObjectURL(f); pv.style.display=''; if(ph) ph.style.display='none';
+    });
+  });
+}
+function addComboItemRow(item={}){
+  const row=document.createElement('div');
+  row.className='color-row';
+  row.innerHTML=`
+    <div class="color-row-head"><span class="color-row-title">Item do combo</span><button type="button" class="btn btn--danger btn--sm" data-cb-rm>Remover</button></div>
+    <div class="fg"><label class="fl">Produto</label><select class="fc" data-cb-prod><option value="">— Selecione —</option>${produtos.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('')}</select></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Cor</label><select class="fc" data-cb-cor></select></div>
+      <div class="fg"><label class="fl">Tamanho</label><select class="fc" data-cb-size></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Qtd por combo</label><input class="fc" type="number" min="1" value="1" data-cb-qty /></div>
+      <div class="fg"><label class="fl">Saldo deste item</label><input class="fc" readonly data-cb-stock /></div>
+    </div>`;
+  $('comboItems').appendChild(row);
+  const prodSel=row.querySelector('[data-cb-prod]');
+  const corSel=row.querySelector('[data-cb-cor]');
+  const sizeSel=row.querySelector('[data-cb-size]');
+  const qtyInp=row.querySelector('[data-cb-qty]');
+  function fillColors(){
+    const p=produtos.find(p=>String(p.id)===String(prodSel.value));
+    corSel.innerHTML='';
+    if(!p?.cores?.length){corSel.innerHTML='<option value="0">Única</option>'}
+    else p.cores.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.nome||`Cor ${i+1}`;corSel.appendChild(o)});
+    fillSizes();
+  }
+  function fillSizes(){
+    const p=produtos.find(p=>String(p.id)===String(prodSel.value));
+    const sizes=getProductSizes(p,Number(corSel.value)||0);
+    sizeSel.innerHTML=sizes.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    if(item.tamanhoSelecionado) sizeSel.value=item.tamanhoSelecionado;
+    updateItemStock(row); updateComboStockHint();
+  }
+  prodSel.addEventListener('change',fillColors);
+  corSel.addEventListener('change',fillSizes);
+  sizeSel.addEventListener('change',()=>{updateItemStock(row);updateComboStockHint()});
+  qtyInp.addEventListener('input',()=>{updateItemStock(row);updateComboStockHint()});
+  row.querySelector('[data-cb-rm]').addEventListener('click',()=>{row.remove();updateComboStockHint()});
+  prodSel.value=item.productId||'';
+  fillColors();
+  corSel.value=String(Number(item.colorIndex)||0);
+  fillSizes();
+  if(item.tamanhoSelecionado) sizeSel.value=item.tamanhoSelecionado;
+  qtyInp.value=Math.max(1,Number(item.quantidade)||1);
+  updateItemStock(row);
+}
+function updateItemStock(row){
+  const p=produtos.find(p=>String(p.id)===String(row.querySelector('[data-cb-prod]').value));
+  const c=getProductColor(p,Number(row.querySelector('[data-cb-cor]').value)||0);
+  const stock=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+  const size=String(row.querySelector('[data-cb-size]').value||'UNICO').toUpperCase();
+  const qty=Number(stock[size])||0;
+  row.querySelector('[data-cb-stock]').value=`${qty} un.`;
+}
+function collectComboComponents(){
+  return Array.from($$('#comboItems .color-row')).map(row=>{
+    const productId=Number(row.querySelector('[data-cb-prod]').value);
+    const p=produtos.find(p=>Number(p.id)===productId);
+    const colorIndex=Number(row.querySelector('[data-cb-cor]').value)||0;
+    const cor=getProductColor(p,colorIndex);
+    return {
+      productId,colorIndex,
+      tamanhoSelecionado:row.querySelector('[data-cb-size]').value||'UNICO',
+      quantidade:Math.max(1,Number(row.querySelector('[data-cb-qty]').value)||1),
+      nome:p?.nome||'',
+      cor:cor?.nome||''
+    };
+  }).filter(i=>Number.isFinite(i.productId));
+}
+function updateComboStockHint(){
+  const hint=$('cb_stock_hint'); if(!hint) return;
+  const stock=comboStockLocal({components:collectComboComponents()});
+  hint.textContent=`Saldo calculado: ${Number.isFinite(stock)?stock:0} un.`;
+  hint.className=`badge ${stock>0?'badge--ok':'badge--out'}`;
+}
+async function buildComboImages(){
+  const out=[];
+  for(const slot of $$('#comboImages [data-combo-img]')){
+    let src=slot.dataset.src||'';
+    const inp=slot.querySelector('[data-cb-file]');
+    if(inp?.files?.[0]) src=await uploadImg(inp.files[0]);
+    if(src) out.push(src);
+  }
+  return out;
+}
+async function salvarCombo(id){
+  const btn=$('btnSalvarCombo'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    const components=collectComboComponents();
+    const imagens=await buildComboImages();
+    const payload={
+      nome:$('cb_nome').value.trim(),
+      categoria:$('cb_cat').value.trim()||'Combo',
+      preco:Number($('cb_preco').value),
+      precoPromo:$('cb_promo').value?Number($('cb_promo').value):null,
+      ativo:$('cb_ativo').dataset.state!=='off',
+      lancamento:$('cb_lancamento').dataset.state==='on',
+      desc:($('cb_desc').value||'').trim()?{texto:($('cb_desc').value||'').trim()}:undefined,
+      imagem:imagens[0]||'',
+      imagens,
+      components
+    };
+    if(!payload.nome||!payload.preco) throw new Error('Preencha nome e preço.');
+    if(!components.length) throw new Error('Adicione ao menos um item ao combo.');
+    const r=await fetch(id?`/api/admin/combos/${id}`:'/api/admin/combos',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(r.status===401){redirect401();return}
+    const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao salvar combo');
+    activeComboId=String(d.item.id||id);
+    await loadCombos();
+    toast('Combo salvo com sucesso','success');
+  }catch(e){toast(e.message,'error')}
+  finally{btn.disabled=false;btn.textContent='Salvar combo'}
+}
+async function excluirCombo(id){
+  if(!confirm('Excluir este combo?')) return;
+  const r=await fetch(`/api/admin/combos/${id}`,{method:'DELETE'});
+  if(r.status===401){redirect401();return}
+  if(!r.ok){alert('Falha ao excluir combo.');return}
+  activeComboId=null; await loadCombos(); cancelComboForm();
+}
+$('btnNovoCombo')?.addEventListener('click',()=>{activeComboId=null;renderComboList();renderComboForm(null)});
+$('comboSearch')?.addEventListener('input',()=>renderComboList());
+
+// ═══════════════════════════════════════════════════════════
 // ESTOQUE
 // ═══════════════════════════════════════════════════════════
 function fillEstoqueSelect(){
@@ -1186,6 +1533,7 @@ if(stockSearchInput){
 
 async function refreshStockScreen(){
   await loadProdutos();
+  await loadCombos();
   await loadStockMovements();
   renderStockSummary();
   renderStockProductResults();
@@ -1434,6 +1782,7 @@ $('btnStockOperation').addEventListener('click',async()=>{
     if(!d.ok) throw new Error(d.error||'Falha');
     showNotice($('estoqueNotice'),`${stockOperationLabel(tipo)} registrada. ${d.movements||0} movimento${d.movements===1?'':'s'} gerado${d.movements===1?'':'s'}.`,'success');
     await loadProdutos();
+    await loadCombos();
     await loadStockMovements();
     const p=produtos.find(p=>String(p.id)===prodId);
     if(p) renderSizes(p,ci);
@@ -1773,6 +2122,8 @@ function renderOrderDetail(ped){
       if(!r.ok||d.ok===false) throw new Error(d.error||'Falha ao atualizar status');
       const idx=pedidos.findIndex(p=>String(p.pedido)===String(ped.pedido));
       if(idx!==-1){pedidos[idx]=d.item; ped.status=novoStatus;}
+      await loadProdutos();
+      await loadCombos();
       toast(`Status alterado para ${sLabel(novoStatus)}`,'success');
       renderOrdersTable();
       renderOrderDetail(pedidos.find(p=>String(p.pedido)===String(activePedNum)));
@@ -1897,7 +2248,7 @@ function renderNewOrderForm(){
 
   // Populate product select
   const npProd=$('np_prod');
-  produtos.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.nome;npProd.appendChild(o)});
+  sellableItems().forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.tipoProduto==='combo'?`${p.nome} (combo)`:p.nome;npProd.appendChild(o)});
 
   function fillCorSelect(p){
     const npCor=$('np_cor'); npCor.innerHTML='';
@@ -1942,12 +2293,12 @@ function renderNewOrderForm(){
   }
 
   npProd.addEventListener('change',()=>{
-    const p=produtos.find(p=>String(p.id)===npProd.value);
+    const p=sellableItems().find(p=>String(p.id)===npProd.value);
     fillCorSelect(p); fillSzSelect(p,0);
     $('np_price').value=p?(p.precoPromo||p.preco||''):'';
   });
   $('np_cor').addEventListener('change',()=>{
-    const p=produtos.find(p=>String(p.id)===$('np_prod').value);
+    const p=sellableItems().find(p=>String(p.id)===$('np_prod').value);
     if(p) fillSzSelect(p,Number($('np_cor').value)||0);
   });
   $('np_taxa').addEventListener('input',updateTotals);
@@ -1957,14 +2308,14 @@ function renderNewOrderForm(){
   $('np_addItem').addEventListener('click',()=>{
     const prodId=$('np_prod').value;
     if(!prodId){showNotice($('npNotice'),'Selecione um produto.','error');return}
-    const p=produtos.find(p=>String(p.id)===prodId);
+    const p=sellableItems().find(p=>String(p.id)===prodId);
     const ci=Number($('np_cor').value)||0;
     const cor=p?.cores?.[ci];
     const sz=$('np_sz').value;
     if(!sz){showNotice($('npNotice'),'Selecione um tamanho.','error');return}
     const qty=Math.max(1,Number($('np_qty').value)||1);
     const price=Number($('np_price').value)||(p?.precoPromo||p?.preco||0);
-    newOrderItems.push({productId:Number(prodId),colorIndex:ci,nome:p?.nome||'',cor:cor?.nome||'',tamanho:sz,tamanhoSelecionado:sz,quantidade:qty,precoUnitario:price});
+    newOrderItems.push({productId:p?.tipoProduto==='combo'?String(prodId):Number(prodId),colorIndex:ci,nome:p?.nome||'',cor:p?.tipoProduto==='combo'?'':(cor?.nome||''),tamanho:sz,tamanhoSelecionado:sz,quantidade:qty,precoUnitario:price});
     renderNpItems();
     $('np_qty').value=1;
   });
@@ -1999,6 +2350,7 @@ function renderNewOrderForm(){
       const d=await r.json();
       if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao salvar pedido');
       await loadProdutos();
+      await loadCombos();
       closeModal();
       await loadPedidos();
       activePedNum=d.pedido; renderOrdersTable();
@@ -2154,6 +2506,7 @@ if(btnRelClear){
 // ── Init ─────────────────────────────────────────────────────
 renderToneOptions();
 loadProdutos();
+loadCombos();
 loadCupons();
 
 // ── CRM ──────────────────────────────────────────────────────

@@ -124,6 +124,13 @@ async function initDatabase() {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_combos (
+        id INT NOT NULL PRIMARY KEY,
+        data LONGTEXT NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await mysqlPool.execute(`
       CREATE TABLE IF NOT EXISTS lemoov_orders (
         id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
         order_number VARCHAR(40) NOT NULL UNIQUE,
@@ -294,6 +301,61 @@ async function writeProdutosStore(list, conn = null) {
     await localConn.commit();
   } catch (e) {
     await localConn.rollback().catch(() => {});
+    throw e;
+  } finally {
+    localConn.release();
+  }
+}
+function ensureComboIds(list) {
+  let maxId = 0;
+  list.forEach((item) => {
+    const id = Number(item?.id);
+    if (Number.isFinite(id)) maxId = Math.max(maxId, id);
+  });
+  return list.map((item) => {
+    const id = Number(item?.id);
+    if (Number.isFinite(id)) return { ...item, id };
+    maxId += 1;
+    return { ...item, id: maxId };
+  });
+}
+async function readCombosStore(conn = null) {
+  requireMysqlStorage();
+  await initDatabase();
+  const db = conn || mysqlPool;
+  const [rows] = await db.execute('SELECT id, data FROM lemoov_combos ORDER BY id');
+  return rows.map((row) => {
+    const item = JSON.parse(row.data);
+    return { ...item, id: Number(item.id || row.id) };
+  });
+}
+async function writeCombosStore(list, conn = null) {
+  requireMysqlStorage();
+  const canonical = ensureComboIds(list);
+  await initDatabase();
+  if (conn) {
+    await conn.execute('DELETE FROM lemoov_combos');
+    for (const item of canonical) {
+      await conn.execute(
+        'INSERT INTO lemoov_combos (id, data) VALUES (?, ?)',
+        [Number(item.id), JSON.stringify(item)]
+      );
+    }
+    return;
+  }
+  const localConn = await mysqlPool.getConnection();
+  try {
+    await localConn.beginTransaction();
+    await localConn.execute('DELETE FROM lemoov_combos');
+    for (const item of canonical) {
+      await localConn.execute(
+        'INSERT INTO lemoov_combos (id, data) VALUES (?, ?)',
+        [Number(item.id), JSON.stringify(item)]
+      );
+    }
+    await localConn.commit();
+  } catch (e) {
+    try { await localConn.rollback(); } catch (_rollbackError) {}
     throw e;
   } finally {
     localConn.release();
@@ -515,6 +577,80 @@ function getColorStock(cor) {
     ? cor.estoque
     : null;
 }
+function comboPublicId(id) {
+  return `combo-${Number(id)}`;
+}
+function normalizeComboComponents(components = []) {
+  return (Array.isArray(components) ? components : [])
+    .map((item) => ({
+      productId: Number(item.productId),
+      colorIndex: Number(item.colorIndex) || 0,
+      tamanhoSelecionado: normalizeKey(item.tamanhoSelecionado || item.tamanho || 'UNICO'),
+      quantidade: Math.max(1, Number(item.quantidade) || 1),
+      nome: item.nome || ''
+    }))
+    .filter((item) => Number.isFinite(item.productId));
+}
+function getProductStockQty(produtos, item) {
+  const prod = produtos.find((p) => Number(p.id) === Number(item.productId));
+  const cor = Array.isArray(prod?.cores) ? prod.cores[Number(item.colorIndex) || 0] : null;
+  const stock = getColorStock(cor);
+  const tamanho = normalizeKey(item.tamanhoSelecionado || item.tamanho || 'UNICO');
+  return Number(stock?.[tamanho]) || 0;
+}
+function getComboAvailableQty(combo, produtos) {
+  const components = normalizeComboComponents(combo?.components);
+  if (!components.length) return 0;
+  return components.reduce((min, component) => {
+    const perCombo = Math.max(1, Number(component.quantidade) || 1);
+    return Math.min(min, Math.floor(getProductStockQty(produtos, component) / perCombo));
+  }, Number.POSITIVE_INFINITY);
+}
+function comboToPublicProduct(combo, produtos) {
+  const available = getComboAvailableQty(combo, produtos);
+  const images = Array.isArray(combo.imagens) ? combo.imagens.filter(Boolean) : [];
+  const firstImage = combo.imagem || images[0] || '';
+  return {
+    ...combo,
+    id: comboPublicId(combo.id),
+    comboId: Number(combo.id),
+    tipoProduto: 'combo',
+    categoria: combo.categoria || 'Combo',
+    tamanhos: ['UNICO'],
+    soldOut: available <= 0,
+    cores: [{
+      nome: combo.corNome || 'Combo',
+      imagem: firstImage,
+      imagens: images.length ? images : (firstImage ? [firstImage] : []),
+      tamanhos: available > 0 ? ['UNICO'] : [],
+      estoque: { UNICO: available },
+      soldOut: available <= 0,
+      ativo: true
+    }]
+  };
+}
+function expandComboStockItems(itens = [], combos = []) {
+  const result = [];
+  const comboById = new Map((Array.isArray(combos) ? combos : []).map((combo) => [String(comboPublicId(combo.id)), combo]));
+  itens.forEach((item) => {
+    const combo = comboById.get(String(item?.productId));
+    if (!combo) {
+      result.push(item);
+      return;
+    }
+    const multiplier = Math.max(1, Number(item.quantidade) || 1);
+    normalizeComboComponents(combo.components).forEach((component) => {
+      result.push({
+        productId: component.productId,
+        colorIndex: component.colorIndex,
+        tamanhoSelecionado: component.tamanhoSelecionado,
+        quantidade: component.quantidade * multiplier,
+        nome: component.nome || combo.nome || item.nome || ''
+      });
+    });
+  });
+  return result;
+}
 function normalizeStockItems(itens = []) {
   const grouped = new Map();
   itens.forEach((item) => {
@@ -537,8 +673,8 @@ function normalizeStockItems(itens = []) {
   });
   return Array.from(grouped.values());
 }
-function validateStockAvailability(produtos, itens = []) {
-  const stockItems = normalizeStockItems(itens);
+function validateStockAvailability(produtos, itens = [], combos = []) {
+  const stockItems = normalizeStockItems(expandComboStockItems(itens, combos));
   for (const item of stockItems) {
     const prod = produtos.find((p) => Number(p.id) === item.productId);
     if (!prod) throw new Error(`Produto não encontrado: ${item.nome || item.productId}`);
@@ -604,8 +740,8 @@ function normalizePaymentItems(itens = []) {
     })
     .filter((item) => item.price > 0);
 }
-function reserveStock(produtos, itens = []) {
-  const stockItems = validateStockAvailability(produtos, itens);
+function reserveStock(produtos, itens = [], combos = []) {
+  const stockItems = validateStockAvailability(produtos, itens, combos);
   const movements = [];
 
   for (const item of stockItems) {
@@ -645,8 +781,8 @@ function reserveStock(produtos, itens = []) {
   return movements;
 }
 
-function restoreStock(produtos, itens = []) {
-  const stockItems = normalizeStockItems(itens);
+function restoreStock(produtos, itens = [], combos = []) {
+  const stockItems = normalizeStockItems(expandComboStockItems(itens, combos));
   const movements = [];
 
   for (const item of stockItems) {
@@ -1694,12 +1830,14 @@ app.post('/api/pedidos', async (req, res) => {
     }
     const pedidos = await readPedidosStore(conn);
     const produtos = ensureProductIds(await readProdutosStore(conn));
+    const combos = await readCombosStore(conn);
     const numeroPedido = String(req.body?.pedido || '').trim() || generateOrderNumber(pedidos);
     const itensReserva = Array.isArray(req.body?.itensEstoque)
       ? req.body.itensEstoque
       : (Array.isArray(req.body?.itens) ? req.body.itens : []);
+    const itensEstoqueBaixa = expandComboStockItems(itensReserva, combos);
 
-    const movements = reserveStock(produtos, itensReserva);
+    const movements = reserveStock(produtos, itensEstoqueBaixa);
     await writeProdutosStore(produtos, conn);
     const pedido = {
       ...req.body,
@@ -1707,6 +1845,7 @@ app.post('/api/pedidos', async (req, res) => {
       status: req.body?.status || 'confirmado',
       origem: 'ecommerce',
       estoqueBaixado: true,
+      itensEstoqueBaixa,
       recebidoEm: new Date().toISOString()
     };
     await appendStockMovementsStore(movements.map((m) => ({
@@ -1836,7 +1975,10 @@ app.post('/api/pagamentos/infinitypay', async (req, res) => {
       createdAt: new Date().toISOString()
     };
     const produtos = ensureProductIds(await readProdutosStore());
-    validateStockAvailability(produtos, intent.itensEstoque);
+    const combos = await readCombosStore();
+    const itensEstoqueBaixa = expandComboStockItems(intent.itensEstoque, combos);
+    validateStockAvailability(produtos, itensEstoqueBaixa);
+    intent.itensEstoqueBaixa = itensEstoqueBaixa;
 
     if (!INFINITEPAY_HANDLE) {
       await savePendingPaymentStore({
@@ -1986,7 +2128,10 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
         await deletePendingPaymentStore(orderNsu, conn);
       } else {
         const produtos = ensureProductIds(await readProdutosStore(conn));
-        const itensReserva = Array.isArray(pending.itensEstoque) ? pending.itensEstoque : [];
+        const combos = await readCombosStore(conn);
+        const itensReserva = Array.isArray(pending.itensEstoqueBaixa)
+          ? pending.itensEstoqueBaixa
+          : expandComboStockItems(Array.isArray(pending.itensEstoque) ? pending.itensEstoque : [], combos);
         const movements = reserveStock(produtos, itensReserva);
         await writeProdutosStore(produtos, conn);
         const basePedido = pending.pedidoPayload || {};
@@ -2007,7 +2152,8 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
           uf: basePedido.uf || pending.endereco?.uf || '',
           bairro: basePedido.bairro || pending.endereco?.bairro || '',
           rua: basePedido.rua || pending.endereco?.rua || '',
-          itensEstoque: itensReserva,
+          itensEstoque: Array.isArray(pending.itensEstoque) ? pending.itensEstoque : itensReserva,
+          itensEstoqueBaixa: itensReserva,
           cliente: pending.cliente || basePedido.cliente || {},
           origem: basePedido.origem || pending.origem || 'ecommerce',
           estoqueBaixado: true,
@@ -2281,12 +2427,17 @@ app.get('/relatorio.html', authRequired, (_req, res) => {
 app.get('/api/produtos', async (req, res) => {
   try {
     const all = await readProdutosStore();
-    const publicos = all
+    const combos = await readCombosStore().catch(() => []);
+    const publicProducts = all
       .filter(p => p.ativo !== false)
       .map(p => ({
         ...p,
         cores: Array.isArray(p.cores) ? p.cores.filter(c => c.ativo !== false) : p.cores
-      }))
+      }));
+    const publicCombos = combos
+      .filter(c => c.ativo !== false)
+      .map(c => comboToPublicProduct(c, all));
+    const publicos = [...publicProducts, ...publicCombos]
       .sort((a, b) => (Number(a.ordem) || 9999) - (Number(b.ordem) || 9999));
     res.json(publicos);
   } catch (_e) {
@@ -2308,6 +2459,92 @@ app.get('/api/admin/produtos', authRequired, async (req, res) => {
     res.json(produtos);
   } catch (_e) {
     res.status(500).json({ ok: false });
+  }
+});
+
+app.get('/api/admin/combos', authRequired, async (_req, res) => {
+  try {
+    const [combos, produtos] = await Promise.all([readCombosStore(), readProdutosStore()]);
+    res.json(combos.map((combo) => ({
+      ...combo,
+      estoqueCalculado: getComboAvailableQty(combo, produtos)
+    })));
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/combos', authRequired, async (req, res) => {
+  try {
+    const combos = ensureComboIds(await readCombosStore());
+    const nextId = combos.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
+    const item = {
+      ...req.body,
+      id: nextId,
+      tipoProduto: 'combo',
+      components: normalizeComboComponents(req.body?.components),
+      updatedAt: new Date().toISOString()
+    };
+    combos.push(item);
+    await writeCombosStore(combos);
+    res.json({ ok: true, item });
+  } catch (e) {
+    console.error('[POST /api/admin/combos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.put('/api/admin/combos/:id', authRequired, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const combos = ensureComboIds(await readCombosStore());
+    const idx = combos.findIndex((item) => Number(item.id) === id);
+    if (idx === -1) return res.status(404).json({ ok: false, error: 'Combo não encontrado' });
+    combos[idx] = {
+      ...combos[idx],
+      ...req.body,
+      id,
+      tipoProduto: 'combo',
+      components: normalizeComboComponents(req.body?.components),
+      updatedAt: new Date().toISOString()
+    };
+    await writeCombosStore(combos);
+    res.json({ ok: true, item: combos[idx] });
+  } catch (e) {
+    console.error('[PUT /api/admin/combos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.delete('/api/admin/combos/:id', authRequired, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const combos = ensureComboIds(await readCombosStore());
+    await writeCombosStore(combos.filter((item) => Number(item.id) !== id));
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/admin/combos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.patch('/api/admin/combos/ordem', authRequired, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) return res.status(400).json({ ok: false, error: 'ids required' });
+    const combos = ensureComboIds(await readCombosStore());
+    const idSet = new Set(ids.map(Number));
+    ids.forEach((id, index) => {
+      const combo = combos.find((item) => Number(item.id) === Number(id));
+      if (combo) combo.ordem = index + 1;
+    });
+    combos.filter((item) => !idSet.has(Number(item.id))).forEach((combo, i) => {
+      combo.ordem = ids.length + i + 1;
+    });
+    await writeCombosStore(combos);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -2543,10 +2780,14 @@ app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
     const updates = { ...req.body };
     if (shouldDebitStock) {
       const produtos = ensureProductIds(await readProdutosStore(conn));
+      const combos = await readCombosStore(conn);
       const itensReserva = Array.isArray(nextOrder.itensEstoque)
         ? nextOrder.itensEstoque
         : (Array.isArray(nextOrder.itens) ? nextOrder.itens : []);
-      const movements = reserveStock(produtos, itensReserva);
+      const itensEstoqueBaixa = Array.isArray(nextOrder.itensEstoqueBaixa)
+        ? nextOrder.itensEstoqueBaixa
+        : expandComboStockItems(itensReserva, combos);
+      const movements = reserveStock(produtos, itensEstoqueBaixa);
       await writeProdutosStore(produtos, conn);
       await appendStockMovementsStore(movements.map((m) => ({
         ...m,
@@ -2556,13 +2797,17 @@ app.patch('/api/admin/pedido/:numero', authRequired, async (req, res) => {
         createdAt: new Date().toISOString()
       })), conn);
       updates.estoqueBaixado = true;
+      updates.itensEstoqueBaixa = itensEstoqueBaixa;
     }
     if (shouldRestoreStock) {
       const produtos = ensureProductIds(await readProdutosStore(conn));
-      const itensReserva = Array.isArray(existing.itensEstoque)
+      const combos = await readCombosStore(conn);
+      const itensReserva = Array.isArray(existing.itensEstoqueBaixa)
+        ? existing.itensEstoqueBaixa
+        : (Array.isArray(existing.itensEstoque)
         ? existing.itensEstoque
-        : (Array.isArray(existing.itens) ? existing.itens : []);
-      const movements = restoreStock(produtos, itensReserva);
+        : (Array.isArray(existing.itens) ? existing.itens : []));
+      const movements = restoreStock(produtos, itensReserva, combos);
       await writeProdutosStore(produtos, conn);
       await appendStockMovementsStore(movements.map((m) => ({
         ...m,
@@ -2656,12 +2901,16 @@ app.post('/api/admin/pedido', authRequired, async (req, res) => {
     const pedidos = await readPedidosStore(conn);
     const numeroPedido = String(req.body?.pedido || '').trim() || generateOrderNumber(pedidos);
     const pedido = { ...req.body, pedido: numeroPedido, status: req.body?.status || 'confirmado', recebidoEm: new Date().toISOString(), origem: req.body?.origem || 'admin' };
+    const combos = await readCombosStore(conn);
+    const itensBase = Array.isArray(pedido.itensEstoque)
+      ? pedido.itensEstoque
+      : (Array.isArray(pedido.itens) ? pedido.itens : []);
+    pedido.itensEstoqueBaixa = Array.isArray(pedido.itensEstoqueBaixa)
+      ? pedido.itensEstoqueBaixa
+      : expandComboStockItems(itensBase, combos);
     if (isPaidOrderStatus(pedido)) {
       const produtos = ensureProductIds(await readProdutosStore(conn));
-      const itensReserva = Array.isArray(pedido.itensEstoque)
-        ? pedido.itensEstoque
-        : (Array.isArray(pedido.itens) ? pedido.itens : []);
-      const movements = reserveStock(produtos, itensReserva);
+      const movements = reserveStock(produtos, pedido.itensEstoqueBaixa);
       await writeProdutosStore(produtos, conn);
       await appendStockMovementsStore(movements.map((m) => ({
         ...m,
