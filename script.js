@@ -1029,6 +1029,19 @@ function isProductSoldOut(prod){
     return !available || available.length === 0;
   });
 }
+const SIZE_ORDER = ['PP','P','M','G','GG','XG','EG'];
+function sortSizes(sizes){
+  return [...sizes].sort((a, b) => {
+    const ai = SIZE_ORDER.indexOf(a.toUpperCase());
+    const bi = SIZE_ORDER.indexOf(b.toUpperCase());
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    const na = Number(a), nb = Number(b);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a.localeCompare(b);
+  });
+}
 function getAvailableSizesForColor(prod, colorIndex){
   if (isVariantSoldOut(prod, colorIndex)) return [];
   const cor = (prod.cores || [])[colorIndex];
@@ -1040,13 +1053,13 @@ function getAvailableSizesForColor(prod, colorIndex){
   const stock = getColorStock(cor);
   if (!stock) return [];
   const stockSizes = Object.keys(stock).filter((size) => Number(stock[size]) > 0);
-  if (!baseSizes.length) return stockSizes;
-  return baseSizes.filter((size) => hasStockForSize(cor, size));
+  if (!baseSizes.length) return sortSizes(stockSizes);
+  return sortSizes(baseSizes.filter((size) => hasStockForSize(cor, size)));
 }
 function getAllSizesForColor(prod, colorIndex){
   const cor = (prod.cores || [])[colorIndex];
-  if (Array.isArray(cor?.tamanhos) && cor.tamanhos.length) return cor.tamanhos;
-  return prod.tamanhos || [];
+  if (Array.isArray(cor?.tamanhos) && cor.tamanhos.length) return sortSizes(cor.tamanhos);
+  return sortSizes(prod.tamanhos || []);
 }
 function getDisplayName(prod, colorIndex){
   const baseName = String(prod?.nome || "").trim();

@@ -772,6 +772,8 @@ function renderToneOptions(){
   if(!list) return;
   list.innerHTML=COLOR_TONE_PRESETS.map(p=>`<option value="${esc(p.nome)}">${esc(p.aliases.slice(0,3).join(', '))}</option>`).join('');
 }
+const SIZE_ORDER=['PP','P','M','G','GG','XG','EG'];
+function sortSizes(sizes){return [...sizes].sort((a,b)=>{const ai=SIZE_ORDER.indexOf(a.toUpperCase()),bi=SIZE_ORDER.indexOf(b.toUpperCase());if(ai!==-1&&bi!==-1)return ai-bi;if(ai!==-1)return -1;if(bi!==-1)return 1;const na=Number(a),nb=Number(b);if(!isNaN(na)&&!isNaN(nb))return na-nb;return a.localeCompare(b)});}
 function parseStock(raw){
   const text=String(raw||'').trim(); if(!text) return null;
   const st={};
@@ -1144,7 +1146,7 @@ async function buildCores(){
     const swatch=row.querySelector('[data-cw]')?.value || defaultSwatchForName(nome);
     const sizesRaw=row.querySelector('[data-cs]').value;
     const stock=parseStock(row.querySelector('[data-ck]')?.value||'');
-    const tamanhos=stock?Object.keys(stock):sizesRaw.split(',').map(t=>t.trim()).filter(Boolean);
+    const tamanhos=sortSizes(stock?Object.keys(stock):sizesRaw.split(',').map(t=>t.trim()).filter(Boolean));
     const soldOut=row.querySelector('[data-cso]').checked;
     const ativo=row.querySelector('[data-cativo]')?.dataset.state!=='off';
     const cpRaw=row.querySelector('[data-cp]')?.value;
@@ -1157,7 +1159,7 @@ async function buildCores(){
     const imagens=[i1,i2,i3].filter(Boolean);
     if(!nome&&!imagens.length) continue;
     const c={nome,swatch:isHexColor(swatch)?swatch.toLowerCase():defaultSwatchForName(nome),imagem:imagens[0]||'',imagens,tamanhos,soldOut,ativo};
-    if(stock){c.estoque=stock;c.tamanhos=Object.keys(stock).filter(s=>Number(stock[s])>0);c.soldOut=c.tamanhos.length===0}
+    if(stock){c.estoque=stock;c.tamanhos=sortSizes(Object.keys(stock).filter(s=>Number(stock[s])>0));c.soldOut=c.tamanhos.length===0}
     if(cpRaw) c.preco=Number(cpRaw);
     c.precoPromo=cppRaw?Number(cppRaw):null;
     cores.push(c);
@@ -1170,7 +1172,7 @@ async function salvarProd(id){
   try{
     const cores=await buildCores();
     const descTxt=($('f_desc').value||'').trim();
-    const tamanhos=$('f_tam').value.split(',').map(t=>t.trim()).filter(Boolean);
+    const tamanhos=sortSizes($('f_tam').value.split(',').map(t=>t.trim()).filter(Boolean));
     const payload={
       nome:$('f_nome').value.trim(), categoria:$('f_cat').value.trim(),
       preco:Number($('f_preco').value), precoPromo:$('f_promo').value?Number($('f_promo').value):null,
