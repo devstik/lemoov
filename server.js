@@ -436,15 +436,7 @@ async function getCouponStore(code) {
   if (!rows.length) return null;
   return { ...rows[0], percent: Number(rows[0].percent), active: Boolean(rows[0].active), firstPurchaseOnly: Boolean(rows[0].firstPurchaseOnly) };
 }
-async function getActiveFirstPurchaseCoupon() {
-  requireDatabaseFeature('Cupons');
-  await initDatabase();
-  const [rows] = await mysqlPool.execute(
-    "SELECT id, code, description, percent, active, first_purchase_only AS firstPurchaseOnly FROM lemoov_coupons WHERE first_purchase_only = 1 AND active = 1 ORDER BY (code = 'PRIMEIRA15') DESC, updated_at DESC, id DESC LIMIT 1"
-  );
-  if (!rows.length) return null;
-  return { ...rows[0], percent: Number(rows[0].percent), active: Boolean(rows[0].active), firstPurchaseOnly: Boolean(rows[0].firstPurchaseOnly) };
-}
+
 async function calculateDiscounts({ subtotal = 0, cpf = '', couponCode = '', pedidos = null } = {}) {
   requireDatabaseFeature('Descontos');
   const base = Math.max(0, Number(subtotal) || 0);
@@ -452,18 +444,6 @@ async function calculateDiscounts({ subtotal = 0, cpf = '', couponCode = '', ped
   const discounts = [];
   const cleanCpf = normalizeCpf(cpf);
   const normalizedCoupon = normalizeCouponCode(couponCode);
-  if (cleanCpf.length === 11 && !hasCpfPurchase(currentPedidos, cleanCpf) && !normalizedCoupon) {
-    const firstCoupon = await getActiveFirstPurchaseCoupon();
-    if (firstCoupon) {
-      discounts.push({
-        type: 'first_purchase',
-        label: firstCoupon.description || 'Primeira compra CPF',
-        code: firstCoupon.code,
-        percent: firstCoupon.percent,
-        amount: roundMoney(base * (firstCoupon.percent / 100))
-      });
-    }
-  }
   if (normalizedCoupon) {
     const coupon = await getCouponStore(normalizedCoupon);
     if (!coupon || !coupon.active) {
@@ -482,7 +462,7 @@ async function calculateDiscounts({ subtotal = 0, cpf = '', couponCode = '', ped
   discountTotal = Math.min(base, discountTotal);
   return {
     cpf: cleanCpf,
-    couponCode: normalizedCoupon || discounts.find((item) => item.type === 'first_purchase')?.code || '',
+    couponCode: normalizedCoupon || '',
     discounts,
     discountTotal,
     subtotalWithDiscount: roundMoney(Math.max(0, base - discountTotal))
@@ -1206,25 +1186,18 @@ app.post('/api/client/register', async (req, res) => {
         [clientId, String(endereco.cep).replace(/\D/g, ''), String(endereco.logradouro || ''), String(endereco.numero), String(endereco.complemento || '') || null, String(endereco.bairro || '') || null, String(endereco.cidade || ''), String(endereco.uf || '')]
       );
     }
-    // Gera cupom de boas-vindas 15% para primeira compra
-    const _chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let welcomeCoupon = 'BV';
-    for (let i = 0; i < 6; i++) welcomeCoupon += _chars[Math.floor(Math.random() * _chars.length)];
-    try {
-      await mysqlPool.execute('INSERT INTO lemoov_coupons (code, description, percent, active, first_purchase_only) VALUES (?, ?, 15, 1, 1)', [welcomeCoupon, 'Boas-vindas para primeira compra']);
-    } catch (_e) { welcomeCoupon = null; }
     if (process.env.SMTP_HOST || process.env.RESEND_API_KEY) {
       const code = String(Math.floor(100000 + Math.random() * 900000));
       const verifyToken = crypto.randomBytes(24).toString('hex');
-      verificationCodes.set(verifyToken, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: String(cpf || '').replace(/\D/g, '') || '', code, welcomeCoupon, expiresAt: Date.now() + VERIFY_CODE_TTL_MS });
+      verificationCodes.set(verifyToken, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: String(cpf || '').replace(/\D/g, '') || '', code, expiresAt: Date.now() + VERIFY_CODE_TTL_MS });
       await sendVerificationEmail(emailNorm, String(nome).trim(), code).catch((e) => console.error('[verify-email]', e.message));
-      return res.status(201).json({ ok: true, needsVerification: true, verifyToken, welcomeCoupon });
+      return res.status(201).json({ ok: true, needsVerification: true, verifyToken });
     }
     const token = crypto.randomBytes(24).toString('hex');
     const cpfClean = String(cpf || '').replace(/\D/g, '') || '';
     clientSessions.set(token, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: cpfClean, createdAt: Date.now() });
     res.setHeader('Set-Cookie', clientSessionCookie(token, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
-    return res.status(201).json({ ok: true, welcomeCoupon, client: { id: clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: cpfClean } });
+    return res.status(201).json({ ok: true, client: { id: clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: cpfClean } });
   } catch (e) {
     console.error('[client/register]', e.message);
     if (e.code === 'ER_DUP_ENTRY') {
@@ -1562,7 +1535,7 @@ app.post('/api/client/verify-email', async (req, res) => {
   const sessionToken = crypto.randomBytes(24).toString('hex');
   clientSessions.set(sessionToken, { clientId: entry.clientId, nome: entry.nome, email: entry.email, telefone: entry.telefone, cpf: entry.cpf || '', createdAt: Date.now() });
   res.setHeader('Set-Cookie', clientSessionCookie(sessionToken, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
-  return res.json({ ok: true, welcomeCoupon: entry.welcomeCoupon || null, client: { id: entry.clientId, nome: entry.nome, email: entry.email, cpf: entry.cpf || '' } });
+  return res.json({ ok: true, client: { id: entry.clientId, nome: entry.nome, email: entry.email, cpf: entry.cpf || '' } });
 });
 
 app.post('/api/client/forgot-password', async (req, res) => {

@@ -519,7 +519,7 @@
         <div class="alert alert-err" id="forgotAlert"></div>
       </form>
       <p style="text-align:center;margin-top:14px;font-size:13px;">
-        <a href="#" onclick="switchTab('login');return false;" style="color:var(--muted);text-decoration:none">← Voltar ao login</a>
+        <a href="#" onclick="showPanel('panelLogin');return false;" style="color:var(--muted);text-decoration:none">← Voltar ao login</a>
       </p>
     </div>
 
@@ -830,13 +830,8 @@
       }
       btn.classList.add('ok'); btn.textContent = '✓ Conta criada!';
       const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
-      if (data.welcomeCoupon) {
-        showAlert('cadastroAlert', `Conta criada! Seu cupom de boas-vindas: ${data.welcomeCoupon} — 15% de desconto na primeira compra!`, 'ok');
-        setTimeout(() => { location.href = redirect; }, 3000);
-      } else {
-        showAlert('cadastroAlert', 'Conta criada com sucesso! Redirecionando…', 'ok');
-        setTimeout(() => { location.href = redirect; }, 1200);
-      }
+      showAlert('cadastroAlert', 'Conta criada com sucesso! Redirecionando…', 'ok');
+      setTimeout(() => { location.href = redirect; }, 1200);
     } catch {
       showAlert('cadastroAlert', 'Erro de conexão. Tente novamente.');
       btn.disabled = false; btn.textContent = 'Criar conta';
@@ -914,12 +909,7 @@
       }
       btn.classList.add('ok'); btn.textContent = '✓ E-mail confirmado!';
       const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
-      if (data.welcomeCoupon) {
-        showAlert('verifyAlert', `Conta confirmada! Cupom de boas-vindas: ${data.welcomeCoupon} — 15% na primeira compra!`, 'ok');
-        setTimeout(() => { location.href = redirect; }, 3000);
-      } else {
-        setTimeout(() => { location.href = redirect; }, 900);
-      }
+      setTimeout(() => { location.href = redirect; }, 900);
     } catch {
       showAlert('verifyAlert', 'Erro de conexão. Tente novamente.');
       btn.disabled = false; btn.textContent = 'Confirmar';

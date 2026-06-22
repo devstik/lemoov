@@ -405,6 +405,15 @@
       <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
       <span class="nav-label">Cupons</span>
     </button>
+    <button class="tab-btn" data-tab="qrcode" title="QR Code">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="2.5" height="2.5" rx=".5"/><rect x="18.5" y="14" width="2.5" height="2.5" rx=".5"/>
+        <rect x="14" y="18.5" width="2.5" height="2.5" rx=".5"/><rect x="18.5" y="18.5" width="2.5" height="2.5" rx=".5"/>
+      </svg>
+      <span class="nav-label">QR Code</span>
+    </button>
     <button class="tab-btn" data-tab="relatorio" title="Relatório">
       <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
       <span class="nav-label">Relatório</span>
@@ -622,6 +631,148 @@
   </div>
 </div>
 
+<!-- ── QR CODE ──────────────────────────────────── -->
+<div id="tab-qrcode" class="tab-panel">
+  <div class="screen-hero">
+    <div>
+      <div class="screen-kicker">Ferramentas</div>
+      <h1 class="screen-title">Gerador de QR Code</h1>
+      <p class="screen-copy">Crie QR Codes lidos pela câmera do celular — links, texto e WhatsApp com logo da Lemoov.</p>
+    </div>
+  </div>
+
+  <div class="qrg-layout">
+
+    <!-- Coluna esquerda: configurações -->
+    <div class="qrg-left">
+
+      <div class="card">
+        <div class="card-head"><h2>Tipo de conteúdo</h2></div>
+        <div class="card-body">
+          <div class="qrg-type-row">
+            <button class="qrg-type-btn active" data-qrtype="url">🔗 Link / URL</button>
+            <button class="qrg-type-btn" data-qrtype="text">📝 Texto</button>
+            <button class="qrg-type-btn" data-qrtype="whatsapp">💬 WhatsApp</button>
+          </div>
+
+          <div id="qrg-f-url" class="qrg-fields" style="margin-top:16px">
+            <div class="fg">
+              <label class="fl">URL do link</label>
+              <input id="qrgUrl" class="fc" type="url" placeholder="https://lemoov.com.br">
+            </div>
+          </div>
+
+          <div id="qrg-f-text" class="qrg-fields" style="margin-top:16px;display:none">
+            <div class="fg">
+              <label class="fl">Texto</label>
+              <textarea id="qrgText" class="fc" rows="4" placeholder="Digite o texto aqui..." style="resize:vertical"></textarea>
+            </div>
+          </div>
+
+          <div id="qrg-f-whatsapp" class="qrg-fields" style="margin-top:16px;display:none">
+            <div class="fg">
+              <label class="fl">Número com DDD (só números)</label>
+              <input id="qrgWa" class="fc" type="text" inputmode="numeric" placeholder="11999999999">
+            </div>
+            <div class="fg" style="margin-top:10px">
+              <label class="fl">Mensagem inicial (opcional)</label>
+              <input id="qrgWaMsg" class="fc" type="text" placeholder="Olá! Vim pelo site da Lemoov.">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Personalização</h2></div>
+        <div class="card-body" style="display:grid;gap:16px">
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="fg">
+              <label class="fl">Cor do QR Code</label>
+              <input id="qrgFg" type="color" class="fc" value="#1a1a1a" style="height:40px;padding:4px 8px;cursor:pointer">
+            </div>
+            <div class="fg">
+              <label class="fl">Cor do fundo</label>
+              <input id="qrgBg" type="color" class="fc" value="#ffffff" style="height:40px;padding:4px 8px;cursor:pointer">
+            </div>
+          </div>
+
+          <div class="fg">
+            <label class="fl">Tamanho de saída</label>
+            <select id="qrgSize" class="fc">
+              <option value="400">Médio – 400 × 400 px</option>
+              <option value="700" selected>Grande – 700 × 700 px</option>
+              <option value="1200">Alta resolução – 1200 × 1200 px</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="fl" style="display:block;margin-bottom:8px">Logo no centro</label>
+            <div class="qrg-type-row">
+              <button class="qrg-logo-btn active" data-qrlogo="lemoov">Logo Lemoov</button>
+              <button class="qrg-logo-btn" data-qrlogo="upload">Personalizada</button>
+              <button class="qrg-logo-btn" data-qrlogo="none">Sem logo</button>
+            </div>
+            <div id="qrgLogoUploadWrap" style="display:none;margin-top:10px">
+              <input type="file" id="qrgLogoFile" accept="image/*" class="fc" style="padding:6px">
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">
+              Nível H de correção de erros garante leitura pela câmera mesmo com logo.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Coluna direita: preview + ações -->
+    <div class="qrg-right">
+
+      <div class="card" style="text-align:center">
+        <div class="card-head">
+          <h2>Pré-visualização</h2>
+          <span class="stock-head-sub" id="qrgHint">Configure e gere</span>
+        </div>
+        <div class="card-body" style="padding:24px">
+          <div id="qrgPlaceholder" style="width:260px;height:260px;margin:0 auto;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:12px;border:2px dashed var(--brd2);color:var(--muted);font-size:13px;text-align:center;padding:20px;line-height:1.6">
+            Configure o conteúdo e clique em&nbsp;<strong>Gerar QR Code</strong>
+          </div>
+          <canvas id="qrgCanvas" style="display:none;max-width:100%;border-radius:12px;box-shadow:var(--sh-md)"></canvas>
+          <div id="qrgErrMsg" style="display:none;color:#e8445a;font-size:13px;margin-top:12px"></div>
+        </div>
+      </div>
+
+      <button id="qrgGenBtn" onclick="qrgGenerate()" style="width:100%;padding:14px;border:none;border-radius:10px;background:linear-gradient(120deg,#A8C63A,#6F8522);color:#383838;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.04em;box-shadow:0 4px 16px rgba(168,198,58,.3)">
+        ▶&nbsp; Gerar QR Code
+      </button>
+
+      <button id="qrgDlBtn" onclick="qrgDownload()" style="display:none;width:100%;padding:13px;border:none;border-radius:10px;background:linear-gradient(120deg,#383838,#555);color:#fff;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.04em">
+        ⬇&nbsp; Baixar PNG
+      </button>
+
+      <div class="card" style="background:var(--pl);border-color:var(--pm)">
+        <div class="card-body" style="font-size:12px;color:var(--pd);line-height:1.7">
+          <strong>Dica de leitura pela câmera:</strong><br>
+          • Use fundo branco e QR Code escuro para melhor contraste<br>
+          • Evite textos muito longos (prefira links curtos)<br>
+          • WhatsApp: use <code style="background:rgba(0,0,0,.07);padding:1px 4px;border-radius:4px">wa.me/55...</code> — câmera reconhece automaticamente
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+  .qrg-layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
+  .qrg-left,.qrg-right{display:grid;gap:16px}
+  .qrg-type-row{display:flex;gap:8px;flex-wrap:wrap}
+  .qrg-type-btn,.qrg-logo-btn{padding:8px 15px;border:1.5px solid var(--brd);border-radius:8px;background:#fff;color:var(--t2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+  .qrg-type-btn.active,.qrg-logo-btn.active{background:var(--pl);border-color:var(--pm);color:var(--pd)}
+  .qrg-type-btn:hover:not(.active),.qrg-logo-btn:hover:not(.active){border-color:var(--pm);color:var(--pd)}
+  @media(max-width:1100px){.qrg-layout{grid-template-columns:1fr}}
+</style>
+
 <!-- ── RELATÓRIO ─────────────────────────────────── -->
 <div id="tab-relatorio" class="tab-panel">
   <div class="screen-hero">
@@ -816,6 +967,7 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   if(tab==='estoque') refreshStockScreen();
   if(tab==='relatorio') loadRelatorio();
   if(tab==='crm') loadCRM();
+  if(tab==='qrcode') qrgInitUI();
 }));
 
 // ── Logout ───────────────────────────────────────────────────
@@ -3514,6 +3666,193 @@ function bindNovoCliente(){
   banner.style.display="";
   document.getElementById("btnAcceptCookies")?.addEventListener("click",()=>{ setConsent("accepted"); banner.classList.add("cookie-banner--hide"); setTimeout(()=>banner.remove(),350); });
   document.getElementById("btnRejectCookies")?.addEventListener("click",()=>{ setConsent("rejected"); banner.classList.add("cookie-banner--hide"); setTimeout(()=>banner.remove(),350); });
+})();
+</script>
+
+<!-- ── QR CODE GENERATOR ──────────────────────────────────────── -->
+<script>
+(function(){
+  let _qrgLibLoaded  = false;
+  let _qrgCurrentType = 'url';
+  let _qrgLogoMode   = 'lemoov';
+  let _qrgCustomDataUrl = null;
+  let _qrgUIBound    = false;
+
+  // Polyfill roundRect para browsers mais antigos
+  if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+      this.beginPath();
+      this.moveTo(x+r,y); this.lineTo(x+w-r,y);
+      this.quadraticCurveTo(x+w,y,x+w,y+r); this.lineTo(x+w,y+h-r);
+      this.quadraticCurveTo(x+w,y+h,x+w-r,y+h); this.lineTo(x+r,y+h);
+      this.quadraticCurveTo(x,y+h,x,y+h-r); this.lineTo(x,y+r);
+      this.quadraticCurveTo(x,y,x+r,y); this.closePath();
+    };
+  }
+
+  function qrgLoadLib() {
+    if (_qrgLibLoaded) return Promise.resolve();
+    return new Promise((ok,err)=>{
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+      s.onload = ()=>{ _qrgLibLoaded=true; ok(); };
+      s.onerror = ()=>err(new Error('Falha ao carregar biblioteca QR Code'));
+      document.head.appendChild(s);
+    });
+  }
+
+  function qrgContent() {
+    if (_qrgCurrentType === 'url') {
+      const v = document.getElementById('qrgUrl').value.trim();
+      if (!v) return null;
+      return /^https?:\/\//i.test(v) ? v : 'https://'+v;
+    }
+    if (_qrgCurrentType === 'text') {
+      return document.getElementById('qrgText').value.trim() || null;
+    }
+    if (_qrgCurrentType === 'whatsapp') {
+      const num = document.getElementById('qrgWa').value.replace(/\D/g,'');
+      if (!num) return null;
+      // wa.me é reconhecido pela câmera do iOS e Android como link de WhatsApp
+      const phone = num.startsWith('55') ? num : '55'+num;
+      const msg   = encodeURIComponent(document.getElementById('qrgWaMsg').value.trim());
+      return msg ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/${phone}`;
+    }
+    return null;
+  }
+
+  async function qrgOverlayLogo(canvas, bg) {
+    let src = null;
+    if (_qrgLogoMode === 'lemoov')       src = '/image/logo_lemoov_semfundo.png';
+    else if (_qrgLogoMode === 'upload' && _qrgCustomDataUrl) src = _qrgCustomDataUrl;
+    if (!src) return;
+
+    await new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const sz  = canvas.width;
+        const ctx = canvas.getContext('2d');
+        // Logo = 22% da largura, fundo branco com padding
+        const lw  = Math.round(sz * 0.22);
+        const lh  = Math.round(sz * 0.22 * (img.naturalHeight / img.naturalWidth));
+        const lx  = Math.round((sz - lw) / 2);
+        const ly  = Math.round((sz - lh) / 2);
+        const pad = Math.round(lw * 0.14);
+        const r   = Math.round(pad * 1.5);
+        // Sombra leve + fundo branco
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,.18)';
+        ctx.shadowBlur  = Math.round(sz * 0.012);
+        ctx.fillStyle   = bg;
+        ctx.beginPath();
+        ctx.roundRect(lx-pad, ly-pad, lw+pad*2, lh+pad*2, r);
+        ctx.fill();
+        ctx.restore();
+        // Logo
+        ctx.drawImage(img, lx, ly, lw, lh);
+        resolve();
+      };
+      img.onerror = resolve;
+      img.src = src;
+    });
+  }
+
+  window.qrgGenerate = async function() {
+    const errEl = document.getElementById('qrgErrMsg');
+    errEl.style.display = 'none';
+    const content = qrgContent();
+    if (!content) {
+      errEl.textContent = 'Preencha o conteúdo antes de gerar.';
+      errEl.style.display = '';
+      return;
+    }
+    const btn = document.getElementById('qrgGenBtn');
+    btn.disabled = true; btn.textContent = 'Gerando…';
+    try {
+      await qrgLoadLib();
+      const size = Number(document.getElementById('qrgSize').value);
+      const fg   = document.getElementById('qrgFg').value;
+      const bg   = document.getElementById('qrgBg').value;
+      const canvas = document.getElementById('qrgCanvas');
+      await new Promise((ok,fail) => {
+        QRCode.toCanvas(canvas, content, {
+          errorCorrectionLevel: 'H', // H = 30% — essencial para logo + câmera
+          width: size,
+          margin: 3,
+          color: { dark: fg, light: bg }
+        }, e => e ? fail(e) : ok());
+      });
+      if (_qrgLogoMode !== 'none') await qrgOverlayLogo(canvas, bg);
+      document.getElementById('qrgPlaceholder').style.display = 'none';
+      canvas.style.display = '';
+      document.getElementById('qrgDlBtn').style.display = '';
+      document.getElementById('qrgHint').textContent = '✓ Pronto — legível pela câmera';
+    } catch(e) {
+      errEl.textContent = 'Erro: ' + e.message;
+      errEl.style.display = '';
+    } finally {
+      btn.disabled = false; btn.textContent = '▶  Gerar QR Code';
+    }
+  };
+
+  window.qrgDownload = function() {
+    const canvas = document.getElementById('qrgCanvas');
+    if (canvas.style.display === 'none') return;
+    const labels = { url:'link', text:'texto', whatsapp:'whatsapp' };
+    const a = document.createElement('a');
+    a.download = `qrcode-lemoov-${labels[_qrgCurrentType]||'qr'}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  };
+
+  window.qrgInitUI = function() {
+    if (_qrgUIBound) return;
+    _qrgUIBound = true;
+
+    // Tipo de conteúdo
+    document.querySelectorAll('.qrg-type-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.qrg-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _qrgCurrentType = btn.dataset.qrtype;
+        document.querySelectorAll('.qrg-fields').forEach(g => g.style.display='none');
+        const map = { url:'qrg-f-url', text:'qrg-f-text', whatsapp:'qrg-f-whatsapp' };
+        document.getElementById(map[_qrgCurrentType]).style.display = '';
+        // Reset preview
+        document.getElementById('qrgCanvas').style.display='none';
+        document.getElementById('qrgPlaceholder').style.display='';
+        document.getElementById('qrgDlBtn').style.display='none';
+        document.getElementById('qrgHint').textContent='Configure e gere';
+      });
+    });
+
+    // Logo
+    document.querySelectorAll('.qrg-logo-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.qrg-logo-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _qrgLogoMode = btn.dataset.qrlogo;
+        document.getElementById('qrgLogoUploadWrap').style.display = _qrgLogoMode==='upload' ? '' : 'none';
+      });
+    });
+
+    // Upload personalizado
+    document.getElementById('qrgLogoFile').addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = ev => { _qrgCustomDataUrl = ev.target.result; };
+      reader.readAsDataURL(f);
+    });
+
+    // Enter gera
+    ['qrgUrl','qrgWa','qrgWaMsg'].forEach(id => {
+      document.getElementById(id)?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); qrgGenerate(); }
+      });
+    });
+  };
 })();
 </script>
 

@@ -243,7 +243,7 @@ let cartUpdatedAt = 0;
 let cartExpiryTimer = null;
 let paymentOriginPath = "";
 let visitorRegionMemory = null;
-let cookieConsentMemory = null;
+let cookieConsentMemory = (() => { try { return localStorage.getItem('lemoov_consent'); } catch (_) { return null; } })();
 function _loadCart() {
   try {
     const raw = localStorage.getItem(CART_STORAGE_KEY);
@@ -655,6 +655,7 @@ function getCookieConsent(){
 
 function setCookieConsent(value){
   cookieConsentMemory = value;
+  try { localStorage.setItem('lemoov_consent', value); } catch (_) {}
 }
 
 async function initTrackingIfConsented(){
@@ -4419,7 +4420,6 @@ function openLoginModal(onSuccess) {
   document.body.appendChild(dlg);
 
   let _amVerifyToken = null;
-  let _amWelcomeCoupon = null;
 
   function amShowPanel(id) {
     dlg.querySelectorAll('.am-panel').forEach(p => p.classList.toggle('active', p.id === id));
@@ -4535,17 +4535,12 @@ function openLoginModal(onSuccess) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { amMsg('amCadastroMsg', data.error || 'Erro ao criar conta.'); return; }
-      _amWelcomeCoupon = data.welcomeCoupon || null;
       if (data.needsVerification) {
         _amVerifyToken = data.verifyToken;
         amShowPanel('amPanelVerify');
         return;
       }
       setCurrentClientSession(data.client);
-      if (_amWelcomeCoupon) {
-        amMsg('amCadastroMsg', `Conta criada! Cupom de 1ª compra: ${_amWelcomeCoupon}`, 'ok');
-        await new Promise(r => setTimeout(r, 1800));
-      }
       dlg.close();
       atualizarCart();
       if (typeof onSuccess === 'function') onSuccess();
@@ -4569,11 +4564,6 @@ function openLoginModal(onSuccess) {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { amMsg('amVerifyMsg', data.error || 'Código inválido.'); return; }
       setCurrentClientSession(data.client);
-      if (_amWelcomeCoupon || data.welcomeCoupon) {
-        const c = _amWelcomeCoupon || data.welcomeCoupon;
-        amMsg('amVerifyMsg', `E-mail confirmado! Cupom de 1ª compra: ${c}`, 'ok');
-        await new Promise(r => setTimeout(r, 1800));
-      }
       dlg.close();
       atualizarCart();
       if (typeof onSuccess === 'function') onSuccess();
