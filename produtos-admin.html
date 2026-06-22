@@ -3776,25 +3776,31 @@ function bindNovoCliente(){
     });
   }
 
-  async function qrgOverlayLogo(ctx, canvasW, canvasH, bgColor, offsetX = 0, offsetY = 0) {
+  // Retorna altura do rodapé com logo (0 se sem logo)
+  function qrgLogoFooterH(size) {
+    return _qrgLogoMode === 'none' ? 0 : Math.round(size * 0.18);
+  }
+
+  // Desenha logo no rodapé abaixo do QR — não toca nos módulos do código
+  async function qrgDrawLogoFooter(ctx, size, bgColor) {
     let src = null;
     if (_qrgLogoMode === 'lemoov') src = '/image/logo_lemoov_semfundo.png';
     else if (_qrgLogoMode === 'upload' && _qrgCustomDataUrl) src = _qrgCustomDataUrl;
     if (!src) return;
     const img = await qrgLoadLogo(src);
     if (!img) return;
-    const lw  = Math.round(canvasW * 0.22);
-    const lh  = Math.round(lw * (img.naturalHeight / img.naturalWidth));
-    const lx  = offsetX + Math.round((canvasW - lw) / 2);
-    const ly  = offsetY + Math.round((canvasH - lh) / 2);
-    const pad = Math.round(lw * 0.14);
-    const r   = Math.round(pad * 1.6);
-    ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,.15)'; ctx.shadowBlur = Math.round(canvasW * 0.01);
+    const footerH = qrgLogoFooterH(size);
+    // Fundo do rodapé igual ao bg do QR
     ctx.fillStyle = bgColor;
-    ctx.beginPath(); ctx.roundRect(lx-pad, ly-pad, lw+pad*2, lh+pad*2, r); ctx.fill();
-    ctx.restore();
+    ctx.fillRect(0, size, size, footerH);
+    // Logo centralizada no rodapé
+    const lw = Math.round(size * 0.38);
+    const lh = Math.round(lw * (img.naturalHeight / img.naturalWidth));
+    const lx = Math.round((size - lw) / 2);
+    const ly = size + Math.round((footerH - lh) / 2);
+    ctx.globalAlpha = 0.82;
     ctx.drawImage(img, lx, ly, lw, lh);
+    ctx.globalAlpha = 1;
   }
 
   async function qrgBuildInstagram(qrDataUrl, size) {
@@ -3831,10 +3837,6 @@ function bindNovoCliente(){
       ctx.beginPath(); ctx.roundRect(qrX - 24, qrY - 24, qrSize + 48, qrSize + 48, 20); ctx.fill();
       ctx.restore();
       ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-      // Overlay logo no centro do QR
-      if (_qrgLogoMode !== 'none') {
-        await qrgOverlayLogo(ctx, qrSize, qrSize, _qrgBgColor, qrX, qrY);
-      }
     }
 
     // Texto na base
@@ -3874,13 +3876,14 @@ function bindNovoCliente(){
       if (_qrgFmtMode === 'instagram') {
         await qrgBuildInstagram(data.dataUrl, size);
       } else {
-        // Modo simples: decodifica o dataUrl no canvas
+        // Modo simples: QR limpo + logo no rodapé (fora dos módulos)
+        const footerH = qrgLogoFooterH(size);
         canvas.width  = size;
-        canvas.height = size;
+        canvas.height = size + footerH;
         const ctx = canvas.getContext('2d');
         const qrImg = await qrgLoadLogo(data.dataUrl);
         ctx.drawImage(qrImg, 0, 0, size, size);
-        if (_qrgLogoMode !== 'none') await qrgOverlayLogo(ctx, size, size, _qrgBgColor);
+        if (_qrgLogoMode !== 'none') await qrgDrawLogoFooter(ctx, size, _qrgBgColor);
       }
 
       document.getElementById('qrgPlaceholder').style.display = 'none';
