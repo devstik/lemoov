@@ -5,6 +5,7 @@ const express = require('express');
 const multer = require('multer');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
+const QRCodeLib = require('qrcode');
 
 // Polyfill fetch para Node < 18
 if (typeof fetch === 'undefined') {
@@ -3441,6 +3442,24 @@ app.delete('/api/crm/sessions/:id', authRequired, async (req, res) => {
     return res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false });
+  }
+});
+// ── QR CODE ──────────────────────────────────────────────────────────────
+app.post('/api/qrcode/generate', authRequired, async (req, res) => {
+  try {
+    const { content, size = 700, fg = '#1a1a1a', bg = '#ffffff' } = req.body || {};
+    if (!content || String(content).trim().length === 0)
+      return res.status(400).json({ ok: false, error: 'Conteúdo obrigatório.' });
+    const dataUrl = await QRCodeLib.toDataURL(String(content).trim(), {
+      errorCorrectionLevel: 'H',
+      width: Math.min(Math.max(Number(size) || 700, 200), 2000),
+      margin: 3,
+      color: { dark: String(fg), light: String(bg) },
+    });
+    return res.json({ ok: true, dataUrl });
+  } catch (e) {
+    console.error('[qrcode/generate]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao gerar QR Code.' });
   }
 });
 // ─────────────────────────────────────────────────────────────────────────
