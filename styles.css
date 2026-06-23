@@ -1533,13 +1533,10 @@ img, video {
   overflow: hidden;
   animation: fab-hint 2.2s ease-in-out 1.5s 3;
 }
-.fab-radial__trigger img {
-  /* fill the circle and crop to the icon mark at the top of the logo */
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 8%;
+.fab-logo-svg {
+  width: 38px;
+  height: 38px;
+  position: relative;
   z-index: 1;
   transition: opacity 0.22s ease, transform 0.3s ease;
 }
@@ -1559,7 +1556,7 @@ img, video {
   box-shadow: 0 8px 20px rgba(0,0,0,0.3);
   animation: none;
 }
-.fab-radial-root[data-open="true"] .fab-radial__trigger img {
+.fab-radial-root[data-open="true"] .fab-logo-svg {
   opacity: 0;
   transform: rotate(90deg) scale(0.5);
 }
