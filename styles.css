@@ -1534,8 +1534,8 @@ img, video {
   animation: fab-hint 2.2s ease-in-out 1.5s 3;
 }
 .fab-radial__trigger img {
-  width: 36px;
-  height: 36px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
   position: relative;
   z-index: 1;
@@ -1621,6 +1621,30 @@ img, video {
 .fab-item--insta {
   background: radial-gradient(circle at 30% 107%,#fdf497 0%,#fdf497 5%,#fd5949 45%,#d6249f 60%,#285AEB 90%);
   color: #fff;
+}
+/* Tooltips nos itens do FAB */
+.fab-label {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(24,24,24,0.88);
+  color: #EBD8C7;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  border-radius: 7px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform: translateY(-50%) translateX(4px);
+  backdrop-filter: blur(6px);
+}
+.fab-radial__item:hover .fab-label {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
 }
 .fab-radial__overlay {
   position: fixed;
