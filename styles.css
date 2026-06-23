@@ -123,7 +123,7 @@ img, video {
   grid-template-columns: 1fr;
   align-items: center;
   position: relative;
-  min-height: clamp(620px, 86svh, 820px);
+  min-height: clamp(660px, 92svh, 920px);
   padding: clamp(34px, 7vw, 90px) clamp(18px, 6vw, 76px);
   overflow: hidden;
   isolation: isolate;
@@ -275,10 +275,10 @@ img, video {
 }
 .hero__slide-photo {
   top: 50%;
-  right: clamp(0px, 5.5vw, 104px);
+  right: clamp(0px, 4vw, 80px);
   width: auto;
-  height: clamp(520px, 92%, 780px);
-  max-width: min(54vw, 820px);
+  height: clamp(580px, 100%, 920px);
+  max-width: min(60vw, 960px);
   object-fit: contain;
   object-position: center top;
   filter: contrast(1.08) saturate(0.98) brightness(0.94);
@@ -888,7 +888,7 @@ img, video {
   .hero--split {
     grid-template-columns: 1fr;
     padding: clamp(34px, 10vw, 72px) clamp(16px, 6vw, 24px);
-    min-height: clamp(640px, 90svh, 760px);
+    min-height: clamp(680px, 94svh, 820px);
     gap: 0;
   }
   .hero__media,
@@ -919,8 +919,8 @@ img, video {
   }
   .hero__slide-photo {
     right: 50%;
-    height: clamp(460px, 80%, 660px);
-    max-width: 92vw;
+    height: clamp(500px, 88%, 740px);
+    max-width: 96vw;
     transform: translate(50%, -50%);
   }
   .hero__slide.is-active .hero__slide-photo {
