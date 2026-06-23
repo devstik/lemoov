@@ -67,6 +67,31 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Cabeçalhos de segurança ───────────────────────────────────────────────
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// ── Rate limiter em memória ────────────────────────────────────────────────
+const _rl = new Map();
+function rateLimitCheck(key, windowMs, max) {
+  const now = Date.now();
+  let e = _rl.get(key);
+  if (!e || now > e.r) { _rl.set(key, { c: 1, r: now + windowMs }); return false; }
+  e.c++;
+  return e.c > max;
+}
+// limpa entradas expiradas a cada 10 min
+setInterval(() => { const now = Date.now(); _rl.forEach((v, k) => { if (now > v.r) _rl.delete(k); }); }, 600_000);
+
 const ADMIN_USER = process.env.REPORT_USER || 'lemoov';
 const ADMIN_PASS = process.env.REPORT_PASS || 'L3moov@';
 const MYSQL_CONFIG = {
@@ -1146,12 +1171,17 @@ app.put('/api/client/me', clientAuthRequired, async (req, res) => {
 
 app.post('/api/client/login', async (req, res) => {
   if (!MYSQL_ENABLED) return res.status(503).json({ ok: false, error: 'Banco de dados não disponível.' });
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  if (rateLimitCheck(`client-login:${ip}`, 15 * 60 * 1000, 15)) {
+    return res.status(429).json({ ok: false, error: 'Muitas tentativas. Aguarde 15 minutos.' });
+  }
   const { email, senha } = req.body || {};
   if (!email || !senha) return res.status(400).json({ ok: false, error: 'E-mail e senha são obrigatórios.' });
   try {
     await initDatabase();
     const [rows] = await mysqlPool.execute('SELECT id, nome, email, senha_hash, telefone, cpf FROM lemoov_clients WHERE email = ?', [String(email).toLowerCase().trim()]);
     if (!rows.length || !verifyClientPwd(String(senha), rows[0].senha_hash)) {
+      console.warn(`[client-login] falha de auth de ${ip} para email "${email}"`);
       return res.status(401).json({ ok: false, error: 'E-mail ou senha incorretos.' });
     }
     const client = rows[0];
@@ -1540,6 +1570,10 @@ app.post('/api/client/verify-email', async (req, res) => {
 });
 
 app.post('/api/client/forgot-password', async (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  if (rateLimitCheck(`forgot-pwd:${ip}`, 60 * 60 * 1000, 5)) {
+    return res.status(429).json({ ok: false, error: 'Muitas solicitações. Aguarde 1 hora.' });
+  }
   const email = String(req.body?.email || '').toLowerCase().trim();
   if (!email) return res.status(400).json({ ok: false, error: 'E-mail obrigatório.' });
   try {
@@ -1882,9 +1916,20 @@ app.post('/api/pedidos', async (req, res) => {
         error: 'Pedido só é registrado após confirmação de pagamento.'
       });
     }
-    if (MYSQL_ENABLED) {
+    // Valida que o número do pedido veio de um payment intent registrado por nós
+    const numeroCandidato = String(req.body?.pedido || '').trim();
+    if (numeroCandidato && MYSQL_ENABLED) {
       await initDatabase();
-      conn = await mysqlPool.getConnection();
+      const pending = await readPendingPaymentStore(numeroCandidato);
+      if (!pending) {
+        // Pedido com número que não está nos payment intents → possivelmente forjado
+        const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '?';
+        console.warn(`[api/pedidos] número "${numeroCandidato}" sem payment intent — bloqueado. IP: ${ip}`);
+        return res.status(403).json({ ok: false, error: 'Pedido não autorizado.' });
+      }
+    }
+    if (MYSQL_ENABLED) {
+      if (!conn) conn = await mysqlPool.getConnection();
       await conn.beginTransaction();
       await conn.execute('SELECT id FROM lemoov_products FOR UPDATE');
     }
@@ -1935,6 +1980,10 @@ app.get('/login', (_req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  if (rateLimitCheck(`admin-login:${ip}`, 15 * 60 * 1000, 10)) {
+    return res.status(429).json({ ok: false, error: 'Muitas tentativas. Aguarde 15 minutos.' });
+  }
   const { user, pass, redirect } = req.body || {};
   let valid = user === ADMIN_USER && pass === ADMIN_PASS;
   if (!valid && MYSQL_ENABLED) {
@@ -1954,11 +2003,13 @@ app.post('/api/login', async (req, res) => {
     }
   }
   if (valid) {
-    const token = crypto.randomBytes(16).toString('hex');
+    const token = crypto.randomBytes(24).toString('hex');
     sessions.set(token, { user, createdAt: Date.now() });
-    res.setHeader('Set-Cookie', `lemoov_session=${token}; HttpOnly; Path=/; SameSite=Lax`);
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    res.setHeader('Set-Cookie', `lemoov_session=${token}; HttpOnly; Path=/; SameSite=Lax${secure}`);
     return res.json({ ok: true, redirect: redirect || '/api/produtos-admin' });
   }
+  console.warn(`[admin-login] falha de autenticação de ${ip} para usuário "${user}"`);
   return res.status(401).json({ ok: false });
 });
 
@@ -2235,12 +2286,22 @@ app.post('/api/webhooks/infinitepay', async (req, res) => {
       return res.json({ ok: true });
     }
 
+    // Sem pagamento pendente — só aceita atualizar se o pedido já existe E veio da InfinitePay
     const pedidoExistente = await readPedidoStore(orderNsu, conn);
+    if (!pedidoExistente) {
+      // order_nsu desconhecido: ignora silenciosamente (possível requisição forjada)
+      console.warn(`[infinitepay:webhook] order_nsu desconhecido ignorado: ${orderNsu}`);
+      if (conn) await conn.commit();
+      return res.json({ ok: true });
+    }
+    // Não regride pedido já cancelado
+    if (String(pedidoExistente.status || '').toLowerCase() === 'cancelado') {
+      if (conn) await conn.commit();
+      return res.json({ ok: true });
+    }
     await updatePedidoStore(orderNsu, paymentUpdates);
     if (conn) await conn.commit();
-    if (pedidoExistente) {
-      notifyOrderConfirmed({ ...pedidoExistente, ...paymentUpdates }).catch((e) => console.error('[notify]', e.message));
-    }
+    notifyOrderConfirmed({ ...pedidoExistente, ...paymentUpdates }).catch((e) => console.error('[notify]', e.message));
     res.json({ ok: true });
   } catch (e) {
     if (conn) {
@@ -3506,7 +3567,25 @@ app.post('/api/qrcode/generate', authRequired, async (req, res) => {
 });
 // ─────────────────────────────────────────────────────────────────────────
 
-app.use(express.static(__dirname)); // serve index.html, script.js, etc.
+// Bloqueia acesso estático a arquivos sensíveis do servidor
+const _BLOCKED_STATIC = new Set([
+  '/server.js', '/app.js',
+  '/package.json', '/package-lock.json',
+  '/.env', '/.gitignore', '/.htaccess', '/.npmrc',
+]);
+app.use((req, res, next) => {
+  const p = req.path.toLowerCase();
+  if (
+    _BLOCKED_STATIC.has(p) ||
+    p.startsWith('/node_modules/') ||
+    p.startsWith('/data/')          // pedidos, pagamentos, produtos em JSON
+  ) {
+    return res.status(404).end();
+  }
+  next();
+});
+
+app.use(express.static(__dirname)); // serve index.html, script.js, styles.css, image/, etc.
 if (path.resolve(UPLOAD_DIR) !== path.resolve(path.join(__dirname, UPLOAD_PUBLIC_PREFIX))) {
   app.use(`/${UPLOAD_PUBLIC_PREFIX}`, express.static(UPLOAD_DIR));
 }
