@@ -929,15 +929,14 @@
   <!-- FAB Radial Menu -->
   <div class="fab-radial-root" id="fabRadialRoot" data-open="false">
     <button class="fab-radial__trigger" id="fabTrigger" type="button" aria-label="Menu rápido" aria-expanded="false">
-      <!-- Lemoov brand mark: coração com dois loops (o M do LeMoov) -->
-      <svg class="fab-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 60" aria-hidden="true">
-        <!-- coração preenchido com dois furos circulares (evenodd) = os dois loops do M -->
-        <path fill="#A8C63A" fill-rule="evenodd"
-          d="M26 56C14 50 2 39 2 23C2 12 9 5 18 7C22 8 25 12 26 18C27 12 30 8 34 7C43 5 50 12 50 23C50 39 38 50 26 56Z
-             M16 15m0-7.5a7.5,7.5 0 0,0 0,15a7.5,7.5 0 0,0 0,-15Z
-             M36 15m0-7.5a7.5,7.5 0 0,0 0,15a7.5,7.5 0 0,0 0,-15Z"/>
-        <!-- cabeça da pessoa no V entre os dois loops -->
-        <circle cx="26" cy="8" r="5" fill="#A8C63A"/>
+      <!-- Logo icon: salve em image/logo_lemoov_icon.png com fundo transparente -->
+      <img class="fab-logo-svg" src="image/logo_lemoov_icon.png" alt="Lemoov" loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <!-- fallback enquanto o arquivo não existe -->
+      <svg style="display:none" class="fab-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 56" fill="none" aria-hidden="true">
+        <circle cx="26" cy="9" r="4" stroke="#A8C63A" stroke-width="2.8"/>
+        <path stroke="#A8C63A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"
+          d="M26 52C15 46 3 36 3 22C3 10 8 4 16 6C20 6.5 24 11 26 17C28 11 32 6.5 36 6C44 4 49 10 49 22C49 36 37 46 26 52Z"/>
       </svg>
     </button>
     <div class="fab-radial__items" aria-hidden="true">
