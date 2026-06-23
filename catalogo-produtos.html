@@ -571,16 +571,14 @@
       background: linear-gradient(120deg, #A8C63A, #EBD8C7);
       color: #383838;
     }
-    .catalog-landing .floating-toggle {
-      border-color: rgba(168,198,58,0.38);
+    /* FAB radial - catalog dark theme */
+    .fab-radial__trigger {
       background: rgba(56,56,56,0.92);
-      color: #EBD8C7;
-      box-shadow: 0 16px 34px rgba(56,56,56,0.18);
+      border-color: rgba(168,198,58,0.45);
+      box-shadow: 0 10px 28px rgba(56,56,56,0.32);
     }
-    .catalog-landing .floating-toggle--whats[data-active="true"],
-    .catalog-landing .floating-toggle:hover {
-      background: linear-gradient(120deg, #A8C63A, #6F8522);
-      color: #383838;
+    .fab-radial-root[data-open="true"] .fab-radial__trigger {
+      background: linear-gradient(130deg, #A8C63A, #6F8522);
       border-color: transparent;
     }
     .catalog-landing .modal::backdrop {
@@ -876,12 +874,6 @@
         </div>
         <span class="catalog-search__meta" id="catalogSearchMeta"></span>
       </section>
-      <div class="floating-toggle-group">
-        <button class="floating-toggle floating-toggle--whats" id="toggleWhats" type="button">
-          <i class="fab fa-whatsapp" aria-hidden="true"></i>
-          <span>WhatsApp</span>
-        </button>
-      </div>
       <section id="grid" class="grid"></section>
     </main>
   </div>
@@ -942,6 +934,32 @@
       <button class="cookie-banner__btn-accept" id="btnAcceptCookies">Aceitar cookies</button>
     </div>
   </div>
+
+  <!-- FAB Radial Menu -->
+  <div class="fab-radial-root" id="fabRadialRoot" data-open="false">
+    <button class="fab-radial__trigger" id="fabTrigger" type="button" aria-label="Menu rápido" aria-expanded="false">
+      <img src="image/logo_lemoov_semfundo.png" alt="Lemoov" width="36" height="36" loading="lazy">
+    </button>
+    <div class="fab-radial__items" aria-hidden="true">
+      <!-- 90° → straight up -->
+      <a class="fab-radial__item fab-item--whats" id="fabWhatsLink" href="https://wa.me/558587408457" target="_blank" rel="noopener" aria-label="WhatsApp">
+        <i class="fab fa-whatsapp" aria-hidden="true"></i>
+      </a>
+      <!-- 120° → upper-left diagonal -->
+      <a class="fab-radial__item fab-item--conta" href="cliente-login.html" aria-label="Minha conta">
+        <i class="fas fa-user" aria-hidden="true"></i>
+      </a>
+      <!-- 150° → left-and-slightly-up -->
+      <a class="fab-radial__item fab-item--home" href="index.html" aria-label="Página inicial">
+        <i class="fas fa-house" aria-hidden="true"></i>
+      </a>
+      <!-- 180° → straight left -->
+      <a class="fab-radial__item fab-item--insta" href="https://instagram.com/lemoov.fitness" target="_blank" rel="noopener" aria-label="Instagram">
+        <i class="fab fa-instagram" aria-hidden="true"></i>
+      </a>
+    </div>
+  </div>
+  <div class="fab-radial__overlay" id="fabOverlay"></div>
 
   <script src="script.js?v=24"></script>
 </body>

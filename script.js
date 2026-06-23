@@ -4687,13 +4687,22 @@ const yearEl = document.getElementById("year");
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 atualizarCart();
 _scheduleCartExpiry();
-const toggleWhats = el("#toggleWhats");
-if (toggleWhats) {
-  toggleWhats.addEventListener("click", ()=>{
-    const waUrl = `https://wa.me/${WHATS_NUMBER}`;
-    window.open(waUrl, "_blank", "noopener");
-  });
-}
+/* FAB Radial Menu (catalogo-produtos) */
+(function initFabRadial() {
+  const fabRoot    = el('#fabRadialRoot');
+  const fabTrigger = el('#fabTrigger');
+  const fabOverlay = el('#fabOverlay');
+  const fabWhats   = el('#fabWhatsLink');
+  if (!fabRoot || !fabTrigger) return;
+
+  if (fabWhats) fabWhats.href = `https://wa.me/${WHATS_NUMBER}`;
+
+  function open()  { fabRoot.dataset.open = 'true';  fabTrigger.setAttribute('aria-expanded','true');  if(fabOverlay) fabOverlay.style.display='block'; }
+  function close() { fabRoot.dataset.open = 'false'; fabTrigger.setAttribute('aria-expanded','false'); if(fabOverlay) fabOverlay.style.display='none'; }
+
+  fabTrigger.addEventListener('click', () => fabRoot.dataset.open === 'true' ? close() : open());
+  if (fabOverlay) fabOverlay.addEventListener('click', close);
+}());
 
 /* ------------------------------------------------------------
    Hero vídeo (shrink on scroll) + largura variável do vídeo
