@@ -1513,8 +1513,8 @@ img, video {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   z-index: 20;
 }
 .fab-radial__trigger {
@@ -1574,8 +1574,8 @@ img, video {
 }
 .fab-radial__item {
   position: absolute;
-  top: 11px;
-  left: 11px;
+  top: 7px;
+  left: 7px;
   width: 50px;
   height: 50px;
   border-radius: 50%;
