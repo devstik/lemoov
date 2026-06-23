@@ -362,8 +362,46 @@
     @media(max-width:768px){body{--sb:66px}.logo-text-wrap,.sidebar-search,.nav-label{display:none}.tab-btn{padding:10px;justify-content:center}.sidebar-logo{justify-content:center;padding:0}}
     @media(max-width:700px){.quick-stat-group{grid-template-columns:1fr}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}.chart-bar{grid-template-columns:1fr}.chart-bar__value{text-align:left}.pipeline{grid-template-columns:1fr}.crm-kpis,.crm-filter,.crm-step{grid-template-columns:1fr}.crm-step__count{text-align:left}}
     @media(max-width:650px){.client-form-grid,.client-form-grid--address,.client-form-actions{grid-template-columns:1fr}.client-form-save{width:100%}}
-    @media(max-width:600px){.frow{grid-template-columns:1fr}.mini-bar{grid-template-columns:58px 1fr 76px}}
-    @media(max-width:480px){.coupon-form-grid{grid-template-columns:1fr}}
+    /* ──────── Table Responsiveness ──────── */
+    /* At ≤900px: hide CPF from clientes, wrap action buttons, crm-filter 2 cols */
+    @media(max-width:900px){
+      #tab-clientes .orders-tbl th:nth-child(4),
+      #tab-clientes .orders-tbl td:nth-child(4){display:none}
+      #tab-clientes .orders-tbl td:last-child>div,
+      #tab-cupons .orders-tbl td:last-child>div{flex-wrap:wrap;justify-content:flex-end;gap:4px}
+      .crm-filter{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+    }
+    /* At ≤768px: hide non-essential columns, reduce cell padding */
+    @media(max-width:768px){
+      #tab-pedidos .orders-tbl th:nth-child(3),#tab-pedidos .orders-tbl td:nth-child(3),
+      #tab-pedidos .orders-tbl th:nth-child(4),#tab-pedidos .orders-tbl td:nth-child(4),
+      #tab-pedidos .orders-tbl th:nth-child(6),#tab-pedidos .orders-tbl td:nth-child(6){display:none}
+      .crm-table th:nth-child(4),.crm-table td:nth-child(4),
+      .crm-table th:nth-child(7),.crm-table td:nth-child(7){display:none}
+      #tab-clientes .orders-tbl th:nth-child(5),
+      #tab-clientes .orders-tbl td:nth-child(5){display:none}
+      .orders-tbl th,.orders-tbl td{padding:8px 8px}
+      .crm-table th,.crm-table td{padding:8px 8px}
+    }
+    /* At ≤600px: search full-width, compact filter buttons, frow + mini-bar */
+    @media(max-width:600px){
+      .frow{grid-template-columns:1fr}.mini-bar{grid-template-columns:58px 1fr 76px}
+      .toolbar-search{order:-1;flex-basis:100%;max-width:none}
+      .filter-btn{font-size:11px;padding:5px 8px}
+    }
+    /* At ≤480px: more column hiding, smaller padding, coupon form 1 col */
+    @media(max-width:480px){
+      .coupon-form-grid{grid-template-columns:1fr}
+      #tab-pedidos .orders-tbl th:nth-child(8),
+      #tab-pedidos .orders-tbl td:nth-child(8){display:none}
+      .crm-table th:nth-child(3),.crm-table td:nth-child(3){display:none}
+      #tab-clientes .orders-tbl th:nth-child(2),
+      #tab-clientes .orders-tbl td:nth-child(2){display:none}
+      #tab-cupons .orders-tbl th:nth-child(2),
+      #tab-cupons .orders-tbl td:nth-child(2){display:none}
+      .orders-tbl th,.orders-tbl td{padding:6px 6px;font-size:11px}
+      .crm-table th,.crm-table td{padding:6px 6px;font-size:11px}
+    }
   </style>
 </head>
 <body>
