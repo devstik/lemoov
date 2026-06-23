@@ -91,7 +91,7 @@
       max-width: min(34vw, 560px);
       height: clamp(330px, 72%, 580px);
       margin: auto;
-      object-fit: contain;
+      object-fit: cover;
       object-position: center top;
       filter: contrast(1.05) saturate(0.98);
       z-index: 2;
@@ -648,18 +648,20 @@
           linear-gradient(90deg, rgba(56,56,56,0.42), transparent 24%, transparent 76%, rgba(56,56,56,0.42));
       }
       .catalog-cover__photo {
-        max-width: 90vw;
+        /* max-width must stay above auto-computed width (height × 0.665) to prevent
+           letterboxing: at 390px, max-height≈563px → auto-width≈374px < 120vw=468px ✓ */
+        max-width: 120vw;
         height: clamp(440px, 82%, 720px);
         border-radius: 18px;
       }
       .catalog-cover__slide.is-active .catalog-cover__photo {
-        --scale: 1.05;
-        height: clamp(560px, 94%, 820px);
-        max-width: 102vw;
+        --scale: 1;
+        height: clamp(580px, 96%, 840px);
+        max-width: 120vw;
       }
       .site-banner:hover .catalog-cover__slide.is-active .catalog-cover__photo {
-        --scale: 1.1;
-        height: clamp(590px, 96%, 850px);
+        --scale: 1.04;
+        height: clamp(600px, 98%, 860px);
       }
       .catalog-cover__slide.is-prev .catalog-cover__photo {
         --x: -46vw;
