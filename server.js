@@ -2399,7 +2399,23 @@ app.get('/api/admin/clientes', authRequired, async (req, res) => {
     const [rows] = await mysqlPool.execute(
       'SELECT id, nome, email, telefone, cpf, created_at AS createdAt FROM lemoov_clients ORDER BY created_at DESC LIMIT 2000'
     );
-    return res.json({ ok: true, clientes: rows });
+    // Marca quais clientes têm pelo menos 1 pedido não-cancelado
+    const [orderRows] = await mysqlPool.execute(
+      "SELECT JSON_UNQUOTE(JSON_EXTRACT(data,'$.client_id')) AS cid, JSON_UNQUOTE(JSON_EXTRACT(data,'$.cliente_email')) AS cemail, JSON_UNQUOTE(JSON_EXTRACT(data,'$.status')) AS status FROM lemoov_orders"
+    );
+    const clientsWithOrders = new Set();
+    for (const o of orderRows) {
+      if ((o.status || '').toLowerCase() === 'cancelado') continue;
+      if (o.cid) clientsWithOrders.add(String(o.cid));
+    }
+    // fallback por e-mail para pedidos mais antigos sem client_id
+    const emailMap = Object.fromEntries(rows.map(r => [r.email?.toLowerCase(), String(r.id)]));
+    for (const o of orderRows) {
+      if ((o.status || '').toLowerCase() === 'cancelado') continue;
+      if (o.cemail && emailMap[o.cemail.toLowerCase()]) clientsWithOrders.add(emailMap[o.cemail.toLowerCase()]);
+    }
+    const clientes = rows.map(r => ({ ...r, hasOrders: clientsWithOrders.has(String(r.id)) }));
+    return res.json({ ok: true, clientes });
   } catch (e) {
     console.error('[admin/clientes]', e.message);
     return res.status(500).json({ ok: false, error: 'Erro ao buscar clientes.' });
@@ -2457,6 +2473,32 @@ app.post('/api/admin/clientes/whatsapp-bulk', authRequired, async (req, res) => 
   } catch (e) {
     console.error('[admin/clientes/whatsapp-bulk]', e.message);
     return res.status(500).json({ ok: false, error: 'Erro ao enviar mensagens.' });
+  }
+});
+app.delete('/api/admin/clientes/:id', authRequired, async (req, res) => {
+  try {
+    requireMysqlStorage();
+    await initDatabase();
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: 'ID inválido.' });
+    const [[client]] = await mysqlPool.execute('SELECT id, nome, email FROM lemoov_clients WHERE id = ?', [id]);
+    if (!client) return res.status(404).json({ ok: false, error: 'Cliente não encontrado.' });
+    // Bloqueia exclusão se houver pedido não-cancelado
+    const [orderRows] = await mysqlPool.execute(
+      "SELECT JSON_UNQUOTE(JSON_EXTRACT(data,'$.client_id')) AS cid, JSON_UNQUOTE(JSON_EXTRACT(data,'$.cliente_email')) AS cemail, JSON_UNQUOTE(JSON_EXTRACT(data,'$.status')) AS status FROM lemoov_orders"
+    );
+    const temPedido = orderRows.some(o => {
+      if ((o.status || '').toLowerCase() === 'cancelado') return false;
+      return String(o.cid) === String(id) || (o.cemail && o.cemail.toLowerCase() === (client.email || '').toLowerCase());
+    });
+    if (temPedido) return res.status(409).json({ ok: false, error: 'Cliente possui pedidos e não pode ser excluído.' });
+    // ON DELETE CASCADE remove endereços automaticamente
+    await mysqlPool.execute('DELETE FROM lemoov_clients WHERE id = ?', [id]);
+    console.log(`[admin] cliente #${id} (${client.nome} / ${client.email}) excluído`);
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('[admin/clientes DELETE]', e.message);
+    return res.status(500).json({ ok: false, error: 'Erro ao excluir cliente.' });
   }
 });
 // ─────────────────────────────────────────────────────────────────────────────

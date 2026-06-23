@@ -2283,7 +2283,13 @@ legend {
 }
 .footer__logo {
   max-width: 180px;
-  filter: brightness(0) invert(1);
+  border-radius: 10px;
+}
+.logo a img {
+  max-height: 44px;
+  width: auto;
+  border-radius: 8px;
+  display: block;
 }
 .footer__tagline {
   margin: 0;
