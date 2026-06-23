@@ -571,18 +571,15 @@
       background: linear-gradient(120deg, #A8C63A, #EBD8C7);
       color: #383838;
     }
-    /* FAB radial - fundo branco combina com a imagem do ícone */
+    /* FAB radial - catalog dark theme */
     .fab-radial__trigger {
-      background: #ffffff;
-      border-color: rgba(168,198,58,0.65);
-      box-shadow: 0 10px 28px rgba(56,56,56,0.28);
+      background: rgba(56,56,56,0.92);
+      border-color: rgba(168,198,58,0.45);
+      box-shadow: 0 10px 28px rgba(56,56,56,0.32);
     }
     .fab-radial-root[data-open="true"] .fab-radial__trigger {
-      background: #383838;
-      border-color: rgba(168,198,58,0.5);
-    }
-    .fab-radial__trigger::after {
-      color: #EBD8C7;
+      background: linear-gradient(130deg, #A8C63A, #6F8522);
+      border-color: transparent;
     }
     .catalog-landing .modal::backdrop {
       background: rgba(56,56,56,0.72);
@@ -932,14 +929,25 @@
   <!-- FAB Radial Menu -->
   <div class="fab-radial-root" id="fabRadialRoot" data-open="false">
     <button class="fab-radial__trigger" id="fabTrigger" type="button" aria-label="Menu rápido" aria-expanded="false">
-      <!-- Logo icon: salve em image/logo_lemoov_icon.png com fundo transparente -->
-      <img class="fab-logo-svg" src="image/logo_lemoov_icon.png" alt="Lemoov" loading="lazy"
-           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-      <!-- fallback enquanto o arquivo não existe -->
-      <svg style="display:none" class="fab-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 56" fill="none" aria-hidden="true">
-        <circle cx="26" cy="9" r="4" stroke="#A8C63A" stroke-width="2.8"/>
-        <path stroke="#A8C63A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"
-          d="M26 52C15 46 3 36 3 22C3 10 8 4 16 6C20 6.5 24 11 26 17C28 11 32 6.5 36 6C44 4 49 10 49 22C49 36 37 46 26 52Z"/>
+      <svg class="fab-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 70" aria-hidden="true">
+        <!-- cabeça -->
+        <circle cx="30" cy="8" r="5.5" fill="#A8C63A"/>
+        <!-- coração com loop interno no lado esquerdo (fill evenodd cria o furo) -->
+        <path fill="#A8C63A" fill-rule="evenodd"
+          d="M30 18
+             C27 11 17 9 11 14
+             C4 19 2 30 5 39
+             C8 48 16 56 24 61
+             C27 63 30 65 30 65
+             C30 65 33 63 36 61
+             C44 56 52 48 55 39
+             C58 30 56 19 49 14
+             C43 9 33 11 30 18Z
+             M23 32
+             C19 38 18 48 21 56
+             C23 61 27 61 29 57
+             C30 53 28 43 27 37
+             C26 31 23 27 23 32Z"/>
       </svg>
     </button>
     <div class="fab-radial__items" aria-hidden="true">
