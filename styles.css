@@ -1513,8 +1513,8 @@ img, video {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   z-index: 20;
 }
 .fab-radial__trigger {
@@ -1534,8 +1534,8 @@ img, video {
   animation: fab-hint 2.2s ease-in-out 1.5s 3;
 }
 .fab-logo-svg {
-  width: 130px;
-  height: 130px;
+  width: 180px;
+  height: 180px;
   position: relative;
   z-index: 1;
   transition: opacity 0.22s ease, transform 0.3s ease;
