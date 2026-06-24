@@ -6029,24 +6029,34 @@ function openVideoPopup(src, title) {
   if (!popup || !player) return;
   const absSrc = src.startsWith('/') || src.startsWith('http') ? src : '/' + src;
   const errEl = document.getElementById("videoPopupError");
+  const spinner = document.getElementById("videoPopupSpinner");
   if (errEl) errEl.style.display = "none";
   player.style.display = "block";
+  if (spinner) spinner.style.display = "flex";
   player.onerror = null;
+  player.onplaying = null;
+  player.onwaiting = null;
   player.src = absSrc;
   player.onerror = () => {
     player.onerror = null;
     player.style.display = "none";
+    if (spinner) spinner.style.display = "none";
     if (errEl) errEl.style.display = "block";
   };
+  player.onplaying = () => { if (spinner) spinner.style.display = "none"; };
+  player.onwaiting = () => { if (spinner) spinner.style.display = "flex"; };
   if (titleEl) titleEl.textContent = title || "Vídeo do produto";
   popup.classList.add("open");
   document.body.style.overflow = "hidden";
   function close() {
     popup.classList.remove("open");
     player.onerror = null;
+    player.onplaying = null;
+    player.onwaiting = null;
     player.pause();
     player.src = "";
     player.style.display = "block";
+    if (spinner) spinner.style.display = "none";
     if (errEl) errEl.style.display = "none";
     document.body.style.overflow = "";
     closeBtn.onclick = null;
