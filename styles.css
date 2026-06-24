@@ -1534,11 +1534,12 @@ img, video {
   animation: fab-hint 2.2s ease-in-out 1.5s 3;
 }
 .fab-logo-svg {
-  width: 54px;
-  height: 54px;
+  width: 130px;
+  height: 130px;
   position: relative;
   z-index: 1;
   transition: opacity 0.22s ease, transform 0.3s ease;
+  flex-shrink: 0;
 }
 .fab-radial__trigger::after {
   content: '✕';
