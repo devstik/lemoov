@@ -1534,8 +1534,8 @@ img, video {
   animation: fab-hint 2.2s ease-in-out 1.5s 3;
 }
 .fab-logo-svg {
-  width: 120px;
-  height: 120px;
+  width: 145px;
+  height: 145px;
   object-fit: contain;
   position: relative;
   z-index: 1;
