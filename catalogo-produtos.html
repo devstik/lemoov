@@ -1085,7 +1085,8 @@
         <span class="video-popup__title" id="videoPopupTitle">Vídeo do produto</span>
         <button class="video-popup__close" id="videoPopupClose" aria-label="Fechar">&#x2715;</button>
       </div>
-      <video id="videoPopupPlayer" playsinline autoplay loop muted controls></video>
+      <video id="videoPopupPlayer" playsinline autoplay loop muted controls controlsList="nodownload nofullscreen" oncontextmenu="return false"></video>
+      <div id="videoPopupError" style="display:none;color:#EBD8C7;text-align:center;padding:28px 20px;font-size:.85rem;line-height:1.6;">Não foi possível carregar o vídeo.<br>Selecione o arquivo novamente no painel admin.</div>
     </div>
   </div>
 

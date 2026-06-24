@@ -6028,15 +6028,26 @@ function openVideoPopup(src, title) {
   const titleEl = document.getElementById("videoPopupTitle");
   if (!popup || !player) return;
   const absSrc = src.startsWith('/') || src.startsWith('http') ? src : '/' + src;
+  const errEl = document.getElementById("videoPopupError");
+  if (errEl) errEl.style.display = "none";
+  player.style.display = "block";
+  player.onerror = null;
   player.src = absSrc;
-  player.onerror = () => { player.onerror = null; player.insertAdjacentHTML('afterend','<p style="color:#EBD8C7;text-align:center;padding:24px;font-size:.85rem">Não foi possível carregar o vídeo.<br>Reenvie o vídeo pelo painel admin.</p>'); };
+  player.onerror = () => {
+    player.onerror = null;
+    player.style.display = "none";
+    if (errEl) errEl.style.display = "block";
+  };
   if (titleEl) titleEl.textContent = title || "Vídeo do produto";
   popup.classList.add("open");
   document.body.style.overflow = "hidden";
   function close() {
     popup.classList.remove("open");
+    player.onerror = null;
     player.pause();
     player.src = "";
+    player.style.display = "block";
+    if (errEl) errEl.style.display = "none";
     document.body.style.overflow = "";
     popup.onclick = null;
     closeBtn.onclick = null;
