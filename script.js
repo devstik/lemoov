@@ -6049,11 +6049,9 @@ function openVideoPopup(src, title) {
     player.style.display = "block";
     if (errEl) errEl.style.display = "none";
     document.body.style.overflow = "";
-    popup.onclick = null;
     closeBtn.onclick = null;
   }
   closeBtn.onclick = close;
-  popup.onclick = (e) => { if (e.target === popup) close(); };
 }
 
 function showAppMessage(message, options = {}) {
