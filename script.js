@@ -6027,7 +6027,9 @@ function openVideoPopup(src, title) {
   const closeBtn = document.getElementById("videoPopupClose");
   const titleEl = document.getElementById("videoPopupTitle");
   if (!popup || !player) return;
-  player.src = src;
+  const absSrc = src.startsWith('/') || src.startsWith('http') ? src : '/' + src;
+  player.src = absSrc;
+  player.onerror = () => { player.onerror = null; player.insertAdjacentHTML('afterend','<p style="color:#EBD8C7;text-align:center;padding:24px;font-size:.85rem">Não foi possível carregar o vídeo.<br>Reenvie o vídeo pelo painel admin.</p>'); };
   if (titleEl) titleEl.textContent = title || "Vídeo do produto";
   popup.classList.add("open");
   document.body.style.overflow = "hidden";

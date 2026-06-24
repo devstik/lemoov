@@ -2767,6 +2767,18 @@ app.post('/api/admin/upload-video', authRequired, uploadVideo.single('file'), (r
   res.json({ ok: true, path: relPath });
 });
 
+app.get('/api/admin/videos', authRequired, (req, res) => {
+  try {
+    const files = fs.readdirSync(VIDEO_DIR)
+      .filter(f => /\.(mp4|webm|mov)$/i.test(f))
+      .sort()
+      .map(f => ({ name: f, path: 'video/' + f }));
+    res.json({ ok: true, files });
+  } catch (e) {
+    res.json({ ok: true, files: [] });
+  }
+});
+
 app.put('/api/admin/produtos/:id', authRequired, async (req, res) => {
   try {
     const id = Number(req.params.id);

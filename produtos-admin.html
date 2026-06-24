@@ -1227,7 +1227,10 @@ function renderProdForm(p){
         <div class="video-upload-box">
           <label class="video-upload-label" for="f_video_file">&#9654; Enviar vídeo</label>
           <input type="file" id="f_video_file" accept="video/mp4,video/webm,.mp4,.webm,.mov">
-          <span class="video-current" id="f_video_name">Nenhum vídeo</span>
+          <select id="f_video_select" class="fc" style="flex:1;min-width:0;font-size:12px;padding:5px 8px;height:32px;">
+            <option value="">— ou selecionar existente —</option>
+          </select>
+          <span class="video-current" id="f_video_name" style="display:none">Nenhum vídeo</span>
           <button type="button" class="video-remove" id="f_video_remove" style="display:none">✕ Remover</button>
         </div>
         <input type="hidden" id="f_video_path">
@@ -1279,13 +1282,27 @@ function renderProdForm(p){
   const fVideoName=$('f_video_name');
   const fVideoRemove=$('f_video_remove');
   const fVideoFile=$('f_video_file');
+  const fVideoSelect=$('f_video_select');
+  // Carregar lista de vídeos existentes
+  fetch('/api/admin/videos').then(r=>r.json()).then(d=>{
+    if(!d?.files) return;
+    d.files.forEach(f=>{
+      const opt=document.createElement('option');
+      opt.value=f.path; opt.textContent=f.name;
+      fVideoSelect.appendChild(opt);
+    });
+    if(fVideoPath.value) fVideoSelect.value=fVideoPath.value;
+  }).catch(()=>{});
   function setVideo(path){
     fVideoPath.value=path||'';
     fVideoName.textContent=path?path.split('/').pop():'Nenhum vídeo';
+    fVideoName.style.display=path?'':'none';
     fVideoRemove.style.display=path?'':'none';
+    if(fVideoSelect) fVideoSelect.value=path||'';
   }
   setVideo(p?.video||'');
-  fVideoRemove.addEventListener('click',()=>{ fVideoFile.value=''; setVideo(''); });
+  fVideoSelect.addEventListener('change',()=>{ setVideo(fVideoSelect.value); });
+  fVideoRemove.addEventListener('click',()=>{ fVideoFile.value=''; fVideoSelect.value=''; setVideo(''); });
   fVideoFile.addEventListener('change',async()=>{
     const file=fVideoFile.files[0]; if(!file) return;
     fVideoName.textContent='Enviando…';
