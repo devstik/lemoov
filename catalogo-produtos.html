@@ -448,6 +448,29 @@
     .catalog-landing .product-card__photo-hint[data-visible="true"] {
       display: inline-flex;
     }
+    .product-card__video-badge {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30,30,30,.78);
+      color: #A8C63A;
+      border: 1.5px solid rgba(168,198,58,.45);
+      border-radius: 20px;
+      padding: 5px 13px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      backdrop-filter: blur(4px);
+      transition: background .15s, color .15s;
+      font-family: inherit;
+      letter-spacing: .02em;
+    }
+    .product-card__video-badge:hover {
+      background: rgba(168,198,58,.9);
+      color: #383838;
+    }
     .catalog-landing .product-card__media::after {
       content: "";
       display: none;
@@ -955,6 +978,14 @@
     </div>
   </div>
   <div class="fab-radial__overlay" id="fabOverlay"></div>
+
+  <!-- Popup de vídeo do produto -->
+  <div id="videoPopup" role="dialog" aria-modal="true" aria-label="Vídeo do produto" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(30,30,30,.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+    <div style="position:relative;width:min(92vw,480px);background:#000;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6);">
+      <button id="videoPopupClose" aria-label="Fechar vídeo" style="position:absolute;top:10px;right:10px;z-index:2;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;backdrop-filter:blur(4px);">&#x2715;</button>
+      <video id="videoPopupPlayer" playsinline autoplay loop muted controls style="width:100%;display:block;max-height:80vh;object-fit:contain;"></video>
+    </div>
+  </div>
 
   <script src="script.js?v=24"></script>
 </body>

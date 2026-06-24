@@ -132,6 +132,13 @@
     .img-preview{width:54px;height:54px;border-radius:8px;object-fit:cover;border:1.5px solid var(--brd);display:block;background:var(--bg);cursor:pointer}
     .img-placeholder{width:54px;height:54px;border-radius:8px;border:2px dashed var(--brd2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:10px;cursor:pointer;background:var(--bg);transition:all .15s}
     .img-placeholder:hover{border-color:var(--p);background:var(--pl);color:var(--p)}
+    .video-upload-box{border:2px dashed var(--brd2);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;background:var(--bg);transition:border-color .15s}
+    .video-upload-box:hover{border-color:var(--p)}
+    .video-upload-box input[type="file"]{display:none}
+    .video-upload-label{font-size:12px;font-weight:600;color:var(--p);cursor:pointer;white-space:nowrap}
+    .video-upload-label:hover{text-decoration:underline}
+    .video-current{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+    .video-remove{font-size:11px;color:var(--rose);cursor:pointer;font-weight:600;white-space:nowrap;background:none;border:none;padding:0;font-family:inherit}
     .combo-derived-note{font-size:11px;color:var(--muted);margin:0 0 8px}
     .combo-color-swatches{display:flex;gap:8px;flex-wrap:wrap;min-height:38px;align-items:center}
     .combo-color-swatch{width:34px;height:34px;border-radius:999px;border:2px solid #fff;box-shadow:0 0 0 1.5px var(--brd2);background:var(--tone,#e2e8f0);cursor:pointer;padding:0;position:relative;transition:transform .15s,box-shadow .15s}
@@ -1215,6 +1222,16 @@ function renderProdForm(p){
         </div>
       </div>
       <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="f_desc"></textarea></div>
+      <div class="fg" style="margin-top:10px">
+        <label class="fl">Vídeo do produto</label>
+        <div class="video-upload-box">
+          <label class="video-upload-label" for="f_video_file">&#9654; Enviar vídeo</label>
+          <input type="file" id="f_video_file" accept="video/mp4,video/webm,.mp4,.webm,.mov">
+          <span class="video-current" id="f_video_name">Nenhum vídeo</span>
+          <button type="button" class="video-remove" id="f_video_remove" style="display:none">✕ Remover</button>
+        </div>
+        <input type="hidden" id="f_video_path">
+      </div>
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <span style="font-size:11px;font-weight:600;text-transform:uppercase;color:#475569;letter-spacing:.04em">Cores / Variações</span>
@@ -1256,6 +1273,31 @@ function renderProdForm(p){
   fAtivo.onclick=()=>setFAtivo(fAtivo.dataset.state!=='on');
   fLancamento.onclick=()=>setFLancamento(fLancamento.dataset.state!=='on');
   $('f_desc').value=descTxt;
+
+  // Vídeo
+  const fVideoPath=$('f_video_path');
+  const fVideoName=$('f_video_name');
+  const fVideoRemove=$('f_video_remove');
+  const fVideoFile=$('f_video_file');
+  function setVideo(path){
+    fVideoPath.value=path||'';
+    fVideoName.textContent=path?path.split('/').pop():'Nenhum vídeo';
+    fVideoRemove.style.display=path?'':'none';
+  }
+  setVideo(p?.video||'');
+  fVideoRemove.addEventListener('click',()=>{ fVideoFile.value=''; setVideo(''); });
+  fVideoFile.addEventListener('change',async()=>{
+    const file=fVideoFile.files[0]; if(!file) return;
+    fVideoName.textContent='Enviando…';
+    try{
+      const fd=new FormData(); fd.append('file',file);
+      const r=await fetch('/api/admin/upload-video',{method:'POST',body:fd});
+      if(r.status===401){redirect401();return;}
+      if(!r.ok) throw new Error('Falha no upload');
+      const d=await r.json();
+      setVideo(d.path);
+    }catch(e){ toast(e.message,'error'); fVideoName.textContent=fVideoPath.value?fVideoPath.value.split('/').pop():'Nenhum vídeo'; }
+  });
 
   const cores=Array.isArray(p?.cores)?p.cores:[];
   cores.forEach(c=>addColorRow(c));
@@ -1464,6 +1506,7 @@ async function salvarProd(id){
       preco:Number($('f_preco').value), precoPromo:$('f_promo').value?Number($('f_promo').value):null,
       tamanhos, soldOut:$('f_soldout').checked, ativo:$('f_ativo')?.dataset.state!=='off',
       lancamento:$('f_lancamento')?.dataset.state==='on',
+      video:$('f_video_path')?.value||undefined,
       desc:descTxt?{texto:descTxt}:undefined, cores
     };
     if(!payload.nome||!payload.categoria||!payload.preco) throw new Error('Preencha nome, categoria e preço.');

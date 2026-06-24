@@ -2565,6 +2565,15 @@ function renderGrid(){
     updatePhotoHint();
     refreshAddButton();
 
+    // Badge "Ver vídeo"
+    if (p.video) {
+      const vbtn = document.createElement("button");
+      vbtn.className = "product-card__video-badge";
+      vbtn.textContent = "▶ Ver vídeo";
+      artigo.querySelector(".product-card__media").appendChild(vbtn);
+      vbtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openVideoPopup(p.video); });
+    }
+
     // Botão "Adicionar"
     addBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -6006,6 +6015,24 @@ function showPaymentTransition(){
     <div class="pt-msg">Redirecionando para pagamento seguro…</div>
   `;
   document.body.appendChild(div);
+}
+
+function openVideoPopup(src) {
+  const popup = document.getElementById("videoPopup");
+  const player = document.getElementById("videoPopupPlayer");
+  const closeBtn = document.getElementById("videoPopupClose");
+  if (!popup || !player) return;
+  player.src = src;
+  popup.style.display = "flex";
+  document.body.style.overflow = "hidden";
+  function close() {
+    popup.style.display = "none";
+    player.pause();
+    player.src = "";
+    document.body.style.overflow = "";
+  }
+  closeBtn.onclick = close;
+  popup.onclick = (e) => { if (e.target === popup) close(); };
 }
 
 function showAppMessage(message, options = {}) {

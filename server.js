@@ -123,6 +123,8 @@ const VERIFY_CODE_TTL_MS = 15 * 60 * 1000;
 
 const IMAGE_DIR = path.join(__dirname, 'image');
 if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
+const VIDEO_DIR = path.join(__dirname, 'video');
+if (!fs.existsSync(VIDEO_DIR)) fs.mkdirSync(VIDEO_DIR, { recursive: true });
 const UPLOAD_PUBLIC_PREFIX = (process.env.UPLOAD_PUBLIC_PREFIX || 'uploads').replace(/^\/+|\/+$/g, '');
 // Default: one level above __dirname (outside the nodejs/ deploy folder) so uploads
 // survive git-based redeploys on Hostinger. Set UPLOAD_DIR in .env to override.
@@ -1059,6 +1061,21 @@ const upload = multer({
     cb(ok ? null : new Error('Tipo inválido'), ok);
   },
   limits: { fileSize: 6 * 1024 * 1024 }
+});
+const uploadVideo = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, VIDEO_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      const base = path.basename(file.originalname, ext).replace(/[^\w\-]+/g, '_');
+      cb(null, `${Date.now()}_${base}${ext}`);
+    }
+  }),
+  fileFilter: (_req, file, cb) => {
+    const ok = /video\/(mp4|webm|quicktime)/.test(file.mimetype) || /\.(mp4|webm|mov)$/i.test(file.originalname);
+    cb(ok ? null : new Error('Tipo inválido — use MP4 ou WebM'), ok);
+  },
+  limits: { fileSize: 50 * 1024 * 1024 }
 });
 
 function parseCookies(req) {
@@ -2741,6 +2758,12 @@ app.post('/api/admin/produtos', authRequired, async (req, res) => {
 app.post('/api/admin/upload', authRequired, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false });
   const relPath = path.join(UPLOAD_PUBLIC_PREFIX, req.file.filename).replace(/\\/g, '/');
+  res.json({ ok: true, path: relPath });
+});
+
+app.post('/api/admin/upload-video', authRequired, uploadVideo.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false });
+  const relPath = ('video/' + req.file.filename).replace(/\\/g, '/');
   res.json({ ok: true, path: relPath });
 });
 
