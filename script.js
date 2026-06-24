@@ -2569,9 +2569,13 @@ function renderGrid(){
     if (p.video) {
       const vbtn = document.createElement("button");
       vbtn.className = "product-card__video-badge";
-      vbtn.textContent = "▶ Ver vídeo";
+      vbtn.setAttribute("aria-label", "Ver vídeo do produto");
       artigo.querySelector(".product-card__media").appendChild(vbtn);
-      vbtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); openVideoPopup(p.video); });
+      vbtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openVideoPopup(p.video, getDisplayName(p, selectedColorIndex));
+      });
     }
 
     // Botão "Adicionar"
@@ -6017,19 +6021,23 @@ function showPaymentTransition(){
   document.body.appendChild(div);
 }
 
-function openVideoPopup(src) {
+function openVideoPopup(src, title) {
   const popup = document.getElementById("videoPopup");
   const player = document.getElementById("videoPopupPlayer");
   const closeBtn = document.getElementById("videoPopupClose");
+  const titleEl = document.getElementById("videoPopupTitle");
   if (!popup || !player) return;
   player.src = src;
-  popup.style.display = "flex";
+  if (titleEl) titleEl.textContent = title || "Vídeo do produto";
+  popup.classList.add("open");
   document.body.style.overflow = "hidden";
   function close() {
-    popup.style.display = "none";
+    popup.classList.remove("open");
     player.pause();
     player.src = "";
     document.body.style.overflow = "";
+    popup.onclick = null;
+    closeBtn.onclick = null;
   }
   closeBtn.onclick = close;
   popup.onclick = (e) => { if (e.target === popup) close(); };
