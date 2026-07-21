@@ -132,6 +132,10 @@
     .img-preview{width:54px;height:54px;border-radius:8px;object-fit:cover;border:1.5px solid var(--brd);display:block;background:var(--bg);cursor:pointer}
     .img-placeholder{width:54px;height:54px;border-radius:8px;border:2px dashed var(--brd2);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:10px;cursor:pointer;background:var(--bg);transition:all .15s}
     .img-placeholder:hover{border-color:var(--p);background:var(--pl);color:var(--p)}
+    .img-slot--free{position:relative}
+    .img-slot--free .img-preview{width:64px;height:64px}
+    .img-slot-remove{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ef4444;color:#fff;border:none;font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+    .img-slot--free .img-placeholder{width:64px;height:64px}
     .video-upload-box{border:2px dashed var(--brd2);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;background:var(--bg);transition:border-color .15s}
     .video-upload-box:hover{border-color:var(--p)}
     .video-upload-box input[type="file"]{display:none}
@@ -2016,6 +2020,19 @@ function renderAtacadoForm(p){
         </div>
       </div>
       <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="a_desc"></textarea></div>
+      <div class="fg" style="margin-top:10px">
+        <label class="fl">Vídeo do produto</label>
+        <div class="video-upload-box">
+          <label class="video-upload-label" for="a_video_file">&#9654; Enviar vídeo</label>
+          <input type="file" id="a_video_file" accept="video/mp4,video/webm,.mp4,.webm,.mov">
+          <select id="a_video_select" class="fc" style="flex:1;min-width:0;font-size:12px;padding:5px 8px;height:32px;">
+            <option value="">— ou selecionar existente —</option>
+          </select>
+          <span class="video-current" id="a_video_name" style="display:none">Nenhum vídeo</span>
+          <button type="button" class="video-remove" id="a_video_remove" style="display:none">✕ Remover</button>
+        </div>
+        <input type="hidden" id="a_video_path">
+      </div>
       <div style="margin-top:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <span style="font-size:11px;font-weight:600;text-transform:uppercase;color:#475569;letter-spacing:.04em">Cores / Variações</span>
@@ -2043,6 +2060,44 @@ function renderAtacadoForm(p){
   setAAtivo(p?.ativo!==false);
   aAtivo.onclick=()=>setAAtivo(aAtivo.dataset.state!=='on');
 
+  const aVideoPath=$('a_video_path');
+  const aVideoName=$('a_video_name');
+  const aVideoRemove=$('a_video_remove');
+  const aVideoFile=$('a_video_file');
+  const aVideoSelect=$('a_video_select');
+  aVideoPath.value=p?.video||'';
+  fetch('/api/admin/videos').then(r=>r.json()).then(d=>{
+    if(!d?.files) return;
+    d.files.forEach(f=>{
+      const opt=document.createElement('option');
+      opt.value=f.path; opt.textContent=f.name;
+      aVideoSelect.appendChild(opt);
+    });
+    if(aVideoPath.value) aVideoSelect.value=aVideoPath.value;
+  }).catch(()=>{});
+  function setAVideo(path){
+    aVideoPath.value=path||'';
+    aVideoName.textContent=path?path.split('/').pop():'Nenhum vídeo';
+    aVideoName.style.display=path?'':'none';
+    aVideoRemove.style.display=path?'':'none';
+    if(aVideoSelect) aVideoSelect.value=path||'';
+  }
+  setAVideo(p?.video||'');
+  aVideoSelect.addEventListener('change',()=>{ setAVideo(aVideoSelect.value); });
+  aVideoRemove.addEventListener('click',()=>{ aVideoFile.value=''; aVideoSelect.value=''; setAVideo(''); });
+  aVideoFile.addEventListener('change',async()=>{
+    const file=aVideoFile.files[0]; if(!file) return;
+    aVideoName.textContent='Enviando…'; aVideoName.style.display='';
+    try{
+      const fd=new FormData(); fd.append('file',file);
+      const r=await fetch('/api/admin/upload-video',{method:'POST',body:fd});
+      if(r.status===401){redirect401();return;}
+      if(!r.ok) throw new Error('Falha no upload');
+      const d=await r.json();
+      setAVideo(d.path);
+    }catch(e){ toast(e.message,'error'); aVideoName.textContent=aVideoPath.value?aVideoPath.value.split('/').pop():'Nenhum vídeo'; }
+  });
+
   const cores=Array.isArray(p?.cores)?p.cores:[];
   cores.forEach(c=>addAtacadoColorRow(c));
   if(!cores.length) addAtacadoColorRow({});
@@ -2058,9 +2113,8 @@ function addAtacadoColorRow(cor={}){
   const list=$('atacadoColorsList');
   const div=document.createElement('div');
   div.className='color-row';
-  const imgs=Array.isArray(cor.imagens)?cor.imagens.filter(Boolean):[];
-  const i1=cor.imagem||imgs[0]||'', i2=imgs[1]||'', i3=imgs[2]||'';
-  div.dataset.i1=i1; div.dataset.i2=i2; div.dataset.i3=i3;
+  const imgs=Array.isArray(cor.imagens)?cor.imagens.filter(Boolean):(cor.imagem?[cor.imagem]:[]);
+  div._photos=imgs.map(path=>({type:'existing',path}));
 
   div.innerHTML=`
     <div class="color-row-head">
@@ -2079,15 +2133,7 @@ function addAtacadoColorRow(cor={}){
         <div class="color-palette" data-cw-palette aria-label="Paleta de tons"></div>
       </div>
     </div>
-    <div class="color-images">
-      ${[['1','Principal'],['2','Foto 2'],['3','Foto 3']].map(([idx,lbl])=>`
-        <div class="img-slot">
-          <div class="img-placeholder" data-ph="${idx}" id="aph_${cid}_${idx}">+ Foto</div>
-          <img class="img-preview" data-pv="${idx}" style="display:none" />
-          <input type="file" id="acf_${cid}_${idx}" data-cf="${idx}" accept="image/jpeg,image/png" style="display:none" />
-          <label class="img-slot-label" for="acf_${cid}_${idx}">${lbl}</label>
-        </div>`).join('')}
-    </div>
+    <div class="color-images" data-photos></div>
     <div style="display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap">
       <div class="toggle-wrap" data-cativo data-state="on" role="switch" aria-checked="true">
         <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -2143,29 +2189,40 @@ function addAtacadoColorRow(cor={}){
     if(div.dataset.swatchManual!=='1') setSwatchValue(defaultSwatchForName(nameInput.value));
   });
 
-  [[i1,'1'],[i2,'2'],[i3,'3']].forEach(([src,idx])=>{
-    if(!src) return;
-    const ph=div.querySelector(`[data-ph="${idx}"]`);
-    const pv=div.querySelector(`[data-pv="${idx}"]`);
-    const fullSrc=src.startsWith('http')?src:'/'+src;
-    pv.src=fullSrc; pv.style.display=''; if(ph) ph.style.display='none';
-  });
-
-  div.querySelectorAll('[data-cf]').forEach(inp=>{
-    const idx=inp.dataset.cf;
-    const ph=div.querySelector(`[data-ph="${idx}"]`);
-    const pv=div.querySelector(`[data-pv="${idx}"]`);
-    if(ph) ph.addEventListener('click',()=>inp.click());
-    pv.addEventListener('click',()=>inp.click());
-    inp.addEventListener('change',()=>{
-      const f=inp.files?.[0]; if(!f) return;
-      const url=URL.createObjectURL(f);
-      pv.src=url; pv.style.display=''; if(ph) ph.style.display='none';
-    });
-  });
+  renderAtacadoPhotos(div,cid);
 
   div.querySelector('[data-rm]').addEventListener('click',()=>div.remove());
   list.appendChild(div);
+}
+
+function renderAtacadoPhotos(div,cid){
+  const wrap=div.querySelector('[data-photos]');
+  wrap.innerHTML=div._photos.map((ph,i)=>{
+    const src=ph.type==='existing'?(ph.path.startsWith('http')?ph.path:'/'+ph.path):ph.previewUrl;
+    return `<div class="img-slot img-slot--free">
+      <img class="img-preview" src="${src}" />
+      <button type="button" class="img-slot-remove" data-photo-rm="${i}" title="Remover foto">✕</button>
+    </div>`;
+  }).join('')+`
+    <div class="img-slot img-slot--free">
+      <div class="img-placeholder" data-photo-add>+ Foto</div>
+      <input type="file" id="acf_${cid}_add" accept="image/jpeg,image/png" multiple style="display:none" />
+    </div>`;
+
+  const addInput=wrap.querySelector(`#acf_${cid}_add`);
+  wrap.querySelector('[data-photo-add]').addEventListener('click',()=>addInput.click());
+  addInput.addEventListener('change',()=>{
+    Array.from(addInput.files||[]).forEach(file=>{
+      div._photos.push({type:'new',file,previewUrl:URL.createObjectURL(file)});
+    });
+    renderAtacadoPhotos(div,cid);
+  });
+  wrap.querySelectorAll('[data-photo-rm]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      div._photos.splice(Number(btn.dataset.photoRm),1);
+      renderAtacadoPhotos(div,cid);
+    });
+  });
 }
 
 async function uploadAtacadoImg(file){
@@ -2185,12 +2242,11 @@ async function buildAtacadoCores(){
     const nome=row.querySelector('[data-cn]').value.trim();
     const swatch=row.querySelector('[data-cw]')?.value || defaultSwatchForName(nome);
     const ativo=row.querySelector('[data-cativo]')?.dataset.state!=='off';
-    let i1=row.dataset.i1||'', i2=row.dataset.i2||'', i3=row.dataset.i3||'';
-    for(const [idx,setter] of [['1',v=>i1=v],['2',v=>i2=v],['3',v=>i3=v]]){
-      const inp=row.querySelector(`[data-cf="${idx}"]`);
-      if(inp?.files?.[0]){ const p=await uploadAtacadoImg(inp.files[0]); setter(p); }
+    const imagens=[];
+    for(const ph of (row._photos||[])){
+      if(ph.type==='existing') imagens.push(ph.path);
+      else imagens.push(await uploadAtacadoImg(ph.file));
     }
-    const imagens=[i1,i2,i3].filter(Boolean);
     if(!nome&&!imagens.length) continue;
     cores.push({nome,swatch:isHexColor(swatch)?swatch.toLowerCase():defaultSwatchForName(nome),imagem:imagens[0]||'',imagens,ativo});
   }
@@ -2206,6 +2262,7 @@ async function salvarAtacado(id){
       preco:$('a_preco').value?Number($('a_preco').value):null,
       ativo:$('a_ativo')?.dataset.state!=='off',
       descricao:($('a_desc').value||'').trim(),
+      video:$('a_video_path')?.value||undefined,
       cores
     };
     if(!payload.nome) throw new Error('Preencha o nome do produto.');

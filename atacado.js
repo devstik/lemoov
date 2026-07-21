@@ -16,6 +16,8 @@
   let buscaAtual = "";
   let modalProduto = null;
   let modalCorIndex = 0;
+  let modalMediaIndex = 0;
+  let lightboxOpen = false;
   let cart = loadCart();
 
   function loadCart() {
@@ -46,17 +48,29 @@
   function getCoresAtivas(p) {
     return Array.isArray(p.cores) ? p.cores.filter((c) => c.ativo !== false) : [];
   }
+  function resolvePath(src) {
+    if (!src) return "";
+    return src.startsWith("http") ? src : "/" + src;
+  }
   function getImagemProduto(p, corIndex = 0) {
     const cores = getCoresAtivas(p);
     const c = cores[corIndex] || cores[0];
     const img = c?.imagens?.[0] || c?.imagem || "";
-    if (!img) return "";
-    return img.startsWith("http") ? img : "/" + img;
+    return resolvePath(img);
   }
   function getImagemAbsoluta(p, corIndex = 0) {
     const src = getImagemProduto(p, corIndex);
     if (!src) return "";
     return src.startsWith("http") ? src : `${location.origin}${src}`;
+  }
+  // Fotos da cor selecionada + vídeo do produto (se houver), na ordem em que aparecem na galeria.
+  function getMediaList(p, corIndex = 0) {
+    const cores = getCoresAtivas(p);
+    const c = cores[corIndex] || cores[0];
+    const imagens = Array.isArray(c?.imagens) && c.imagens.length ? c.imagens : [c?.imagem].filter(Boolean);
+    const media = imagens.filter(Boolean).map((src) => ({ type: "image", src: resolvePath(src) }));
+    if (p.video) media.push({ type: "video", src: resolvePath(p.video) });
+    return media;
   }
 
   function matchesSearch(p, termo) {
@@ -103,6 +117,12 @@
     grid.innerHTML = lista.map((p, i) => {
       const img = getImagemProduto(p, 0);
       const cores = getCoresAtivas(p);
+      const media = getMediaList(p, 0);
+      const photoCount = media.filter((m) => m.type === "image").length;
+      const hasVideo = media.some((m) => m.type === "video");
+      const hintParts = [];
+      if (photoCount > 1) hintParts.push(`<i class="fas fa-images" aria-hidden="true"></i> ${photoCount}`);
+      if (hasVideo) hintParts.push(`<i class="fas fa-video" aria-hidden="true"></i>`);
       const precoHtml = p.preco
         ? `<span class="atacado-card__price">${formatBRL(p.preco)}</span>`
         : `<span class="atacado-card__price atacado-card__price--consult">Sob consulta</span>`;
@@ -111,6 +131,7 @@
           <div class="atacado-card__media">
             ${img ? `<img src="${escapeHTML(img)}" alt="${escapeHTML(p.nome)}" loading="lazy" decoding="async">`
                   : `<div class="atacado-card__noimg">Sem foto</div>`}
+            ${hintParts.length ? `<span class="atacado-card__hint">${hintParts.join(" ")}</span>` : ""}
           </div>
           <div class="atacado-card__info">
             <h3 class="atacado-card__name">${escapeHTML(p.nome)}</h3>
@@ -158,6 +179,7 @@
   function openModal(p) {
     modalProduto = p;
     modalCorIndex = 0;
+    modalMediaIndex = 0;
     renderModal();
     const modal = el("#atacadoModal");
     if (modal && typeof modal.showModal === "function") modal.showModal();
@@ -166,6 +188,7 @@
     const modal = el("#atacadoModal");
     if (modal && typeof modal.close === "function") modal.close();
     modalProduto = null;
+    if (lightboxOpen) closeLightbox();
   }
   function renderModal() {
     if (!modalProduto) return;
@@ -175,10 +198,7 @@
     el("#atacadoModalNome").textContent = p.nome;
     el("#atacadoModalDesc").textContent = p.descricao || "";
     el("#atacadoModalPreco").textContent = p.preco ? formatBRL(p.preco) : "Preço sob consulta";
-    const img = el("#atacadoModalImg");
-    const src = getImagemProduto(p, modalCorIndex);
-    img.src = src || "";
-    img.alt = p.nome;
+    renderGallery();
 
     const colorsWrap = el("#atacadoModalColors");
     colorsWrap.innerHTML = cores.map((c, idx) =>
@@ -189,7 +209,8 @@
     els("[data-idx]", colorsWrap).forEach((btn) => {
       btn.addEventListener("click", () => {
         modalCorIndex = Number(btn.dataset.idx);
-        renderModal();
+        modalMediaIndex = 0;
+        renderGallery();
       });
     });
 
@@ -200,6 +221,74 @@
       qty.set(1);
       flashAdded(addBtn);
     };
+  }
+
+  // ── Galeria (fotos + vídeo, com navegação e zoom) ────────────
+  function currentMediaList() {
+    return modalProduto ? getMediaList(modalProduto, modalCorIndex) : [];
+  }
+  function mediaMarkup(item, alt) {
+    if (!item) return "";
+    return item.type === "video"
+      ? `<video src="${escapeHTML(item.src)}" controls playsinline></video>`
+      : `<img src="${escapeHTML(item.src)}" alt="${escapeHTML(alt)}" />`;
+  }
+  function renderGallery() {
+    const media = currentMediaList();
+    if (modalMediaIndex >= media.length) modalMediaIndex = 0;
+    const stage = el("#atacadoGalleryStage");
+    const dots = el("#atacadoGalleryDots");
+    const prevBtn = el("#atacadoGalleryPrev");
+    const nextBtn = el("#atacadoGalleryNext");
+    const item = media[modalMediaIndex];
+
+    stage.innerHTML = mediaMarkup(item, modalProduto?.nome || "");
+    if (item?.type === "image") {
+      stage.style.cursor = "zoom-in";
+      stage.onclick = () => openLightbox();
+    } else {
+      stage.style.cursor = "default";
+      stage.onclick = null;
+    }
+
+    const multi = media.length > 1;
+    prevBtn.hidden = !multi;
+    nextBtn.hidden = !multi;
+    dots.innerHTML = multi ? media.map((_, idx) =>
+      `<button type="button" class="atacado-gallery__dot" data-dot="${idx}" data-active="${idx === modalMediaIndex}" aria-label="Ir para mídia ${idx + 1}"></button>`
+    ).join("") : "";
+    els("[data-dot]", dots).forEach((btn) => {
+      btn.addEventListener("click", () => { modalMediaIndex = Number(btn.dataset.dot); renderGallery(); });
+    });
+
+    if (lightboxOpen) renderLightbox();
+  }
+  function galleryStep(delta) {
+    const media = currentMediaList();
+    if (!media.length) return;
+    modalMediaIndex = (modalMediaIndex + delta + media.length) % media.length;
+    renderGallery();
+  }
+
+  function openLightbox() {
+    lightboxOpen = true;
+    el("#atacadoLightbox")?.classList.add("show");
+    el("#atacadoModal")?.classList.add("lightbox-open");
+    renderLightbox();
+  }
+  function closeLightbox() {
+    lightboxOpen = false;
+    el("#atacadoLightbox")?.classList.remove("show");
+    el("#atacadoModal")?.classList.remove("lightbox-open");
+  }
+  function renderLightbox() {
+    const media = currentMediaList();
+    const item = media[modalMediaIndex];
+    const stage = el("#atacadoLightboxStage");
+    if (stage) stage.innerHTML = mediaMarkup(item, modalProduto?.nome || "");
+    const multi = media.length > 1;
+    el("#atacadoLightboxPrev").hidden = !multi;
+    el("#atacadoLightboxNext").hidden = !multi;
   }
 
   // ── Carrinho ─────────────────────────────────────────────────
@@ -337,6 +426,19 @@
     search?.addEventListener("input", () => { buscaAtual = search.value || ""; renderGrid(); });
     el("#atacadoModalClose")?.addEventListener("click", closeModal);
     el("#atacadoModal")?.addEventListener("click", (e) => { if (e.target.id === "atacadoModal") closeModal(); });
+    el("#atacadoGalleryPrev")?.addEventListener("click", () => galleryStep(-1));
+    el("#atacadoGalleryNext")?.addEventListener("click", () => galleryStep(1));
+
+    el("#atacadoLightboxClose")?.addEventListener("click", closeLightbox);
+    el("#atacadoLightbox")?.addEventListener("click", (e) => { if (e.target.id === "atacadoLightbox") closeLightbox(); });
+    el("#atacadoLightboxPrev")?.addEventListener("click", () => galleryStep(-1));
+    el("#atacadoLightboxNext")?.addEventListener("click", () => galleryStep(1));
+    document.addEventListener("keydown", (e) => {
+      if (!lightboxOpen) return;
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft") galleryStep(-1);
+      else if (e.key === "ArrowRight") galleryStep(1);
+    });
 
     el("#atacadoCartBtn")?.addEventListener("click", openCart);
     el("#atacadoCartClose")?.addEventListener("click", closeCart);
