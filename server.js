@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const dns = require('dns');
 const express = require('express');
 const multer = require('multer');
 const mysql = require('mysql2/promise');
@@ -171,6 +172,18 @@ async function initDatabase() {
         id INT NOT NULL PRIMARY KEY,
         data LONGTEXT NOT NULL,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_atacado_leads (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(200) NOT NULL,
+        whatsapp VARCHAR(20) NOT NULL UNIQUE,
+        cidade VARCHAR(100) NOT NULL,
+        email VARCHAR(200) NOT NULL,
+        verified TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        verified_at TIMESTAMP NULL
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     await mysqlPool.execute(`
@@ -459,6 +472,85 @@ async function writeAtacadoStore(list, conn = null) {
     localConn.release();
   }
 }
+// ── Gate de acesso ao catálogo de atacado ────────────────────────────────
+function normalizeAtacadoPhone(raw) {
+  let digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length > 11 && digits.startsWith('55')) digits = digits.slice(2);
+  return digits;
+}
+async function findAtacadoLead(whatsapp) {
+  requireMysqlStorage();
+  await initDatabase();
+  const [rows] = await mysqlPool.execute('SELECT * FROM lemoov_atacado_leads WHERE whatsapp = ?', [whatsapp]);
+  return rows[0] || null;
+}
+async function upsertVerifiedAtacadoLead({ nome, whatsapp, cidade, email }) {
+  requireMysqlStorage();
+  await initDatabase();
+  await mysqlPool.execute(
+    `INSERT INTO lemoov_atacado_leads (nome, whatsapp, cidade, email, verified, verified_at)
+     VALUES (?, ?, ?, ?, 1, NOW())
+     ON DUPLICATE KEY UPDATE nome = VALUES(nome), cidade = VALUES(cidade), email = VALUES(email),
+       verified = 1, verified_at = NOW()`,
+    [nome, whatsapp, cidade, email]
+  );
+}
+
+const FAKE_EMAIL_WORDS = new Set([
+  'email', 'teste', 'test', 'exemplo', 'example', 'seuemail', 'emailteste', 'fake',
+  'asdf', 'qwerty', 'xxxx', 'aaaa', 'naotenho', 'sememail', 'nome', 'usuario', 'user'
+]);
+function isPlausibleEmailFormat(email) {
+  const value = String(email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(value)) return false;
+  const [local, domain] = value.split('@');
+  const domainRoot = (domain.split('.')[0] || '').toLowerCase();
+  if (FAKE_EMAIL_WORDS.has(local) || FAKE_EMAIL_WORDS.has(domainRoot)) return false;
+  if (local === domainRoot) return false;
+  return true;
+}
+function domainHasMailProvider(email) {
+  const domain = String(email || '').split('@')[1];
+  if (!domain) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    dns.resolveMx(domain, (err, records) => {
+      if (err || !Array.isArray(records) || !records.length) return resolve(false);
+      resolve(true);
+    });
+  });
+}
+
+const atacadoAccessCodes = new Map(); // whatsapp -> { code, nome, cidade, email, expiresAt, attempts }
+const atacadoAccessSessions = new Map(); // token -> { whatsapp, createdAt }
+const ATACADO_CODE_TTL_MS = 10 * 60 * 1000;
+const ATACADO_ACCESS_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+function atacadoAccessCookie(token) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  return `lemoov_atacado_access=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(ATACADO_ACCESS_TTL_MS / 1000)}${secure}`;
+}
+function grantAtacadoAccess(res, whatsapp) {
+  const token = crypto.randomBytes(24).toString('hex');
+  atacadoAccessSessions.set(token, { whatsapp, createdAt: Date.now() });
+  res.setHeader('Set-Cookie', atacadoAccessCookie(token));
+  return token;
+}
+function hasAtacadoAccess(req) {
+  const cookies = parseCookies(req);
+  const token = cookies.lemoov_atacado_access;
+  if (!token || !atacadoAccessSessions.has(token)) return false;
+  const session = atacadoAccessSessions.get(token);
+  if (Date.now() - session.createdAt > ATACADO_ACCESS_TTL_MS) {
+    atacadoAccessSessions.delete(token);
+    return false;
+  }
+  return true;
+}
+setInterval(() => {
+  const now = Date.now();
+  atacadoAccessCodes.forEach((v, k) => { if (now > v.expiresAt) atacadoAccessCodes.delete(k); });
+  atacadoAccessSessions.forEach((v, k) => { if (now - v.createdAt > ATACADO_ACCESS_TTL_MS) atacadoAccessSessions.delete(k); });
+}, 600_000);
+
 async function readPedidosStore(conn = null) {
   requireMysqlStorage();
   await initDatabase();
@@ -2919,7 +3011,10 @@ app.patch('/api/admin/produtos/ordem', authRequired, async (req, res) => {
 // ── ATACADO ─────────────────────────────────────────────────────────────
 // Catálogo próprio de atacado: produtos, fotos e cores independentes do
 // varejo (lemoov_products). Sem estoque — apenas apresentação de catálogo.
+
+// Gate: só libera o catálogo pra quem já validou o WhatsApp (ver rotas /api/atacado/access/*).
 app.get('/api/atacado', async (req, res) => {
+  if (!hasAtacadoAccess(req)) return res.status(403).json({ ok: false, error: 'Acesso não liberado' });
   try {
     const all = await readAtacadoStore();
     const publicos = all
@@ -2932,6 +3027,120 @@ app.get('/api/atacado', async (req, res) => {
     res.json(publicos);
   } catch (_e) {
     res.status(500).json({ ok: false });
+  }
+});
+
+app.get('/api/atacado/access/check', (req, res) => {
+  res.json({ ok: true, access: hasAtacadoAccess(req) });
+});
+
+// Acesso rápido pra quem já se cadastrou antes: só o WhatsApp, sem precisar de código de novo.
+app.post('/api/atacado/access/check-phone', async (req, res) => {
+  try {
+    const whatsapp = normalizeAtacadoPhone(req.body?.whatsapp);
+    if (whatsapp.length < 10) return res.status(400).json({ ok: false, error: 'WhatsApp inválido' });
+    const lead = await findAtacadoLead(whatsapp);
+    if (lead && lead.verified) {
+      grantAtacadoAccess(res, whatsapp);
+      return res.json({ ok: true, access: true });
+    }
+    res.json({ ok: true, access: false });
+  } catch (e) {
+    console.error('[check-phone]', e.message);
+    res.status(500).json({ ok: false, error: 'Falha ao verificar WhatsApp' });
+  }
+});
+
+// Primeiro acesso: valida os dados e envia um código de 6 dígitos pro WhatsApp informado.
+app.post('/api/atacado/access/request-code', async (req, res) => {
+  try {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+    if (rateLimitCheck(`atacado-code:${ip}`, 15 * 60 * 1000, 8)) {
+      return res.status(429).json({ ok: false, error: 'Muitas tentativas. Aguarde alguns minutos.' });
+    }
+    const nome = String(req.body?.nome || '').trim();
+    const cidade = String(req.body?.cidade || '').trim();
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const whatsapp = normalizeAtacadoPhone(req.body?.whatsapp);
+
+    if (nome.length < 2) return res.status(400).json({ ok: false, error: 'Informe seu nome.' });
+    if (cidade.length < 2) return res.status(400).json({ ok: false, error: 'Informe sua cidade.' });
+    if (whatsapp.length < 10 || whatsapp.length > 11) return res.status(400).json({ ok: false, error: 'WhatsApp inválido.' });
+    if (!isPlausibleEmailFormat(email)) return res.status(400).json({ ok: false, error: 'Informe um e-mail válido.' });
+    if (!(await domainHasMailProvider(email))) return res.status(400).json({ ok: false, error: 'O domínio desse e-mail não existe. Confira o e-mail informado.' });
+
+    if (!process.env.ZAPI_INSTANCE || !process.env.ZAPI_TOKEN) {
+      console.error('[atacado request-code] ZAPI_INSTANCE/ZAPI_TOKEN não configurados — envio de WhatsApp indisponível.');
+      return res.status(503).json({ ok: false, error: 'Envio de código pelo WhatsApp está temporariamente indisponível. Tente novamente mais tarde.' });
+    }
+
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    atacadoAccessCodes.set(whatsapp, { code, nome, cidade, email, expiresAt: Date.now() + ATACADO_CODE_TTL_MS, attempts: 0 });
+    console.log(`[atacado request-code] ${whatsapp} -> ${code}`);
+
+    try {
+      await sendWhatsApp(whatsapp, `Lemoov Atacado: seu código de acesso é ${code}. Válido por 10 minutos.`);
+    } catch (e) {
+      console.error('[atacado request-code] falha ao enviar WhatsApp:', e.message);
+      return res.status(502).json({ ok: false, error: 'Não foi possível enviar o código pelo WhatsApp agora. Tente novamente em instantes.' });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[request-code]', e.message);
+    res.status(500).json({ ok: false, error: 'Falha ao gerar código' });
+  }
+});
+
+app.post('/api/atacado/access/resend-code', async (req, res) => {
+  try {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+    if (rateLimitCheck(`atacado-resend:${ip}`, 15 * 60 * 1000, 5)) {
+      return res.status(429).json({ ok: false, error: 'Muitas tentativas. Aguarde alguns minutos.' });
+    }
+    const whatsapp = normalizeAtacadoPhone(req.body?.whatsapp);
+    const pending = atacadoAccessCodes.get(whatsapp);
+    if (!pending) return res.status(404).json({ ok: false, error: 'Solicite o código novamente.' });
+    if (!process.env.ZAPI_INSTANCE || !process.env.ZAPI_TOKEN) {
+      return res.status(503).json({ ok: false, error: 'Envio de código pelo WhatsApp está temporariamente indisponível.' });
+    }
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    atacadoAccessCodes.set(whatsapp, { ...pending, code, expiresAt: Date.now() + ATACADO_CODE_TTL_MS, attempts: 0 });
+    console.log(`[atacado resend-code] ${whatsapp} -> ${code}`);
+    try {
+      await sendWhatsApp(whatsapp, `Lemoov Atacado: seu código de acesso é ${code}. Válido por 10 minutos.`);
+    } catch (e) {
+      return res.status(502).json({ ok: false, error: 'Não foi possível reenviar o código agora.' });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'Falha ao reenviar código' });
+  }
+});
+
+app.post('/api/atacado/access/verify-code', async (req, res) => {
+  try {
+    const whatsapp = normalizeAtacadoPhone(req.body?.whatsapp);
+    const code = String(req.body?.code || '').trim();
+    const pending = atacadoAccessCodes.get(whatsapp);
+    if (!pending) return res.status(400).json({ ok: false, error: 'Solicite o código novamente.' });
+    if (Date.now() > pending.expiresAt) {
+      atacadoAccessCodes.delete(whatsapp);
+      return res.status(400).json({ ok: false, error: 'Código expirado. Solicite um novo.' });
+    }
+    pending.attempts += 1;
+    if (pending.attempts > 6) {
+      atacadoAccessCodes.delete(whatsapp);
+      return res.status(429).json({ ok: false, error: 'Muitas tentativas. Solicite um novo código.' });
+    }
+    if (code !== pending.code) return res.status(400).json({ ok: false, error: 'Código incorreto.' });
+
+    atacadoAccessCodes.delete(whatsapp);
+    await upsertVerifiedAtacadoLead({ nome: pending.nome, whatsapp, cidade: pending.cidade, email: pending.email });
+    grantAtacadoAccess(res, whatsapp);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[verify-code]', e.message);
+    res.status(500).json({ ok: false, error: 'Falha ao validar código' });
   }
 });
 

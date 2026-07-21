@@ -551,8 +551,162 @@
     }
   }
 
+  // ── Gate de acesso (cadastro + confirmação por WhatsApp) ─────
+  function showAtacadoMain() {
+    el("#atacadoGate")?.remove();
+    const main = el("#atacadoMain");
+    if (main) main.style.display = "block";
+  }
+  function showGateError(msg) {
+    const box = el("#atacadoGateError");
+    if (!box) return;
+    box.textContent = msg;
+    box.classList.add("show");
+  }
+  function clearGateError() {
+    el("#atacadoGateError")?.classList.remove("show");
+  }
+  function switchGateView(name) {
+    ["Quick", "Register", "Code"].forEach((v) => {
+      const view = el(`#gateView${v}`);
+      if (view) view.hidden = v.toLowerCase() !== name;
+    });
+    clearGateError();
+  }
+
+  async function initGate() {
+    try {
+      const res = await fetch("/api/atacado/access/check");
+      const data = res.ok ? await res.json() : { access: false };
+      if (data.access) {
+        showAtacadoMain();
+        loadAtacado();
+        return;
+      }
+    } catch (_e) {}
+    wireGateForms();
+  }
+
+  function wireGateForms() {
+    let pendingWhats = "";
+
+    el("#gateGoRegister")?.addEventListener("click", () => {
+      const typed = el("#gateQuickWhats")?.value || "";
+      if (typed) el("#gateWhats").value = typed;
+      switchGateView("register");
+    });
+    el("#gateBackToQuick")?.addEventListener("click", () => switchGateView("quick"));
+
+    el("#gateFormQuick")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearGateError();
+      const whatsapp = el("#gateQuickWhats").value;
+      const btn = el("#gateQuickSubmit");
+      btn.disabled = true;
+      try {
+        const res = await fetch("/api/atacado/access/check-phone", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ whatsapp })
+        });
+        const data = await res.json();
+        if (data.access) {
+          showAtacadoMain();
+          loadAtacado();
+          return;
+        }
+        el("#gateWhats").value = whatsapp;
+        switchGateView("register");
+        showGateError("Esse WhatsApp ainda não está cadastrado. Complete seus dados abaixo.");
+      } catch (_e) {
+        showGateError("Falha ao verificar. Tente novamente.");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    el("#gateFormRegister")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearGateError();
+      const nome = el("#gateNome").value.trim();
+      const whatsapp = el("#gateWhats").value;
+      const cidade = el("#gateCidade").value.trim();
+      const email = el("#gateEmail").value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showGateError("Informe um e-mail válido.");
+        return;
+      }
+      const btn = el("#gateRegisterSubmit");
+      btn.disabled = true;
+      const originalLabel = btn.textContent;
+      btn.textContent = "Enviando código…";
+      try {
+        const res = await fetch("/api/atacado/access/request-code", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome, whatsapp, cidade, email })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showGateError(data.error || "Falha ao enviar código.");
+          return;
+        }
+        pendingWhats = whatsapp;
+        el("#gateCodeSub").textContent = `Enviamos um código de 6 dígitos para o WhatsApp ${whatsapp}.`;
+        switchGateView("code");
+      } catch (_e) {
+        showGateError("Falha ao enviar código. Tente novamente.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    });
+
+    el("#gateFormCode")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearGateError();
+      const code = el("#gateCode").value.trim();
+      const btn = el("#gateCodeSubmit");
+      btn.disabled = true;
+      try {
+        const res = await fetch("/api/atacado/access/verify-code", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ whatsapp: pendingWhats, code })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          showGateError(data.error || "Código incorreto.");
+          return;
+        }
+        showAtacadoMain();
+        loadAtacado();
+      } catch (_e) {
+        showGateError("Falha ao confirmar código. Tente novamente.");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    let resendCooldown = false;
+    el("#gateResendCode")?.addEventListener("click", async () => {
+      if (resendCooldown || !pendingWhats) return;
+      resendCooldown = true;
+      const link = el("#gateResendCode");
+      link.textContent = "Reenviando…";
+      try {
+        const res = await fetch("/api/atacado/access/resend-code", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ whatsapp: pendingWhats })
+        });
+        const data = await res.json();
+        link.textContent = (res.ok && data.ok) ? "Código reenviado!" : "Falha ao reenviar";
+      } catch (_e) {
+        link.textContent = "Falha ao reenviar";
+      }
+      setTimeout(() => { link.textContent = "Reenviar código"; resendCooldown = false; }, 20000);
+    });
+  }
+
   function bootstrap() {
-    loadAtacado();
+    initGate();
     const search = el("#atacadoSearch");
     search?.addEventListener("input", () => { buscaAtual = search.value || ""; renderGrid(); });
     el("#atacadoModalClose")?.addEventListener("click", closeModal);

@@ -239,9 +239,121 @@
     }
     .atacado-cart__whats:hover { background: #1ebe57; }
     .atacado-cart__whats:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Gate de acesso — só libera o catálogo pra quem valida o WhatsApp */
+    #atacadoMain { display: none; }
+    .atacado-gate {
+      position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      background: radial-gradient(circle at 20% 20%, rgba(168,198,58,0.16), transparent 45%), linear-gradient(180deg, #fbf8f4 0%, #f2e6db 100%);
+    }
+    .atacado-gate__card {
+      width: 100%; max-width: 420px; background: var(--surface-color); border-radius: 18px;
+      box-shadow: var(--shadow-medium); padding: 32px 28px; box-sizing: border-box;
+    }
+    .atacado-gate__logo { display: block; height: 44px; margin: 0 auto 18px; }
+    .atacado-gate__view[hidden] { display: none; }
+    .atacado-gate h2 {
+      font-family: var(--font-heading); font-size: 19px; color: var(--secondary-color);
+      margin: 0 0 6px; text-align: center;
+    }
+    .atacado-gate p.atacado-gate__sub {
+      color: var(--text-muted); font-size: 13.5px; text-align: center; margin: 0 0 20px;
+    }
+    .atacado-gate__field { margin-bottom: 14px; }
+    .atacado-gate__field label {
+      display: block; font-size: 12px; font-weight: 600; color: var(--secondary-color); margin-bottom: 5px;
+    }
+    .atacado-gate__field input {
+      width: 100%; box-sizing: border-box; padding: 11px 13px; border-radius: 10px;
+      border: 1.5px solid var(--border-color); font-family: var(--font-body); font-size: 14px;
+      background: var(--bg-light); color: var(--secondary-color);
+    }
+    .atacado-gate__field input:focus { outline: none; border-color: var(--primary-color); }
+    .atacado-gate__code-input {
+      text-align: center; font-size: 22px !important; letter-spacing: 8px; font-weight: 700;
+    }
+    .atacado-gate__submit {
+      width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--secondary-color);
+      color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; transition: background .18s ease;
+    }
+    .atacado-gate__submit:hover { background: var(--primary-dark); }
+    .atacado-gate__submit:disabled { opacity: .6; cursor: not-allowed; }
+    .atacado-gate__link {
+      display: block; text-align: center; margin-top: 14px; font-size: 12.5px; color: var(--text-muted);
+      background: none; border: none; cursor: pointer; text-decoration: underline; width: 100%;
+    }
+    .atacado-gate__error {
+      background: rgba(220,53,69,.08); color: #c0392b; font-size: 12.5px; padding: 9px 12px;
+      border-radius: 8px; margin-bottom: 14px; display: none;
+    }
+    .atacado-gate__error.show { display: block; }
+    .atacado-gate__hint { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: -6px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
+  <div id="atacadoGate" class="atacado-gate">
+    <div class="atacado-gate__card">
+      <img class="atacado-gate__logo" src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness">
+      <div id="atacadoGateError" class="atacado-gate__error"></div>
+
+      <!-- Acesso rápido: quem já se cadastrou só digita o WhatsApp -->
+      <div class="atacado-gate__view" id="gateViewQuick">
+        <h2>Catálogo de Atacado</h2>
+        <p class="atacado-gate__sub">Acesso exclusivo para revendedores cadastrados. Já se cadastrou? Digite seu WhatsApp para entrar.</p>
+        <form id="gateFormQuick">
+          <div class="atacado-gate__field">
+            <label for="gateQuickWhats">WhatsApp</label>
+            <input id="gateQuickWhats" type="tel" inputmode="numeric" placeholder="(85) 99999-9999" required autocomplete="tel" />
+          </div>
+          <button type="submit" class="atacado-gate__submit" id="gateQuickSubmit">Continuar</button>
+          <button type="button" class="atacado-gate__link" id="gateGoRegister">Primeiro acesso? Cadastre-se</button>
+        </form>
+      </div>
+
+      <!-- Cadastro completo (primeiro acesso ou WhatsApp ainda não cadastrado) -->
+      <div class="atacado-gate__view" id="gateViewRegister" hidden>
+        <h2>Complete seu cadastro</h2>
+        <p class="atacado-gate__sub">Enviamos um código de confirmação para o seu WhatsApp.</p>
+        <form id="gateFormRegister">
+          <div class="atacado-gate__field">
+            <label for="gateNome">Nome</label>
+            <input id="gateNome" type="text" required autocomplete="name" />
+          </div>
+          <div class="atacado-gate__field">
+            <label for="gateWhats">WhatsApp</label>
+            <input id="gateWhats" type="tel" inputmode="numeric" placeholder="(85) 99999-9999" required autocomplete="tel" />
+          </div>
+          <div class="atacado-gate__field">
+            <label for="gateCidade">Cidade</label>
+            <input id="gateCidade" type="text" required autocomplete="address-level2" />
+          </div>
+          <div class="atacado-gate__field">
+            <label for="gateEmail">E-mail</label>
+            <input id="gateEmail" type="email" required autocomplete="email" />
+          </div>
+          <button type="submit" class="atacado-gate__submit" id="gateRegisterSubmit">Enviar código pelo WhatsApp</button>
+          <button type="button" class="atacado-gate__link" id="gateBackToQuick">Já tenho cadastro</button>
+        </form>
+      </div>
+
+      <!-- Confirmação do código enviado por WhatsApp -->
+      <div class="atacado-gate__view" id="gateViewCode" hidden>
+        <h2>Confirme seu WhatsApp</h2>
+        <p class="atacado-gate__sub" id="gateCodeSub">Enviamos um código de 6 dígitos para o seu WhatsApp.</p>
+        <form id="gateFormCode">
+          <div class="atacado-gate__field">
+            <label for="gateCode">Código de 6 dígitos</label>
+            <input id="gateCode" class="atacado-gate__code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autocomplete="one-time-code" />
+          </div>
+          <button type="submit" class="atacado-gate__submit" id="gateCodeSubmit">Confirmar</button>
+          <button type="button" class="atacado-gate__link" id="gateResendCode">Reenviar código</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="atacadoMain">
   <header class="header">
     <div class="container header__wrap">
       <h1 class="logo" style="margin:auto;">
@@ -325,7 +437,8 @@
       </button>
     </div>
   </aside>
+  </div>
 
-  <script src="atacado.js?v=4"></script>
+  <script src="atacado.js?v=5"></script>
 </body>
 </html>
