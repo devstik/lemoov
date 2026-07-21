@@ -394,13 +394,12 @@
     el("#atacadoCartBackdrop")?.classList.remove("show");
   }
 
-  // Sem `includePhotoLinks`, cada item só entra com nome/cor/descrição/preço/qtd —
-  // usado quando as fotos vão anexadas de verdade via compartilhamento nativo.
-  function buildWhatsAppMessage({ includePhotoLinks = true } = {}) {
+  // Mensagem de texto pura — usada só como último recurso, se a geração do PDF falhar.
+  function buildWhatsAppMessage() {
     const linhas = ["Olá! Gostaria de fazer um pedido de atacado:", ""];
     cart.forEach((item, idx) => {
       linhas.push(`${idx + 1}) ${item.nome}${item.corNome ? ` (cor: ${item.corNome})` : ""}`);
-      if (includePhotoLinks && item.imagem) linhas.push(`Foto: ${item.imagem}`);
+      if (item.imagem) linhas.push(`Foto: ${item.imagem}`);
       if (item.descricao) linhas.push(`Descrição: ${item.descricao}`);
       linhas.push(`Preço unitário: ${item.preco ? formatBRL(item.preco) : "Sob consulta"}`);
       linhas.push(`Quantidade: ${item.qty}`);
@@ -408,64 +407,148 @@
     });
     const total = cartTotal();
     if (total > 0) linhas.push(`Total estimado: ${formatBRL(total)}`);
-    linhas.push(includePhotoLinks
-      ? "Pode me passar as condições de atacado?"
-      : "Fotos em anexo. Pode me passar as condições de atacado?");
+    linhas.push("Pode me passar as condições de atacado?");
     return linhas.join("\n");
   }
 
-  function slugify(text) {
-    return String(text || "produto")
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "produto";
-  }
-
-  // Baixa as fotos do carrinho como File[] pra anexar de verdade no compartilhamento nativo.
-  async function loadCartPhotosAsFiles() {
-    const comFoto = cart.filter((item) => item.imagem);
-    const arquivos = await Promise.all(comFoto.map(async (item, idx) => {
-      try {
-        const res = await fetch(item.imagem);
-        if (!res.ok) return null;
-        const blob = await res.blob();
-        const ext = (blob.type.split("/")[1] || "jpg").split("+")[0];
-        return new File([blob], `${slugify(item.nome)}-${idx + 1}.${ext}`, { type: blob.type || "image/jpeg" });
-      } catch (_e) {
-        return null;
-      }
-    }));
-    return arquivos.filter(Boolean);
-  }
-
-  // Tenta abrir o menu nativo de compartilhar com as fotos anexadas de verdade (mobile).
-  // Retorna true se conseguiu compartilhar (ou se o usuário cancelou de propósito),
-  // false se o navegador não suporta — nesse caso cai no link de texto do WhatsApp.
-  async function tryShareWithPhotos() {
-    if (!navigator.share || !navigator.canShare) return false;
+  async function loadImageAsDataUrl(url) {
     try {
-      const files = await loadCartPhotosAsFiles();
-      if (!files.length || !navigator.canShare({ files })) return false;
-      await navigator.share({ text: buildWhatsAppMessage({ includePhotoLinks: false }), files });
-      return true;
-    } catch (err) {
-      return err && err.name === "AbortError" ? true : false;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch (_e) {
+      return null;
     }
+  }
+  function dataUrlImageFormat(dataUrl) {
+    const match = /^data:image\/(png|jpe?g|webp)/i.exec(dataUrl || "");
+    const ext = (match?.[1] || "jpeg").toLowerCase();
+    if (ext === "png") return "PNG";
+    if (ext === "webp") return "WEBP";
+    return "JPEG";
+  }
+
+  // Monta um PDF com todos os itens do carrinho — foto, descrição, preço e quantidade —
+  // pra funcionar bem com qualquer quantidade de itens (o WhatsApp só aceita 1 legenda por
+  // envio, então várias fotos + texto separado se perdem; um único PDF resolve isso).
+  async function buildOrderPdf() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentWidth = pageWidth - margin * 2;
+    const imgBox = 32;
+    const rowGap = 6;
+    let y = margin;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("Pedido de Atacado — Lemoov Fitness", margin, y);
+    y += 7;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Gerado em ${new Date().toLocaleString("pt-BR")}`, margin, y);
+    doc.setTextColor(30);
+    y += 10;
+
+    for (const item of cart) {
+      const textX = margin + imgBox + 6;
+      const textWidth = contentWidth - imgBox - 6;
+      doc.setFontSize(11);
+      const descLines = item.descricao ? doc.splitTextToSize(item.descricao, textWidth) : [];
+      const blockHeight = Math.max(imgBox, 8 + descLines.length * 4.5 + 14) + rowGap;
+
+      if (y + blockHeight > pageHeight - margin - 20) {
+        doc.addPage();
+        y = margin;
+      }
+
+      const topY = y;
+      if (item.imagem) {
+        const dataUrl = await loadImageAsDataUrl(item.imagem);
+        if (dataUrl) {
+          try { doc.addImage(dataUrl, dataUrlImageFormat(dataUrl), margin, topY, imgBox, imgBox, undefined, "FAST"); }
+          catch (_e) {}
+        }
+      }
+      doc.setDrawColor(225);
+      doc.rect(margin, topY, imgBox, imgBox);
+
+      let ty = topY + 5;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text(item.nome, textX, ty);
+      ty += 5.5;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      if (item.corNome) { doc.text(`Cor: ${item.corNome}`, textX, ty); ty += 4.5; }
+      if (descLines.length) { doc.text(descLines, textX, ty); ty += descLines.length * 4.5; }
+      doc.text(`Preço unitário: ${item.preco ? formatBRL(item.preco) : "Sob consulta"}`, textX, ty); ty += 4.5;
+      doc.text(`Quantidade: ${item.qty}`, textX, ty); ty += 4.5;
+      doc.setFont("helvetica", "bold");
+      doc.text(`Subtotal: ${item.preco ? formatBRL(item.preco * item.qty) : "Sob consulta"}`, textX, ty);
+
+      y = topY + blockHeight;
+      doc.setDrawColor(220);
+      doc.line(margin, y - rowGap / 2, pageWidth - margin, y - rowGap / 2);
+    }
+
+    if (y + 20 > pageHeight - margin) { doc.addPage(); y = margin; }
+    y += 4;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    const total = cartTotal();
+    doc.text(`Total estimado: ${total > 0 ? formatBRL(total) : "Sob consulta"}`, margin, y);
+    y += 8;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Pode me passar as condições de atacado?", margin, y);
+
+    return doc;
   }
 
   async function finalizarNoWhatsApp() {
     if (!cart.length) return;
     const btn = el("#atacadoCartWhats");
-    if (btn) { btn.disabled = true; }
-    const compartilhado = await tryShareWithPhotos();
-    if (!compartilhado) {
+    if (btn) btn.disabled = true;
+    const totalItens = cart.length;
+    const resumo = `Olá! Segue em anexo meu pedido de atacado (${totalItens} ${totalItens > 1 ? "itens" : "item"}). Pode me passar as condições?`;
+    try {
+      const doc = await buildOrderPdf();
+      const pdfFile = new File([doc.output("blob")], `pedido-atacado-${Date.now()}.pdf`, { type: "application/pdf" });
+
+      let compartilhado = false;
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        try {
+          await navigator.share({ text: resumo, files: [pdfFile] });
+          compartilhado = true;
+        } catch (err) {
+          compartilhado = Boolean(err && err.name === "AbortError");
+        }
+      }
+      if (!compartilhado) {
+        doc.save(pdfFile.name);
+        const texto = encodeURIComponent(`${resumo}\n\nBaixei o PDF do pedido agora — é só anexar aqui no chat.`);
+        window.open(`https://wa.me/${WHATS_NUMBER}?text=${texto}`, "_blank", "noopener");
+      }
+    } catch (_e) {
       const texto = encodeURIComponent(buildWhatsAppMessage());
       window.open(`https://wa.me/${WHATS_NUMBER}?text=${texto}`, "_blank", "noopener");
+    } finally {
+      if (btn) btn.disabled = false;
+      cart = [];
+      saveCart();
+      renderCart();
+      closeCart();
     }
-    if (btn) { btn.disabled = false; }
-    cart = [];
-    saveCart();
-    renderCart();
-    closeCart();
   }
 
   function bootstrap() {
