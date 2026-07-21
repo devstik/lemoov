@@ -394,11 +394,13 @@
     el("#atacadoCartBackdrop")?.classList.remove("show");
   }
 
-  function buildWhatsAppMessage() {
+  // Sem `includePhotoLinks`, cada item só entra com nome/cor/descrição/preço/qtd —
+  // usado quando as fotos vão anexadas de verdade via compartilhamento nativo.
+  function buildWhatsAppMessage({ includePhotoLinks = true } = {}) {
     const linhas = ["Olá! Gostaria de fazer um pedido de atacado:", ""];
     cart.forEach((item, idx) => {
       linhas.push(`${idx + 1}) ${item.nome}${item.corNome ? ` (cor: ${item.corNome})` : ""}`);
-      if (item.imagem) linhas.push(`Foto: ${item.imagem}`);
+      if (includePhotoLinks && item.imagem) linhas.push(`Foto: ${item.imagem}`);
       if (item.descricao) linhas.push(`Descrição: ${item.descricao}`);
       linhas.push(`Preço unitário: ${item.preco ? formatBRL(item.preco) : "Sob consulta"}`);
       linhas.push(`Quantidade: ${item.qty}`);
@@ -406,14 +408,60 @@
     });
     const total = cartTotal();
     if (total > 0) linhas.push(`Total estimado: ${formatBRL(total)}`);
-    linhas.push("Pode me passar as condições de atacado?");
+    linhas.push(includePhotoLinks
+      ? "Pode me passar as condições de atacado?"
+      : "Fotos em anexo. Pode me passar as condições de atacado?");
     return linhas.join("\n");
   }
 
-  function finalizarNoWhatsApp() {
+  function slugify(text) {
+    return String(text || "produto")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "produto";
+  }
+
+  // Baixa as fotos do carrinho como File[] pra anexar de verdade no compartilhamento nativo.
+  async function loadCartPhotosAsFiles() {
+    const comFoto = cart.filter((item) => item.imagem);
+    const arquivos = await Promise.all(comFoto.map(async (item, idx) => {
+      try {
+        const res = await fetch(item.imagem);
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        const ext = (blob.type.split("/")[1] || "jpg").split("+")[0];
+        return new File([blob], `${slugify(item.nome)}-${idx + 1}.${ext}`, { type: blob.type || "image/jpeg" });
+      } catch (_e) {
+        return null;
+      }
+    }));
+    return arquivos.filter(Boolean);
+  }
+
+  // Tenta abrir o menu nativo de compartilhar com as fotos anexadas de verdade (mobile).
+  // Retorna true se conseguiu compartilhar (ou se o usuário cancelou de propósito),
+  // false se o navegador não suporta — nesse caso cai no link de texto do WhatsApp.
+  async function tryShareWithPhotos() {
+    if (!navigator.share || !navigator.canShare) return false;
+    try {
+      const files = await loadCartPhotosAsFiles();
+      if (!files.length || !navigator.canShare({ files })) return false;
+      await navigator.share({ text: buildWhatsAppMessage({ includePhotoLinks: false }), files });
+      return true;
+    } catch (err) {
+      return err && err.name === "AbortError" ? true : false;
+    }
+  }
+
+  async function finalizarNoWhatsApp() {
     if (!cart.length) return;
-    const texto = encodeURIComponent(buildWhatsAppMessage());
-    window.open(`https://wa.me/${WHATS_NUMBER}?text=${texto}`, "_blank", "noopener");
+    const btn = el("#atacadoCartWhats");
+    if (btn) { btn.disabled = true; }
+    const compartilhado = await tryShareWithPhotos();
+    if (!compartilhado) {
+      const texto = encodeURIComponent(buildWhatsAppMessage());
+      window.open(`https://wa.me/${WHATS_NUMBER}?text=${texto}`, "_blank", "noopener");
+    }
+    if (btn) { btn.disabled = false; }
     cart = [];
     saveCart();
     renderCart();
@@ -425,7 +473,8 @@
     const search = el("#atacadoSearch");
     search?.addEventListener("input", () => { buscaAtual = search.value || ""; renderGrid(); });
     el("#atacadoModalClose")?.addEventListener("click", closeModal);
-    el("#atacadoModal")?.addEventListener("click", (e) => { if (e.target.id === "atacadoModal") closeModal(); });
+    // Só fecha pelo botão ✕ — clique fora e tecla Esc não fecham o modal.
+    el("#atacadoModal")?.addEventListener("cancel", (e) => e.preventDefault());
     el("#atacadoGalleryPrev")?.addEventListener("click", () => galleryStep(-1));
     el("#atacadoGalleryNext")?.addEventListener("click", () => galleryStep(1));
 
