@@ -133,6 +133,14 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR
   : path.join(__dirname, '..', UPLOAD_PUBLIC_PREFIX);
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 console.log(`[uploads] salvando em: ${UPLOAD_DIR}`);
+// Pasta de upload própria para as fotos do catálogo de atacado — mantida separada
+// da pasta de uploads do varejo pois são fotos/produtos totalmente novos.
+const ATACADO_UPLOAD_PUBLIC_PREFIX = (process.env.ATACADO_UPLOAD_PUBLIC_PREFIX || 'uploads-atacado').replace(/^\/+|\/+$/g, '');
+const ATACADO_UPLOAD_DIR = process.env.ATACADO_UPLOAD_DIR
+  ? path.resolve(process.env.ATACADO_UPLOAD_DIR)
+  : path.join(__dirname, '..', ATACADO_UPLOAD_PUBLIC_PREFIX);
+if (!fs.existsSync(ATACADO_UPLOAD_DIR)) fs.mkdirSync(ATACADO_UPLOAD_DIR, { recursive: true });
+console.log(`[uploads-atacado] salvando em: ${ATACADO_UPLOAD_DIR}`);
 const INFINITEPAY_API_URL = process.env.INFINITEPAY_API_URL || 'https://api.checkout.infinitepay.io/links';
 const INFINITEPAY_HANDLE = (process.env.INFINITEPAY_HANDLE || process.env.INFINITYPAY_HANDLE || '').replace(/^\$/, '').trim();
 const PUBLIC_SITE_URL = (process.env.SITE_URL || process.env.PUBLIC_SITE_URL || '').replace(/\/$/, '');
@@ -153,6 +161,13 @@ async function initDatabase() {
     `);
     await mysqlPool.execute(`
       CREATE TABLE IF NOT EXISTS lemoov_combos (
+        id INT NOT NULL PRIMARY KEY,
+        data LONGTEXT NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_atacado_products (
         id INT NOT NULL PRIMARY KEY,
         data LONGTEXT NOT NULL,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -378,6 +393,61 @@ async function writeCombosStore(list, conn = null) {
     for (const item of canonical) {
       await localConn.execute(
         'INSERT INTO lemoov_combos (id, data) VALUES (?, ?)',
+        [Number(item.id), JSON.stringify(item)]
+      );
+    }
+    await localConn.commit();
+  } catch (e) {
+    try { await localConn.rollback(); } catch (_rollbackError) {}
+    throw e;
+  } finally {
+    localConn.release();
+  }
+}
+function ensureAtacadoIds(list) {
+  let maxId = 0;
+  list.forEach((item) => {
+    const id = Number(item?.id);
+    if (Number.isFinite(id)) maxId = Math.max(maxId, id);
+  });
+  return list.map((item) => {
+    const id = Number(item?.id);
+    if (Number.isFinite(id)) return { ...item, id };
+    maxId += 1;
+    return { ...item, id: maxId };
+  });
+}
+async function readAtacadoStore(conn = null) {
+  requireMysqlStorage();
+  await initDatabase();
+  const db = conn || mysqlPool;
+  const [rows] = await db.execute('SELECT id, data FROM lemoov_atacado_products ORDER BY id');
+  return rows.map((row) => {
+    const item = JSON.parse(row.data);
+    return { ...item, id: Number(item.id || row.id) };
+  });
+}
+async function writeAtacadoStore(list, conn = null) {
+  requireMysqlStorage();
+  const canonical = ensureAtacadoIds(list);
+  await initDatabase();
+  if (conn) {
+    await conn.execute('DELETE FROM lemoov_atacado_products');
+    for (const item of canonical) {
+      await conn.execute(
+        'INSERT INTO lemoov_atacado_products (id, data) VALUES (?, ?)',
+        [Number(item.id), JSON.stringify(item)]
+      );
+    }
+    return;
+  }
+  const localConn = await mysqlPool.getConnection();
+  try {
+    await localConn.beginTransaction();
+    await localConn.execute('DELETE FROM lemoov_atacado_products');
+    for (const item of canonical) {
+      await localConn.execute(
+        'INSERT INTO lemoov_atacado_products (id, data) VALUES (?, ?)',
         [Number(item.id), JSON.stringify(item)]
       );
     }
@@ -1050,6 +1120,21 @@ function applyStockOperation(produtos, { tipo, produtoId, corIndex = 0, quantida
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      const base = path.basename(file.originalname, ext).replace(/[^\w\-]+/g, '_');
+      cb(null, `${Date.now()}_${base}${ext}`);
+    }
+  }),
+  fileFilter: (_req, file, cb) => {
+    const ok = /image\/(jpeg|png)/.test(file.mimetype);
+    cb(ok ? null : new Error('Tipo inválido'), ok);
+  },
+  limits: { fileSize: 6 * 1024 * 1024 }
+});
+const uploadAtacado = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, ATACADO_UPLOAD_DIR),
     filename: (_req, file, cb) => {
       const ext = path.extname(file.originalname).toLowerCase();
       const base = path.basename(file.originalname, ext).replace(/[^\w\-]+/g, '_');
@@ -2831,6 +2916,101 @@ app.patch('/api/admin/produtos/ordem', authRequired, async (req, res) => {
   }
 });
 
+// ── ATACADO ─────────────────────────────────────────────────────────────
+// Catálogo próprio de atacado: produtos, fotos e cores independentes do
+// varejo (lemoov_products). Sem estoque — apenas apresentação de catálogo.
+app.get('/api/atacado', async (req, res) => {
+  try {
+    const all = await readAtacadoStore();
+    const publicos = all
+      .filter(p => p.ativo !== false)
+      .map(p => ({
+        ...p,
+        cores: Array.isArray(p.cores) ? p.cores.filter(c => c.ativo !== false) : p.cores
+      }))
+      .sort((a, b) => (Number(a.ordem) || 9999) - (Number(b.ordem) || 9999));
+    res.json(publicos);
+  } catch (_e) {
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.get('/api/admin/atacado', authRequired, async (_req, res) => {
+  try {
+    const produtos = await readAtacadoStore();
+    res.json(produtos);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/atacado', authRequired, async (req, res) => {
+  try {
+    const produtos = ensureAtacadoIds(await readAtacadoStore());
+    const nextId = produtos.reduce((max, p) => Math.max(max, Number(p.id) || 0), 0) + 1;
+    const item = { ...req.body, id: nextId, updatedAt: new Date().toISOString() };
+    produtos.push(item);
+    await writeAtacadoStore(produtos);
+    res.json({ ok: true, item });
+  } catch (e) {
+    console.error('[POST /api/admin/atacado]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.put('/api/admin/atacado/:id', authRequired, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const produtos = ensureAtacadoIds(await readAtacadoStore());
+    const idx = produtos.findIndex((p) => Number(p.id) === id);
+    if (idx === -1) return res.status(404).json({ ok: false, error: 'Produto não encontrado' });
+    produtos[idx] = { ...produtos[idx], ...req.body, id, updatedAt: new Date().toISOString() };
+    await writeAtacadoStore(produtos);
+    res.json({ ok: true, item: produtos[idx] });
+  } catch (e) {
+    console.error('[PUT /api/admin/atacado]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.delete('/api/admin/atacado/:id', authRequired, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const produtos = ensureAtacadoIds(await readAtacadoStore());
+    await writeAtacadoStore(produtos.filter((p) => Number(p.id) !== id));
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/admin/atacado]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.patch('/api/admin/atacado/ordem', authRequired, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) return res.status(400).json({ ok: false, error: 'ids required' });
+    const produtos = ensureAtacadoIds(await readAtacadoStore());
+    const idSet = new Set(ids.map(Number));
+    ids.forEach((id, index) => {
+      const p = produtos.find(p => Number(p.id) === Number(id));
+      if (p) p.ordem = index + 1;
+    });
+    produtos.filter(p => !idSet.has(Number(p.id))).forEach((p, i) => {
+      p.ordem = ids.length + i + 1;
+    });
+    await writeAtacadoStore(produtos);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/upload-atacado', authRequired, uploadAtacado.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false });
+  const relPath = path.join(ATACADO_UPLOAD_PUBLIC_PREFIX, req.file.filename).replace(/\\/g, '/');
+  res.json({ ok: true, path: relPath });
+});
+
 app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
   let conn = null;
   try {
@@ -3623,6 +3803,9 @@ app.use((req, res, next) => {
 app.use(express.static(__dirname)); // serve index.html, script.js, styles.css, image/, etc.
 if (path.resolve(UPLOAD_DIR) !== path.resolve(path.join(__dirname, UPLOAD_PUBLIC_PREFIX))) {
   app.use(`/${UPLOAD_PUBLIC_PREFIX}`, express.static(UPLOAD_DIR));
+}
+if (path.resolve(ATACADO_UPLOAD_DIR) !== path.resolve(path.join(__dirname, ATACADO_UPLOAD_PUBLIC_PREFIX))) {
+  app.use(`/${ATACADO_UPLOAD_PUBLIC_PREFIX}`, express.static(ATACADO_UPLOAD_DIR));
 }
 
 const PORT = process.env.PORT || 3000;

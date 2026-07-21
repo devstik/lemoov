@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lemoov Atacado</title>
+  <meta name="description" content="Catálogo de atacado Lemoov — peças e condições especiais para revenda." />
+  <meta property="og:title" content="Lemoov | Catálogo de Atacado" />
+  <meta property="og:description" content="Catálogo de atacado Lemoov — peças e condições especiais para revenda." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Lemoov Fitness" />
+  <meta property="og:locale" content="pt_BR" />
+  <link rel="stylesheet" href="styles.css?v=18" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .atacado-hero {
+      background: linear-gradient(135deg, rgba(168,198,58,0.14), rgba(235,216,199,0.5));
+      border-bottom: 1px solid var(--border-color);
+      padding: 32px 0 24px;
+    }
+    .atacado-hero__inner { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+    .atacado-hero h1 {
+      font-family: var(--font-heading);
+      font-size: clamp(24px, 3vw, 32px);
+      color: var(--secondary-color);
+      margin: 0 0 8px;
+    }
+    .atacado-hero p { color: var(--text-muted); margin: 0; max-width: 640px; }
+
+    .atacado-wrap { max-width: 1180px; margin: 0 auto; padding: 24px 20px 60px; }
+
+    .atacado-search {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface-color); border: 1.5px solid var(--border-color);
+      border-radius: 12px; padding: 10px 14px; margin-bottom: 22px;
+      box-shadow: var(--shadow-light);
+    }
+    .atacado-search i { color: var(--text-muted); }
+    .atacado-search input {
+      flex: 1; border: none; outline: none; font-family: var(--font-body);
+      font-size: 15px; background: transparent; color: var(--secondary-color);
+    }
+    .atacado-search__meta { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+    .atacado-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 18px;
+    }
+    .atacado-empty { grid-column: 1/-1; text-align: center; padding: 40px 0; color: var(--text-muted); }
+
+    .atacado-card {
+      background: var(--surface-color); border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--border-color); box-shadow: var(--shadow-light);
+      display: flex; flex-direction: column; transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .atacado-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-medium); }
+    .atacado-card__media { aspect-ratio: 3/4; background: var(--bg-light); cursor: pointer; overflow: hidden; }
+    .atacado-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .atacado-card__noimg {
+      width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 12px;
+    }
+    .atacado-card__info { padding: 14px 14px 10px; flex: 1; }
+    .atacado-card__name {
+      font-family: var(--font-heading); font-size: 15px; margin: 0 0 4px; cursor: pointer;
+      color: var(--secondary-color);
+    }
+    .atacado-card__cat { font-size: 12px; color: var(--text-muted); margin: 0 0 8px; }
+    .atacado-card__price { font-weight: 700; color: var(--primary-dark); font-size: 15px; }
+    .atacado-card__price--consult { color: var(--text-muted); font-weight: 600; font-size: 13px; }
+    .atacado-card__swatches { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .atacado-swatch {
+      width: 18px; height: 18px; border-radius: 50%; display: inline-block;
+      background: var(--sw, #e6e6e6); border: 1.5px solid rgba(0,0,0,.12);
+    }
+    .atacado-card__whats {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px; background: #25D366; color: #fff; font-weight: 700; font-size: 13px;
+      text-decoration: none;
+    }
+    .atacado-card__whats:hover { background: #1ebe57; }
+
+    #atacadoModal {
+      border: none; border-radius: 18px; padding: 0; max-width: 820px; width: min(92vw, 820px);
+      box-shadow: var(--shadow-medium);
+    }
+    #atacadoModal::backdrop { background: rgba(20,20,20,.55); }
+    .atacado-modal__close {
+      position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%;
+      border: none; background: rgba(0,0,0,.06); cursor: pointer; font-size: 16px; z-index: 2;
+    }
+    .atacado-modal__content { display: grid; grid-template-columns: 1fr 1fr; position: relative; }
+    .atacado-modal__media { background: var(--bg-light); }
+    .atacado-modal__media img { width: 100%; height: 100%; object-fit: cover; display: block; min-height: 320px; }
+    .atacado-modal__info { padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+    .atacado-modal__info h2 { font-family: var(--font-heading); margin: 0; color: var(--secondary-color); }
+    .atacado-modal__desc { color: var(--text-muted); font-size: 14px; white-space: pre-line; }
+    .atacado-modal__colors ul { list-style: none; display: flex; gap: 8px; padding: 0; margin: 4px 0 0; }
+    .atacado-swatch-btn { border: none; background: transparent; padding: 2px; cursor: pointer; border-radius: 50%; }
+    .atacado-swatch-btn[data-selected="true"] { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+    .atacado-modal__price { font-size: 20px; font-weight: 800; color: var(--primary-dark); }
+    .atacado-modal__whats {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 18px; background: #25D366; color: #fff; border-radius: 10px;
+      font-weight: 700; text-decoration: none; margin-top: auto;
+    }
+    .atacado-modal__whats:hover { background: #1ebe57; }
+    @media (max-width: 680px) {
+      .atacado-modal__content { grid-template-columns: 1fr; }
+      .atacado-modal__media img { min-height: 260px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header__wrap">
+      <h1 class="logo" style="margin:auto;">
+        <a href="index.html"><img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness" height="52" loading="eager"></a>
+      </h1>
+    </div>
+  </header>
+
+  <section class="atacado-hero">
+    <div class="atacado-hero__inner">
+      <h1>Catálogo de Atacado</h1>
+      <p>Peças selecionadas para revenda, com condições especiais. Escolha o produto e fale direto com a gente pelo WhatsApp para negociar quantidade e preço.</p>
+    </div>
+  </section>
+
+  <div class="atacado-wrap">
+    <div class="atacado-search">
+      <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+      <input id="atacadoSearch" type="search" autocomplete="off" placeholder="Buscar peça ou cor" aria-label="Buscar peça ou cor" />
+      <span class="atacado-search__meta" id="atacadoSearchMeta"></span>
+    </div>
+    <section id="atacadoGrid" class="atacado-grid" aria-label="Produtos de atacado"></section>
+  </div>
+
+  <dialog id="atacadoModal" aria-labelledby="atacadoModalNome">
+    <button class="atacado-modal__close" id="atacadoModalClose" aria-label="Fechar">✕</button>
+    <div class="atacado-modal__content">
+      <div class="atacado-modal__media">
+        <img id="atacadoModalImg" src="" alt="" />
+      </div>
+      <div class="atacado-modal__info">
+        <h2 id="atacadoModalNome"></h2>
+        <div id="atacadoModalDesc" class="atacado-modal__desc"></div>
+        <div class="atacado-modal__colors">
+          <ul id="atacadoModalColors"></ul>
+        </div>
+        <div id="atacadoModalPreco" class="atacado-modal__price"></div>
+        <a id="atacadoModalWhats" class="atacado-modal__whats" href="#" target="_blank" rel="noopener">
+          <i class="fab fa-whatsapp" aria-hidden="true"></i> Pedir no WhatsApp
+        </a>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="atacado.js?v=1"></script>
+</body>
+</html>

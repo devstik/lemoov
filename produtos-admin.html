@@ -449,6 +449,10 @@
       <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17h7"/><path d="M17.5 13.5v7"/></svg>
       <span class="nav-label">Combos</span>
     </button>
+    <button class="tab-btn" data-tab="atacado" title="Atacado">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      <span class="nav-label">Atacado</span>
+    </button>
     <button class="tab-btn" data-tab="estoque" title="Estoque">
       <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       <span class="nav-label">Estoque</span>
@@ -546,6 +550,39 @@
       <div id="comboNotice" class="notice" style="margin:12px 16px 0"></div>
       <div id="comboFormPanel" class="form-panel">
         <div class="form-empty">Selecione um combo ao lado para editar,<br>ou clique em "+ Novo" para cadastrar.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ATACADO ──────────────────────────────────── -->
+<div id="tab-atacado" class="tab-panel">
+  <div class="screen-hero">
+    <div>
+      <h1 class="screen-title">Atacado</h1>
+      <p class="screen-copy">Catálogo próprio para venda por atacado — fotos, descrições e cores independentes do varejo. Sem controle de estoque.</p>
+    </div>
+  </div>
+  <div class="prod-layout">
+    <div class="card prod-sidebar">
+      <div class="card-head">
+        <h2>Catálogo Atacado</h2>
+        <span id="atacadoCount" style="font-size:12px;color:var(--muted);margin-left:4px"></span>
+        <button class="btn btn--primary btn--sm" id="btnNovoAtacado" style="margin-left:auto">+ Novo</button>
+      </div>
+      <div class="prod-sidebar-search">
+        <input class="fc" id="atacadoSearch" placeholder="Buscar produto…" autocomplete="off" />
+      </div>
+      <div id="listaAtacado" class="prod-list"></div>
+    </div>
+    <div class="card prod-form-panel">
+      <div class="card-head">
+        <h2 id="atacadoFormTitle">Selecione um produto</h2>
+        <div id="atacadoFormActions" style="margin-left:auto;display:flex;gap:6px;"></div>
+      </div>
+      <div id="atacadoNotice" class="notice" style="margin:12px 16px 0"></div>
+      <div id="atacadoFormPanel" class="form-panel">
+        <div class="form-empty">Selecione um produto no catálogo ao lado para editar,<br>ou clique em "+ Novo" para cadastrar.</div>
       </div>
     </div>
   </div>
@@ -1091,8 +1128,8 @@ function showNotice(_el,msg,type='success'){toast(msg,type)}
 function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
-let produtos=[], combos=[], pedidos=[], cupons=[], stockMovimentos=[], stockAuditData=null, stockAuditProductId='', activeProdId=null, activeComboId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', stockMovementSearch='', stockMovementType='', relDateStart='', relDateEnd='';
-let colorCounter=0, newOrderItems=[], prodListSortable=null, comboListSortable=null;
+let produtos=[], combos=[], atacado=[], pedidos=[], cupons=[], stockMovimentos=[], stockAuditData=null, stockAuditProductId='', activeProdId=null, activeComboId=null, activeAtacadoId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', stockMovementSearch='', stockMovementType='', relDateStart='', relDateEnd='';
+let colorCounter=0, newOrderItems=[], prodListSortable=null, comboListSortable=null, atacadoListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
 $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
@@ -1103,6 +1140,7 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   const panel = $(`tab-${tab}`);
   if(panel) panel.classList.add('active');
   if(tab==='combos') loadCombos();
+  if(tab==='atacado') loadAtacado();
   if(tab==='pedidos') { loadCupons(); loadPedidos(); }
   if(tab==='cupons') loadCupons();
   if(tab==='estoque') refreshStockScreen();
@@ -1886,6 +1924,319 @@ async function excluirCombo(id){
 }
 $('btnNovoCombo')?.addEventListener('click',()=>{activeComboId=null;renderComboList();renderComboForm(null)});
 $('comboSearch')?.addEventListener('input',()=>renderComboList());
+
+// ═══════════════════════════════════════════════════════════
+// ATACADO — catálogo próprio, sem estoque. Não compartilha dados
+// com Produtos/Combos (varejo): endpoints, tabela e uploads são à parte.
+// ═══════════════════════════════════════════════════════════
+async function loadAtacado(){
+  const r=await fetch('/api/admin/atacado');
+  if(r.status===401){redirect401();return}
+  if(!r.ok) return;
+  atacado=await r.json();
+  renderAtacadoList();
+  if(activeAtacadoId){
+    const item=atacado.find(p=>String(p.id)===String(activeAtacadoId));
+    if(item) renderAtacadoForm(item);
+  }
+}
+
+function renderAtacadoList(){
+  const q=($('atacadoSearch')?.value||'').toLowerCase().trim();
+  const sorted=[...atacado].sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999))
+    .filter(p=>!q||[p.nome,p.categoria,...(p.cores||[]).map(c=>c.nome)].join(' ').toLowerCase().includes(q));
+  $('atacadoCount').textContent=atacado.length?`${atacado.length} produto${atacado.length>1?'s':''}`:'';
+  $('listaAtacado').innerHTML=sorted.map(p=>{
+    const inativo=p.ativo===false;
+    const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
+    const img=c?.imagens?.[0]||c?.imagem||'';
+    const src=img?(img.startsWith('http')?img:'/'+img):'';
+    const active=String(p.id)===String(activeAtacadoId);
+    return `<div class="prod-item ${active?'active':''} ${inativo?'prod-inativo':''}" data-id="${p.id}">
+      <span class="drag-handle" title="Arrastar para reordenar">⠿</span>
+      ${src?`<img class="prod-item__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:
+             `<div class="prod-item__img" style="font-size:9px;color:#94a3b8;display:flex;align-items:center;justify-content:center">Sem foto</div>`}
+      <div style="flex:1;min-width:0">
+        <div class="prod-item__name">${esc(p.nome)}</div>
+        <div class="prod-item__meta">${esc(p.categoria||'Atacado')}${p.preco?` · ${fmtR(p.preco)}`:' · Sob consulta'}</div>
+      </div>
+      ${inativo?'<span class="badge badge--out" style="font-size:9px;padding:2px 5px">OFF</span>':''}
+    </div>`;
+  }).join('');
+  $$('#listaAtacado .prod-item').forEach(elm=>elm.addEventListener('click',()=>{
+    activeAtacadoId=elm.dataset.id;
+    renderAtacadoList();
+    renderAtacadoForm(atacado.find(p=>String(p.id)===String(activeAtacadoId)));
+  }));
+  if(typeof Sortable!=='undefined'){
+    if(atacadoListSortable) atacadoListSortable.destroy();
+    atacadoListSortable=Sortable.create($('listaAtacado'),{
+      animation:150,handle:'.drag-handle',
+      onEnd:async()=>{
+        const ids=Array.from($$('#listaAtacado .prod-item')).map(elm=>Number(elm.dataset.id));
+        ids.forEach((id,i)=>{const p=atacado.find(p=>Number(p.id)===id);if(p)p.ordem=i+1});
+        try{await fetch('/api/admin/atacado/ordem',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})})}
+        catch(e){console.error('Erro ao reordenar atacado:',e)}
+      }
+    });
+  }
+}
+
+$('btnNovoAtacado')?.addEventListener('click',()=>{
+  activeAtacadoId=null; renderAtacadoList(); renderAtacadoForm(null);
+});
+$('atacadoSearch')?.addEventListener('input',()=>renderAtacadoList());
+
+function cancelAtacadoForm(){
+  activeAtacadoId=null; renderAtacadoList();
+  $('atacadoFormTitle').textContent='Selecione um produto';
+  $('atacadoFormActions').innerHTML='';
+  $('atacadoNotice').className='notice';
+  $('atacadoFormPanel').innerHTML='<div class="form-empty">Clique em um produto para editar<br>ou em "+ Novo" para cadastrar.</div>';
+}
+
+function renderAtacadoForm(p){
+  $('atacadoFormTitle').textContent=p?p.nome:'Novo produto (Atacado)';
+  $('atacadoFormActions').innerHTML=p?`<button class="btn btn--danger btn--sm" id="btnExcluirAtacado">Excluir</button>`:'';
+  if(p) $('btnExcluirAtacado').addEventListener('click',()=>excluirAtacado(p.id));
+
+  $('atacadoFormPanel').innerHTML=`
+    <form id="atacadoForm">
+      <div class="frow">
+        <div class="fg"><label class="fl">Nome *</label><input class="fc" id="a_nome" required /></div>
+        <div class="fg"><label class="fl">Categoria</label><input class="fc" id="a_cat" placeholder="Opcional" /></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Preço (R$)</label><input class="fc" type="number" step="0.01" min="0" id="a_preco" placeholder="Vazio = Sob consulta" /></div>
+        <div class="fg" style="display:flex;align-items:center;gap:14px;padding-top:18px">
+          <div class="toggle-wrap" id="a_ativo" data-state="on" role="switch" aria-checked="true">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span id="a_ativo_lbl" style="font-size:13px;font-weight:600;color:#22c55e">Visível no site</span>
+          </div>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="a_desc"></textarea></div>
+      <div style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;color:#475569;letter-spacing:.04em">Cores / Variações</span>
+          <button type="button" class="btn btn--secondary btn--sm" id="btnAddCorAtacado">+ Cor</button>
+        </div>
+        <div id="atacadoColorsList"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary" id="btnSalvarAtacado">Salvar produto</button>
+        <button type="button" class="btn btn--ghost" id="btnCancelAtacado">Cancelar</button>
+      </div>
+    </form>`;
+
+  $('a_nome').value=p?.nome||'';
+  $('a_cat').value=p?.categoria||'';
+  $('a_preco').value=p?.preco??'';
+  $('a_desc').value=p?.descricao||'';
+  const aAtivo=$('a_ativo'), aAtivoLbl=$('a_ativo_lbl');
+  function setAAtivo(on){
+    aAtivo.dataset.state=on?'on':'off';
+    aAtivo.setAttribute('aria-checked',String(on));
+    aAtivoLbl.textContent=on?'Visível no site':'Oculto no site';
+    aAtivoLbl.style.color=on?'#22c55e':'#ef4444';
+  }
+  setAAtivo(p?.ativo!==false);
+  aAtivo.onclick=()=>setAAtivo(aAtivo.dataset.state!=='on');
+
+  const cores=Array.isArray(p?.cores)?p.cores:[];
+  cores.forEach(c=>addAtacadoColorRow(c));
+  if(!cores.length) addAtacadoColorRow({});
+
+  $('btnAddCorAtacado').addEventListener('click',()=>addAtacadoColorRow({}));
+  $('btnCancelAtacado').addEventListener('click',cancelAtacadoForm);
+  $('atacadoForm').addEventListener('submit',async e=>{e.preventDefault();await salvarAtacado(p?.id)});
+}
+
+function addAtacadoColorRow(cor={}){
+  colorCounter++;
+  const cid=colorCounter;
+  const list=$('atacadoColorsList');
+  const div=document.createElement('div');
+  div.className='color-row';
+  const imgs=Array.isArray(cor.imagens)?cor.imagens.filter(Boolean):[];
+  const i1=cor.imagem||imgs[0]||'', i2=imgs[1]||'', i3=imgs[2]||'';
+  div.dataset.i1=i1; div.dataset.i2=i2; div.dataset.i3=i3;
+
+  div.innerHTML=`
+    <div class="color-row-head">
+      <span class="color-row-title">Variação de cor</span>
+      <button type="button" class="btn btn--danger btn--sm" data-rm>Remover</button>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Nome da cor</label><input class="fc" data-cn /></div>
+      <div class="fg">
+        <label class="fl">Tom da bolinha</label>
+        <div class="color-picker">
+          <input type="color" data-cw aria-label="Selecionar cor da bolinha" />
+          <input class="fc color-picker__tone" data-cw-tone list="colorToneOptions" placeholder="Buscar tom: azul claro" />
+          <span class="color-picker__hex" data-cw-label></span>
+        </div>
+        <div class="color-palette" data-cw-palette aria-label="Paleta de tons"></div>
+      </div>
+    </div>
+    <div class="color-images">
+      ${[['1','Principal'],['2','Foto 2'],['3','Foto 3']].map(([idx,lbl])=>`
+        <div class="img-slot">
+          <div class="img-placeholder" data-ph="${idx}" id="aph_${cid}_${idx}">+ Foto</div>
+          <img class="img-preview" data-pv="${idx}" style="display:none" />
+          <input type="file" id="acf_${cid}_${idx}" data-cf="${idx}" accept="image/jpeg,image/png" style="display:none" />
+          <label class="img-slot-label" for="acf_${cid}_${idx}">${lbl}</label>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap">
+      <div class="toggle-wrap" data-cativo data-state="on" role="switch" aria-checked="true">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span data-cativo-label style="font-size:13px;font-weight:600;color:#22c55e">Visível</span>
+      </div>
+    </div>`;
+
+  const nameInput=div.querySelector('[data-cn]');
+  const swatchInput=div.querySelector('[data-cw]');
+  const toneInput=div.querySelector('[data-cw-tone]');
+  const swatchLabel=div.querySelector('[data-cw-label]');
+  const paletteEl=div.querySelector('[data-cw-palette]');
+  const initialSwatch=isHexColor(cor.swatch)?cor.swatch:defaultSwatchForName(cor.nome);
+  div.dataset.swatchManual=isHexColor(cor.swatch)?'1':'0';
+  paletteEl.innerHTML=COLOR_TONE_PRESETS.map(p=>`<button type="button" class="color-palette__btn" data-tone-hex="${p.hex}" title="${esc(p.nome)}" aria-label="${esc(p.nome)}" style="--tone:${p.hex}"></button>`).join('');
+  function setSwatchValue(value){
+    const hex=isHexColor(value)?value.toLowerCase():'#e6e6e6';
+    swatchInput.value=hex;
+    swatchLabel.textContent=hex.toUpperCase();
+    const preset=findToneByHex(hex);
+    toneInput.value=preset?.nome||'Personalizada';
+    paletteEl.querySelectorAll('[data-tone-hex]').forEach(btn=>{btn.dataset.selected=btn.dataset.toneHex===hex?'true':'false'});
+  }
+  nameInput.value=cor.nome||'';
+  setSwatchValue(initialSwatch);
+  const togEl=div.querySelector('[data-cativo]');
+  const togLbl=div.querySelector('[data-cativo-label]');
+  function setTogState(on){
+    togEl.dataset.state=on?'on':'off';
+    togEl.setAttribute('aria-checked',String(on));
+    togLbl.textContent=on?'Visível':'Oculta';
+    togLbl.style.color=on?'#22c55e':'#ef4444';
+  }
+  setTogState(cor.ativo!==false);
+  togEl.onclick=()=>setTogState(togEl.dataset.state!=='on');
+  swatchInput.addEventListener('input',()=>{div.dataset.swatchManual='1';setSwatchValue(swatchInput.value)});
+  paletteEl.addEventListener('click',(e)=>{
+    const btn=e.target.closest('[data-tone-hex]');
+    if(!btn) return;
+    const preset=findToneByHex(btn.dataset.toneHex);
+    div.dataset.swatchManual='1';
+    setSwatchValue(btn.dataset.toneHex);
+    if(preset&&!nameInput.value.trim()) nameInput.value=preset.nome;
+  });
+  toneInput.addEventListener('input',()=>{
+    const preset=findTonePreset(toneInput.value);
+    if(!preset) return;
+    div.dataset.swatchManual='1';
+    setSwatchValue(preset.hex);
+    if(!nameInput.value.trim()) nameInput.value=preset.nome;
+  });
+  nameInput.addEventListener('input',()=>{
+    if(div.dataset.swatchManual!=='1') setSwatchValue(defaultSwatchForName(nameInput.value));
+  });
+
+  [[i1,'1'],[i2,'2'],[i3,'3']].forEach(([src,idx])=>{
+    if(!src) return;
+    const ph=div.querySelector(`[data-ph="${idx}"]`);
+    const pv=div.querySelector(`[data-pv="${idx}"]`);
+    const fullSrc=src.startsWith('http')?src:'/'+src;
+    pv.src=fullSrc; pv.style.display=''; if(ph) ph.style.display='none';
+  });
+
+  div.querySelectorAll('[data-cf]').forEach(inp=>{
+    const idx=inp.dataset.cf;
+    const ph=div.querySelector(`[data-ph="${idx}"]`);
+    const pv=div.querySelector(`[data-pv="${idx}"]`);
+    if(ph) ph.addEventListener('click',()=>inp.click());
+    pv.addEventListener('click',()=>inp.click());
+    inp.addEventListener('change',()=>{
+      const f=inp.files?.[0]; if(!f) return;
+      const url=URL.createObjectURL(f);
+      pv.src=url; pv.style.display=''; if(ph) ph.style.display='none';
+    });
+  });
+
+  div.querySelector('[data-rm]').addEventListener('click',()=>div.remove());
+  list.appendChild(div);
+}
+
+async function uploadAtacadoImg(file){
+  const fd=new FormData(); fd.append('file',file);
+  const r=await fetch('/api/admin/upload-atacado',{method:'POST',body:fd});
+  if(r.status===401){redirect401();throw new Error('Sem login')}
+  if(!r.ok) throw new Error('Falha no upload');
+  const d=await r.json();
+  if(!d?.path) throw new Error('Upload inválido');
+  return d.path;
+}
+
+async function buildAtacadoCores(){
+  const rows=Array.from($$('#atacadoColorsList .color-row'));
+  const cores=[];
+  for(const row of rows){
+    const nome=row.querySelector('[data-cn]').value.trim();
+    const swatch=row.querySelector('[data-cw]')?.value || defaultSwatchForName(nome);
+    const ativo=row.querySelector('[data-cativo]')?.dataset.state!=='off';
+    let i1=row.dataset.i1||'', i2=row.dataset.i2||'', i3=row.dataset.i3||'';
+    for(const [idx,setter] of [['1',v=>i1=v],['2',v=>i2=v],['3',v=>i3=v]]){
+      const inp=row.querySelector(`[data-cf="${idx}"]`);
+      if(inp?.files?.[0]){ const p=await uploadAtacadoImg(inp.files[0]); setter(p); }
+    }
+    const imagens=[i1,i2,i3].filter(Boolean);
+    if(!nome&&!imagens.length) continue;
+    cores.push({nome,swatch:isHexColor(swatch)?swatch.toLowerCase():defaultSwatchForName(nome),imagem:imagens[0]||'',imagens,ativo});
+  }
+  return cores;
+}
+
+async function salvarAtacado(id){
+  const btn=$('btnSalvarAtacado'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    const cores=await buildAtacadoCores();
+    const payload={
+      nome:$('a_nome').value.trim(), categoria:$('a_cat').value.trim(),
+      preco:$('a_preco').value?Number($('a_preco').value):null,
+      ativo:$('a_ativo')?.dataset.state!=='off',
+      descricao:($('a_desc').value||'').trim(),
+      cores
+    };
+    if(!payload.nome) throw new Error('Preencha o nome do produto.');
+    const r=await fetch(id?`/api/admin/atacado/${id}`:'/api/admin/atacado',{
+      method:id?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    if(r.status===401){redirect401();return}
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Falha ao salvar')}
+    const d=await r.json();
+    activeAtacadoId=String(d?.item?.id||id||'');
+    await loadAtacado();
+    if(activeAtacadoId){
+      const item=atacado.find(p=>String(p.id)===activeAtacadoId);
+      if(item){
+        $('atacadoFormTitle').textContent=item.nome;
+        renderAtacadoList();
+        renderAtacadoForm(item);
+      }
+    }
+    toast('Produto de atacado salvo com sucesso','success');
+  }catch(e){ toast(e.message,'error') }
+  finally{ btn.disabled=false; btn.textContent='Salvar produto' }
+}
+
+async function excluirAtacado(id){
+  if(!confirm('Excluir este produto de atacado?')) return;
+  const r=await fetch(`/api/admin/atacado/${id}`,{method:'DELETE'});
+  if(r.status===401){redirect401();return}
+  if(!r.ok){alert('Falha ao excluir.');return}
+  activeAtacadoId=null; await loadAtacado(); cancelAtacadoForm();
+}
 
 // ═══════════════════════════════════════════════════════════
 // ESTOQUE
@@ -3114,6 +3465,7 @@ $('relClienteFilter')?.addEventListener('input', e => {
 renderToneOptions();
 loadProdutos();
 loadCombos();
+loadAtacado();
 loadCupons();
 
 // ── CRM ──────────────────────────────────────────────────────
