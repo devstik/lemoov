@@ -1,7 +1,8 @@
 /* Catálogo de Atacado — independente do script.js do varejo.
-   Sem carrinho/checkout: cada produto tem um CTA direto pro WhatsApp. */
+   Sem checkout: monta um carrinho local e envia o pedido pro WhatsApp como texto. */
 (function () {
   const WHATS_NUMBER = "558587408457";
+  const CART_STORAGE_KEY = "lemoov_atacado_cart_v1";
   const el = (sel, ctx) => (ctx || document).querySelector(sel);
   const els = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
   const formatBRL = (n) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -15,9 +16,22 @@
   let buscaAtual = "";
   let modalProduto = null;
   let modalCorIndex = 0;
+  let cart = loadCart();
+
+  function loadCart() {
+    try {
+      const raw = localStorage.getItem(CART_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_e) {
+      return [];
+    }
+  }
+  function saveCart() {
+    try { localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart)); } catch (_e) {}
+  }
 
   async function loadAtacado() {
-    const grid = el("#atacadoGrid");
     try {
       const res = await fetch("/api/atacado");
       produtos = res.ok ? await res.json() : [];
@@ -26,6 +40,7 @@
     }
     if (!Array.isArray(produtos)) produtos = [];
     renderGrid();
+    renderCart();
   }
 
   function getCoresAtivas(p) {
@@ -38,12 +53,10 @@
     if (!img) return "";
     return img.startsWith("http") ? img : "/" + img;
   }
-  function whatsLink(p, corNome) {
-    const partes = [`Olá! Tenho interesse no atacado do produto *${p.nome}*`];
-    if (corNome) partes.push(`(cor: ${corNome})`);
-    partes.push("— pode me passar condições de atacado?");
-    const texto = encodeURIComponent(partes.join(" "));
-    return `https://wa.me/${WHATS_NUMBER}?text=${texto}`;
+  function getImagemAbsoluta(p, corIndex = 0) {
+    const src = getImagemProduto(p, corIndex);
+    if (!src) return "";
+    return src.startsWith("http") ? src : `${location.origin}${src}`;
   }
 
   function matchesSearch(p, termo) {
@@ -52,6 +65,25 @@
     return alvo.includes(termo.toLowerCase());
   }
 
+  function clampQty(value) {
+    const n = Math.floor(Number(value));
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }
+
+  function wireQtyStepper(root) {
+    const wrap = el("[data-qty]", root);
+    if (!wrap) return { get: () => 1, set: () => {} };
+    const input = el("[data-qty-input]", wrap);
+    const dec = el("[data-qty-dec]", wrap);
+    const inc = el("[data-qty-inc]", wrap);
+    const set = (v) => { input.value = clampQty(v); };
+    dec.addEventListener("click", () => set(clampQty(input.value) - 1));
+    inc.addEventListener("click", () => set(clampQty(input.value) + 1));
+    input.addEventListener("change", () => set(input.value));
+    return { get: () => clampQty(input.value), set };
+  }
+
+  // ── Grid ─────────────────────────────────────────────────────
   function renderGrid() {
     const grid = el("#atacadoGrid");
     if (!grid) return;
@@ -82,24 +114,47 @@
           </div>
           <div class="atacado-card__info">
             <h3 class="atacado-card__name">${escapeHTML(p.nome)}</h3>
-            ${p.categoria ? `<p class="atacado-card__cat">${escapeHTML(p.categoria)}</p>` : ""}
             ${precoHtml}
             ${cores.length ? `<div class="atacado-card__swatches">${cores.slice(0, 6).map((c) =>
               `<span class="atacado-swatch" style="--sw:${escapeHTML(c.swatch || "#e6e6e6")}" title="${escapeHTML(c.nome || "")}"></span>`
             ).join("")}</div>` : ""}
           </div>
-          <a class="atacado-card__whats" href="${whatsLink(p, cores[0]?.nome)}" target="_blank" rel="noopener">
-            <i class="fab fa-whatsapp" aria-hidden="true"></i> Pedir no WhatsApp
-          </a>
+          <div class="atacado-card__actions">
+            <div class="atacado-qty" data-qty>
+              <button type="button" class="atacado-qty__btn" data-qty-dec aria-label="Diminuir quantidade">−</button>
+              <input type="number" class="atacado-qty__input" data-qty-input value="1" min="1" inputmode="numeric" />
+              <button type="button" class="atacado-qty__btn" data-qty-inc aria-label="Aumentar quantidade">+</button>
+            </div>
+            <button type="button" class="atacado-card__add" data-add>
+              <i class="fas fa-cart-plus" aria-hidden="true"></i> Adicionar
+            </button>
+          </div>
         </article>`;
     }).join("");
 
     els(".atacado-card", grid).forEach((card) => {
-      card.querySelector(".atacado-card__media")?.addEventListener("click", () => openModal(lista[Number(card.dataset.index)]));
-      card.querySelector(".atacado-card__name")?.addEventListener("click", () => openModal(lista[Number(card.dataset.index)]));
+      const p = lista[Number(card.dataset.index)];
+      card.querySelector(".atacado-card__media")?.addEventListener("click", () => openModal(p));
+      card.querySelector(".atacado-card__name")?.addEventListener("click", () => openModal(p));
+      const qty = wireQtyStepper(card);
+      const addBtn = card.querySelector("[data-add]");
+      addBtn?.addEventListener("click", () => {
+        addToCart(p, 0, qty.get());
+        qty.set(1);
+        flashAdded(addBtn);
+      });
     });
   }
 
+  function flashAdded(btn) {
+    if (!btn) return;
+    const original = btn.innerHTML;
+    btn.dataset.added = "true";
+    btn.innerHTML = `<i class="fas fa-check" aria-hidden="true"></i> Adicionado`;
+    setTimeout(() => { btn.dataset.added = "false"; btn.innerHTML = original; }, 1200);
+  }
+
+  // ── Modal de produto ─────────────────────────────────────────
   function openModal(p) {
     modalProduto = p;
     modalCorIndex = 0;
@@ -116,7 +171,6 @@
     if (!modalProduto) return;
     const p = modalProduto;
     const cores = getCoresAtivas(p);
-    const corAtual = cores[modalCorIndex] || cores[0];
 
     el("#atacadoModalNome").textContent = p.nome;
     el("#atacadoModalDesc").textContent = p.descricao || "";
@@ -139,8 +193,142 @@
       });
     });
 
-    const btnWhats = el("#atacadoModalWhats");
-    btnWhats.href = whatsLink(p, corAtual?.nome);
+    const qty = wireQtyStepper(el("#atacadoModal"));
+    const addBtn = el("#atacadoModalAdd");
+    addBtn.onclick = () => {
+      addToCart(p, modalCorIndex, qty.get());
+      qty.set(1);
+      flashAdded(addBtn);
+    };
+  }
+
+  // ── Carrinho ─────────────────────────────────────────────────
+  function addToCart(p, corIndex, quantidade) {
+    const cores = getCoresAtivas(p);
+    const cor = cores[corIndex] || null;
+    const key = `${p.id}::${corIndex}`;
+    const existing = cart.find((item) => item.key === key);
+    if (existing) {
+      existing.qty += quantidade;
+    } else {
+      cart.push({
+        key,
+        productId: p.id,
+        corIndex,
+        nome: p.nome,
+        corNome: cor?.nome || "",
+        preco: p.preco || null,
+        descricao: p.descricao || "",
+        imagem: getImagemAbsoluta(p, corIndex),
+        qty: quantidade
+      });
+    }
+    saveCart();
+    renderCart();
+  }
+  function removeFromCart(key) {
+    cart = cart.filter((item) => item.key !== key);
+    saveCart();
+    renderCart();
+  }
+  function changeCartQty(key, delta) {
+    const item = cart.find((i) => i.key === key);
+    if (!item) return;
+    item.qty = clampQty(item.qty + delta);
+    saveCart();
+    renderCart();
+  }
+  function cartTotal() {
+    return cart.reduce((sum, item) => sum + (Number(item.preco) || 0) * item.qty, 0);
+  }
+  function cartCount() {
+    return cart.reduce((sum, item) => sum + item.qty, 0);
+  }
+
+  function renderCart() {
+    const countEl = el("#atacadoCartCount");
+    if (countEl) countEl.textContent = String(cartCount());
+
+    const list = el("#atacadoCartList");
+    const whatsBtn = el("#atacadoCartWhats");
+    if (!list) return;
+
+    if (!cart.length) {
+      list.innerHTML = `<li class="atacado-cart__empty">Seu carrinho está vazio.</li>`;
+      if (whatsBtn) whatsBtn.disabled = true;
+    } else {
+      list.innerHTML = cart.map((item) => `
+        <li class="atacado-cart__item" data-key="${escapeHTML(item.key)}">
+          <div class="atacado-cart__item-media">
+            ${item.imagem ? `<img src="${escapeHTML(item.imagem)}" alt="${escapeHTML(item.nome)}">` : ""}
+          </div>
+          <div>
+            <p class="atacado-cart__item-name">${escapeHTML(item.nome)}</p>
+            ${item.corNome ? `<p class="atacado-cart__item-color">Cor: ${escapeHTML(item.corNome)}</p>` : ""}
+            <div class="atacado-cart__item-qty">
+              <button type="button" class="atacado-qty__btn" data-cart-dec>−</button>
+              <span>${item.qty}</span>
+              <button type="button" class="atacado-qty__btn" data-cart-inc>+</button>
+            </div>
+          </div>
+          <div class="atacado-cart__item-actions">
+            <span class="atacado-cart__item-price">${item.preco ? formatBRL(item.preco * item.qty) : "Sob consulta"}</span>
+            <button type="button" class="atacado-cart__remove" data-cart-remove>Remover</button>
+          </div>
+        </li>`).join("");
+      if (whatsBtn) whatsBtn.disabled = false;
+    }
+
+    els(".atacado-cart__item", list).forEach((row) => {
+      const key = row.dataset.key;
+      row.querySelector("[data-cart-inc]")?.addEventListener("click", () => changeCartQty(key, 1));
+      row.querySelector("[data-cart-dec]")?.addEventListener("click", () => changeCartQty(key, -1));
+      row.querySelector("[data-cart-remove]")?.addEventListener("click", () => removeFromCart(key));
+    });
+
+    const totalEl = el("#atacadoCartTotal");
+    if (totalEl) {
+      const total = cartTotal();
+      const temSobConsulta = cart.some((item) => !item.preco);
+      totalEl.textContent = total > 0
+        ? formatBRL(total) + (temSobConsulta ? " + itens sob consulta" : "")
+        : "Sob consulta";
+    }
+  }
+
+  function openCart() {
+    el("#atacadoCart")?.classList.add("show");
+    el("#atacadoCartBackdrop")?.classList.add("show");
+  }
+  function closeCart() {
+    el("#atacadoCart")?.classList.remove("show");
+    el("#atacadoCartBackdrop")?.classList.remove("show");
+  }
+
+  function buildWhatsAppMessage() {
+    const linhas = ["Olá! Gostaria de fazer um pedido de atacado:", ""];
+    cart.forEach((item, idx) => {
+      linhas.push(`${idx + 1}) ${item.nome}${item.corNome ? ` (cor: ${item.corNome})` : ""}`);
+      if (item.imagem) linhas.push(`Foto: ${item.imagem}`);
+      if (item.descricao) linhas.push(`Descrição: ${item.descricao}`);
+      linhas.push(`Preço unitário: ${item.preco ? formatBRL(item.preco) : "Sob consulta"}`);
+      linhas.push(`Quantidade: ${item.qty}`);
+      linhas.push("");
+    });
+    const total = cartTotal();
+    if (total > 0) linhas.push(`Total estimado: ${formatBRL(total)}`);
+    linhas.push("Pode me passar as condições de atacado?");
+    return linhas.join("\n");
+  }
+
+  function finalizarNoWhatsApp() {
+    if (!cart.length) return;
+    const texto = encodeURIComponent(buildWhatsAppMessage());
+    window.open(`https://wa.me/${WHATS_NUMBER}?text=${texto}`, "_blank", "noopener");
+    cart = [];
+    saveCart();
+    renderCart();
+    closeCart();
   }
 
   function bootstrap() {
@@ -149,6 +337,11 @@
     search?.addEventListener("input", () => { buscaAtual = search.value || ""; renderGrid(); });
     el("#atacadoModalClose")?.addEventListener("click", closeModal);
     el("#atacadoModal")?.addEventListener("click", (e) => { if (e.target.id === "atacadoModal") closeModal(); });
+
+    el("#atacadoCartBtn")?.addEventListener("click", openCart);
+    el("#atacadoCartClose")?.addEventListener("click", closeCart);
+    el("#atacadoCartBackdrop")?.addEventListener("click", closeCart);
+    el("#atacadoCartWhats")?.addEventListener("click", finalizarNoWhatsApp);
   }
 
   if (document.readyState === "loading") {
