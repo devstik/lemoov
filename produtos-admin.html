@@ -241,7 +241,9 @@
 
     .stock-feed-footer{padding-top:10px;border-top:1px solid var(--brd);text-align:center}
 
-    #stockDetailModal,#stockMovementsModal{border:none;border-radius:16px;padding:0;box-shadow:var(--sh-lg);max-height:88vh;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);margin:0}
+    #stockDetailModal,#stockMovementsModal,#orderDetailModal{border:none;border-radius:16px;padding:0;box-shadow:var(--sh-lg);max-height:88vh;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);margin:0}
+    #orderDetailModal{width:min(94vw,520px)}
+    #orderDetailModal::backdrop{background:rgba(56,56,56,.45)}
     #stockDetailModal{width:min(92vw,480px)}
     #stockMovementsModal{width:min(94vw,780px)}
     #stockDetailModal::backdrop,#stockMovementsModal::backdrop{background:rgba(56,56,56,.45)}
@@ -250,6 +252,9 @@
     .stock-modal__close{margin-left:auto;width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--muted);cursor:pointer;font-size:14px}
     .stock-modal__close:hover{background:var(--brd);color:var(--text)}
     .stock-modal__body{padding:18px 20px;overflow-y:auto;max-height:calc(88vh - 60px)}
+    #orderSide.stock-modal__body{padding:0}
+    #orderSide .card-head{border-radius:16px 16px 0 0}
+    #orderSide .order-detail{max-height:none}
 
     @media(max-width:1100px){.stock-grid2{grid-template-columns:1fr}}
     .stock-pick{display:flex;gap:10px;align-items:center;padding:12px;border-radius:10px;background:var(--pl);border:1.5px solid var(--pm)}
@@ -279,10 +284,9 @@
     .size-current{font-size:11px;color:var(--muted);margin-bottom:3px}
 
     /* ──────── Orders ──────── */
-    .orders-shell{display:grid;grid-template-columns:minmax(0,1fr) 400px;grid-template-areas:"kpis detail" "list detail";gap:14px;align-items:start}
-    .orders-kpis{grid-area:kpis;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:0}
-    .orders-list{grid-area:list}
-    .orders-detail{grid-area:detail;min-height:160px}
+    .orders-shell{display:flex;flex-direction:column;gap:14px}
+    .orders-kpis{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:0}
+    .orders-list{min-width:0}
     .orders-toolbar{padding:12px 14px;border-bottom:1px solid var(--brd);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .filter-btn{padding:5px 13px;border-radius:7px;border:1.5px solid var(--brd);background:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;color:var(--t2)}
     .filter-btn:hover{border-color:var(--pm);background:var(--pl);color:var(--p)}
@@ -294,8 +298,10 @@
     .orders-tbl th{text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;border-bottom:1px solid var(--brd);background:var(--bg);white-space:nowrap}
     .orders-tbl td{padding:11px 12px;border-bottom:1px solid var(--brd);font-size:13px;color:var(--t2)}
     .orders-tbl tr[data-num]:hover td{background:#FAFBFF;cursor:pointer}
-    #tab-pedidos .orders-tbl th{background:transparent;font-size:10px;padding:9px 12px}
-    #tab-pedidos .orders-tbl td{padding:10px 12px;border-bottom:1px solid #F3EDE5}
+    #tab-pedidos .orders-tbl{table-layout:fixed;min-width:900px}
+    #tab-pedidos .orders-tbl th{background:transparent;font-size:10px;padding:9px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #tab-pedidos .orders-tbl td{padding:10px 12px;border-bottom:1px solid #F3EDE5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #tab-pedidos .orders-tbl td:first-child{white-space:normal;overflow:visible}
     #tab-pedidos .orders-tbl tr[data-num]:hover td{background:var(--bg)}
     #tab-pedidos .orders-tbl tr.selected td{background:var(--pl)}
     #tab-pedidos .orders-list{overflow:hidden}
@@ -429,7 +435,7 @@
     /* ──────── Responsive ──────── */
     @media(max-width:1100px){.crm-grid{grid-template-columns:1fr}.crm-kpis{grid-template-columns:repeat(2,1fr)}.client-form-grid,.client-form-grid--address{grid-template-columns:repeat(2,minmax(0,1fr))}.client-form-actions{grid-template-columns:1fr auto}}
     @media(max-width:1000px){.prod-layout{grid-template-columns:1fr}.prod-sidebar{max-height:280px}.quick-stats{grid-template-columns:1fr}.screen-hero{flex-direction:column;align-items:flex-start;gap:12px}}
-    @media(max-width:900px){.tab-panel{padding:12px}.rel-grid{grid-template-columns:1fr}.orders-shell{grid-template-columns:1fr;grid-template-areas:"kpis" "list" "detail"}.orders-kpis{grid-template-columns:1fr}.chart-donut-wrap{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr 1fr}}
+    @media(max-width:900px){.tab-panel{padding:12px}.rel-grid{grid-template-columns:1fr}.orders-kpis{grid-template-columns:1fr}.chart-donut-wrap{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr 1fr}}
     @media(max-width:768px){body{--sb:66px}.logo-text-wrap,.sidebar-search,.nav-label{display:none}.tab-btn{padding:10px;justify-content:center}.sidebar-logo{justify-content:center;padding:0}}
     @media(max-width:700px){.quick-stat-group{grid-template-columns:1fr}.hero-actions{justify-content:flex-start}.toolbar-search{max-width:none;min-width:100%}.chart-bar{grid-template-columns:1fr}.chart-bar__value{text-align:left}.pipeline{grid-template-columns:1fr}.crm-kpis,.crm-filter,.crm-step{grid-template-columns:1fr}.crm-step__count{text-align:left}}
     @media(max-width:650px){.client-form-grid,.client-form-grid--address,.client-form-actions{grid-template-columns:1fr}.client-form-save{width:100%}}
@@ -789,8 +795,12 @@
         <button class="btn btn--primary btn--sm" id="btnNovoPedido" style="margin-left:auto">+ Pedido</button>
         <span id="ordersCount" style="font-size:12px;color:#64748b"></span>
       </div>
-      <div style="overflow-x:auto">
-        <table class="orders-tbl">
+      <div class="stock-table-wrap">
+        <table class="orders-tbl" id="ordersTbl">
+          <colgroup>
+            <col style="width:17%"><col style="width:17%"><col style="width:9%"><col style="width:11%">
+            <col style="width:13%"><col style="width:6%"><col style="width:11%"><col style="width:16%">
+          </colgroup>
           <thead><tr>
             <th>Pedido</th><th>Cliente</th><th>Origem</th><th>Cupom</th><th>Status</th><th>Itens</th><th>Total</th><th>Data</th>
           </tr></thead>
@@ -798,11 +808,18 @@
         </table>
       </div>
     </div>
-    <div class="card orders-detail" id="orderSide">
-      <div class="form-empty">Clique em um pedido para ver detalhes<br>ou crie um novo.</div>
-    </div>
   </div>
 </div>
+
+<dialog id="orderDetailModal">
+  <div class="stock-modal__head">
+    <h2>Detalhes do pedido</h2>
+    <button type="button" class="stock-modal__close" id="orderDetailClose">✕</button>
+  </div>
+  <div class="stock-modal__body" id="orderSide">
+    <div class="form-empty">Selecione um pedido.</div>
+  </div>
+</dialog>
 
 <!-- ── CUPONS ───────────────────────────────────── -->
 <div id="tab-cupons" class="tab-panel">
@@ -3276,8 +3293,10 @@ function renderOrdersTable(){
   $$('#ordersBody tr[data-num]').forEach(tr=>tr.addEventListener('click',()=>{
     activePedNum=tr.dataset.num; renderOrdersTable();
     renderOrderDetail(pedidos.find(p=>String(p.pedido)===String(activePedNum)));
+    $('orderDetailModal')?.showModal();
   }));
 }
+$('orderDetailClose')?.addEventListener('click',()=>$('orderDetailModal')?.close());
 
 function renderOrdersKpis(){
   const kpis=$('ordersKpis');
@@ -3287,7 +3306,7 @@ function renderOrdersKpis(){
   const cancel=pedidos.filter(p=>p.cancellation_requested&&String(p.cancellation_request_status||'pendente')==='pendente').length;
   const rec=paid.reduce((s,p)=>s+(Number(p.total)||0),0);
   kpis.innerHTML=[
-    ['Receita ativa',fmtR(rec),'pedidos que chegaram em confirmado'],
+    ['Receita ativa',fmtR(rec),'a partir de confirmado'],
     ['Pedidos em aberto',open+' pedidos','confirmados ou enviados'],
     ['Cancelamentos',cancel+' pendentes','solicitações de clientes'],
   ].map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
@@ -3422,6 +3441,7 @@ function renderOrderDetail(ped){
     pedidos=pedidos.filter(p=>String(p.pedido)!==String(ped.pedido));
     activePedNum=null; renderOrdersTable();
     $('orderSide').innerHTML='<div class="form-empty">Selecione um pedido.</div>';
+    $('orderDetailModal')?.close();
     toast('Pedido excluído','success');
   });
 }
