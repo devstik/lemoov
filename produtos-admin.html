@@ -179,9 +179,6 @@
 
     /* ──────── Stock ──────── */
     .stock-head-sub{font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
-    .stock-icon-card{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .quick-stat{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-    .quick-stat__body{min-width:0}
 
     .stock-grid2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start;margin-top:14px}
     .stock-main{display:flex;flex-direction:column;gap:16px;min-width:0}
@@ -774,7 +771,6 @@
   <div class="screen-hero">
     <div>
       <h1 class="screen-title">Pedidos</h1>
-      <p class="screen-copy">Acompanhe status, pagamentos e solicitações de cancelamento.</p>
     </div>
     <div class="hero-actions">
       <button class="btn btn--primary" id="btnNovoPedidoHero" type="button">+ Novo pedido</button>
@@ -807,6 +803,7 @@
           <tbody id="ordersBody"></tbody>
         </table>
       </div>
+      <div class="stock-pagination" id="ordersPagination"></div>
     </div>
   </div>
 </div>
@@ -1237,8 +1234,8 @@ function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
 let produtos=[], combos=[], atacado=[], pedidos=[], cupons=[], stockMovimentos=[], stockAuditData=null, stockAuditProductId='', activeProdId=null, activeComboId=null, activeAtacadoId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', stockMovementSearch='', stockMovementType='', relDateStart='', relDateEnd='';
-let stockSubTab='produtos', stockPage=1;
-const STOCK_PAGE_SIZE=8;
+let stockSubTab='produtos', stockPage=1, ordersPage=1;
+const STOCK_PAGE_SIZE=8, ORDERS_PAGE_SIZE=10;
 let colorCounter=0, newOrderItems=[], prodListSortable=null, comboListSortable=null, atacadoListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
@@ -3269,9 +3266,13 @@ function orderItems(ped){
 }
 
 function renderOrdersTable(){
-  const rows=filteredPedidos();
+  const all=filteredPedidos();
   renderOrdersKpis();
-  $('ordersCount').textContent=`${rows.length} pedido${rows.length!==1?'s':''}`;
+  $('ordersCount').textContent=`${all.length} pedido${all.length!==1?'s':''}`;
+  const totalPages=Math.max(1,Math.ceil(all.length/ORDERS_PAGE_SIZE));
+  if(ordersPage>totalPages) ordersPage=totalPages;
+  const start=(ordersPage-1)*ORDERS_PAGE_SIZE;
+  const rows=all.slice(start,start+ORDERS_PAGE_SIZE);
   $('ordersBody').innerHTML=rows.length===0
     ?`<tr><td colspan="8" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
     :rows.map(p=>{
@@ -3295,6 +3296,34 @@ function renderOrdersTable(){
     renderOrderDetail(pedidos.find(p=>String(p.pedido)===String(activePedNum)));
     $('orderDetailModal')?.showModal();
   }));
+  renderOrdersPagination(all.length,totalPages);
+}
+
+function renderOrdersPagination(totalItems,totalPages){
+  const el=$('ordersPagination');
+  if(!el) return;
+  if(!totalItems){ el.innerHTML=''; return; }
+  const start=(ordersPage-1)*ORDERS_PAGE_SIZE+1;
+  const end=Math.min(totalItems,ordersPage*ORDERS_PAGE_SIZE);
+  const pages=[];
+  for(let i=1;i<=totalPages;i++){
+    if(i===1||i===totalPages||Math.abs(i-ordersPage)<=1) pages.push(i);
+    else if(pages[pages.length-1]!=='...') pages.push('...');
+  }
+  el.innerHTML=`
+    <div class="stock-pagination__info">Mostrando ${start} a ${end} de ${totalItems} pedidos</div>
+    <div class="stock-pagination__pages">
+      <button type="button" class="stock-page-btn" data-orderspage="prev" ${ordersPage<=1?'disabled':''}>‹</button>
+      ${pages.map(p=>p==='...'?'<span class="stock-page-dots">…</span>':`<button type="button" class="stock-page-btn ${p===ordersPage?'active':''}" data-orderspage="${p}">${p}</button>`).join('')}
+      <button type="button" class="stock-page-btn" data-orderspage="next" ${ordersPage>=totalPages?'disabled':''}>›</button>
+    </div>`;
+  $$('[data-orderspage]',el).forEach(btn=>btn.addEventListener('click',()=>{
+    const v=btn.dataset.orderspage;
+    if(v==='prev') ordersPage=Math.max(1,ordersPage-1);
+    else if(v==='next') ordersPage=Math.min(totalPages,ordersPage+1);
+    else ordersPage=Number(v);
+    renderOrdersTable();
+  }));
 }
 $('orderDetailClose')?.addEventListener('click',()=>$('orderDetailModal')?.close());
 
@@ -3306,21 +3335,22 @@ function renderOrdersKpis(){
   const cancel=pedidos.filter(p=>p.cancellation_requested&&String(p.cancellation_request_status||'pendente')==='pendente').length;
   const rec=paid.reduce((s,p)=>s+(Number(p.total)||0),0);
   kpis.innerHTML=[
-    ['Receita ativa',fmtR(rec),'a partir de confirmado'],
-    ['Pedidos em aberto',open+' pedidos','confirmados ou enviados'],
-    ['Cancelamentos',cancel+' pendentes','solicitações de clientes'],
-  ].map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+    ['Receita ativa',fmtR(rec)],
+    ['Pedidos em aberto',open+' pedidos'],
+    ['Cancelamentos',cancel+' pendentes'],
+  ].map(([label,value])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div></div>`).join('');
 }
 
 $$('.filter-btn[data-status]').forEach(btn=>btn.addEventListener('click',()=>{
   $$('.filter-btn[data-status]').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); orderFilter=btn.dataset.status; renderOrdersTable();
+  btn.classList.add('active'); orderFilter=btn.dataset.status; ordersPage=1; renderOrdersTable();
 }));
 
 const orderSearchInput=$('orderSearch');
 if(orderSearchInput){
   orderSearchInput.addEventListener('input',()=>{
     orderSearch=orderSearchInput.value;
+    ordersPage=1;
     renderOrdersTable();
   });
 }
