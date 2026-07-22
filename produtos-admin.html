@@ -177,28 +177,95 @@
     .quick-stat__hint{font-size:12px;color:var(--muted);margin-top:2px}
 
     /* ──────── Stock ──────── */
-    .stock-layout{display:grid;grid-template-columns:300px 1fr;grid-template-rows:auto;gap:14px;align-items:start;min-height:calc(100vh - 220px)}
-    .stock-card--catalog{height:calc(100vh - 220px);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;position:sticky;top:14px}
-    .stock-card--catalog .card-head{flex-shrink:0}
-    .stock-card--catalog .card-body{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px}
-    .stock-right{display:flex;flex-direction:column;gap:14px;box-sizing:border-box;min-width:0}
-    .stock-card{display:flex;flex-direction:column;min-height:0}
-    .stock-card--detail,.stock-card--entry,.stock-card--movement{overflow:visible}
-    .stock-card--detail .card-body,.stock-card--entry .card-body,.stock-card--movement .card-body{overflow:visible;min-height:0}
-    .stock-card .card-head{flex-shrink:0}
     .stock-head-sub{font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
-    .stock-command{display:flex;flex-direction:column;gap:10px}
-    .stock-search{position:relative}
-    .stock-search::before{content:'\2315';position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:900;z-index:1;font-size:15px}
-    .stock-search input{padding-left:32px}
-    .stock-result-list{display:grid;gap:6px;overflow:auto;padding-right:2px}
-    .stock-result{width:100%;text-align:left;border:1.5px solid var(--brd);background:#fff;border-radius:10px;padding:10px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;transition:all .15s}
-    .stock-result:hover{border-color:var(--pm);background:var(--pl);box-shadow:0 2px 8px var(--p10)}
-    .stock-result.active{border-color:var(--p);background:var(--pl);box-shadow:0 2px 8px var(--p20)}
-    .stock-result__img{width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--bg);flex-shrink:0}
-    .stock-result__name{display:block;font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .stock-result__meta{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .stock-result__qty{margin-left:auto;font-weight:800;color:var(--p);white-space:nowrap}
+    .stock-icon-card{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .quick-stat{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .quick-stat__body{min-width:0}
+
+    .stock-grid2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start;margin-top:14px}
+    .stock-main{display:flex;flex-direction:column;gap:16px;min-width:0}
+    .stock-side{display:flex;flex-direction:column;gap:16px}
+
+    .stock-tabbar{display:flex;align-items:center;gap:4px;padding:10px 14px;border-bottom:1px solid var(--brd);flex-wrap:wrap}
+    .stock-subtab{border:none;background:transparent;padding:7px 12px;border-radius:8px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit}
+    .stock-subtab:hover{background:var(--bg);color:var(--text)}
+    .stock-subtab.active{background:var(--pl);color:var(--pd)}
+    .stock-table-search{position:relative;margin-left:auto;min-width:220px}
+    .stock-table-search::before{content:'\2315';position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:900;z-index:1;font-size:14px}
+    .stock-table-search input{padding-left:30px;font-size:12.5px;height:34px}
+
+    .stock-table-wrap{overflow-x:auto}
+    .stock-table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+    .stock-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;padding:10px 14px;border-bottom:1px solid var(--brd);white-space:nowrap}
+    .stock-table td{padding:10px 14px;border-bottom:1px solid #F3EDE5;vertical-align:middle;white-space:nowrap}
+    .stock-table tbody tr{cursor:pointer;transition:background .12s}
+    .stock-table tbody tr:hover{background:var(--bg)}
+    .stock-table tbody tr:last-child td{border-bottom:none}
+    .stock-row__prod{display:flex;align-items:center;gap:10px;min-width:180px;white-space:normal}
+    .stock-row__img{width:34px;height:34px;border-radius:8px;object-fit:cover;background:var(--bg);flex-shrink:0}
+    .stock-row__name{font-weight:700;color:var(--text);font-size:12.5px}
+    .stock-row__sub{font-size:11px;color:var(--muted)}
+    .stock-num{font-weight:700}
+    .stock-num--muted{color:var(--muted);font-weight:600}
+    .stock-num--warn{color:#B45309;font-weight:700}
+    .stock-num--good{color:var(--pd);font-weight:800}
+    .status-dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
+    .status-dot::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--brd2)}
+    .status-dot--on::before{background:#22c55e}
+    .status-dot--off::before{background:var(--muted)}
+
+    .stock-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-top:1px solid var(--brd);flex-wrap:wrap}
+    .stock-pagination__info{font-size:12px;color:var(--muted)}
+    .stock-pagination__pages{display:flex;align-items:center;gap:4px}
+    .stock-page-btn{min-width:28px;height:28px;padding:0 6px;border-radius:7px;border:1px solid var(--brd);background:#fff;color:var(--t2);font-size:12px;font-weight:700;cursor:pointer}
+    .stock-page-btn:hover{border-color:var(--brd2);background:var(--bg)}
+    .stock-page-btn.active{background:var(--p);border-color:var(--p);color:#fff}
+    .stock-page-btn:disabled{opacity:.4;cursor:not-allowed}
+    .stock-page-dots{color:var(--muted);font-size:12px;padding:0 2px}
+
+    .stock-alert-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F3EDE5}
+    .stock-alert-row:last-child{border-bottom:none}
+    .stock-alert-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
+    .stock-alert-icon--danger{background:var(--rose-l);color:var(--rose)}
+    .stock-alert-icon--warn{background:var(--amber-l);color:#92400E}
+    .stock-alert-title{font-size:13px;font-weight:700;color:var(--text)}
+    .stock-alert-sub{font-size:12px;color:var(--muted)}
+    .stock-alert-empty{font-size:13px;color:var(--muted);padding:6px 0}
+
+    .stock-donut-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+    .stock-donut{width:150px;height:150px;border-radius:50%;position:relative;flex-shrink:0}
+    .stock-donut__hole{position:absolute;inset:20px;background:var(--sur);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column}
+    .stock-donut__hole span{font-size:16px;font-weight:800;color:var(--text)}
+    .stock-donut__hole small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+    .stock-donut__legend{width:100%;display:flex;flex-direction:column;gap:8px}
+    .stock-donut__item{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2)}
+    .stock-donut__dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+    .stock-donut__item b{margin-left:auto;color:var(--text);font-weight:700;white-space:nowrap}
+
+    .stock-feed{display:flex;flex-direction:column;gap:2px}
+    .stock-feed-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #F3EDE5}
+    .stock-feed-row:last-child{border-bottom:none}
+    .stock-feed-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:800}
+    .stock-feed-icon--in{background:var(--green-l);color:#065F46}
+    .stock-feed-icon--out{background:var(--rose-l);color:#9F1239}
+    .stock-feed-icon--adj{background:#DBEAFE;color:#1E40AF}
+    .stock-feed-name{font-size:12.5px;font-weight:700;color:var(--text)}
+    .stock-feed-meta{font-size:11px;color:var(--muted)}
+    .stock-feed-qty{margin-left:auto;font-size:12px;font-weight:800;white-space:nowrap}
+    .stock-feed-empty{font-size:12.5px;color:var(--muted);padding:6px 0}
+    .stock-feed-footer{margin-top:8px;padding-top:10px;border-top:1px solid var(--brd);text-align:center}
+
+    #stockDetailModal,#stockMovementsModal{border:none;border-radius:16px;padding:0;box-shadow:var(--sh-lg);max-height:88vh;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);margin:0}
+    #stockDetailModal{width:min(92vw,480px)}
+    #stockMovementsModal{width:min(94vw,780px)}
+    #stockDetailModal::backdrop,#stockMovementsModal::backdrop{background:rgba(56,56,56,.45)}
+    .stock-modal__head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--brd);position:sticky;top:0;background:var(--sur);z-index:1}
+    .stock-modal__head h2{font-size:14px;font-weight:800;color:var(--text)}
+    .stock-modal__close{margin-left:auto;width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--muted);cursor:pointer;font-size:14px}
+    .stock-modal__close:hover{background:var(--brd);color:var(--text)}
+    .stock-modal__body{padding:18px 20px;overflow-y:auto;max-height:calc(88vh - 60px)}
+
+    @media(max-width:1100px){.stock-grid2{grid-template-columns:1fr}}
     .stock-pick{display:flex;gap:10px;align-items:center;padding:12px;border-radius:10px;background:var(--pl);border:1.5px solid var(--pm)}
     .stock-pick__swatch{width:38px;height:38px;border-radius:8px;background:var(--tone,#e2e8f0);border:1.5px solid var(--brd2);flex-shrink:0}
     .stock-pick__name{font-weight:700;color:var(--text)}
@@ -367,7 +434,7 @@
     ::-webkit-scrollbar-track{background:transparent}
 
     /* ──────── Responsive ──────── */
-    @media(max-width:1100px){.stock-layout{grid-template-columns:1fr}.stock-card--catalog{height:auto;position:static}.crm-grid{grid-template-columns:1fr}.crm-kpis{grid-template-columns:repeat(2,1fr)}.client-form-grid,.client-form-grid--address{grid-template-columns:repeat(2,minmax(0,1fr))}.client-form-actions{grid-template-columns:1fr auto}}
+    @media(max-width:1100px){.crm-grid{grid-template-columns:1fr}.crm-kpis{grid-template-columns:repeat(2,1fr)}.client-form-grid,.client-form-grid--address{grid-template-columns:repeat(2,minmax(0,1fr))}.client-form-actions{grid-template-columns:1fr auto}}
     @media(max-width:1000px){.prod-layout{grid-template-columns:1fr}.prod-sidebar{max-height:280px}.quick-stats{grid-template-columns:1fr}.screen-hero{flex-direction:column;align-items:flex-start;gap:12px}}
     @media(max-width:900px){.tab-panel{padding:12px}.rel-grid{grid-template-columns:1fr}.orders-shell{grid-template-columns:1fr;grid-template-areas:"kpis" "list" "detail"}.orders-kpis{grid-template-columns:1fr}.chart-donut-wrap{grid-template-columns:1fr}.pipeline{grid-template-columns:1fr 1fr}}
     @media(max-width:768px){body{--sb:66px}.logo-text-wrap,.sidebar-search,.nav-label{display:none}.tab-btn{padding:10px;justify-content:center}.sidebar-logo{justify-content:center;padding:0}}
@@ -597,85 +664,116 @@
   <div class="screen-hero">
     <div>
       <h1 class="screen-title">Estoque</h1>
+      <p class="screen-copy">Acompanhe saldos, entradas, saídas e movimentações.</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn--primary" id="btnStockGoOperation">+ Registrar operação</button>
     </div>
   </div>
   <div class="quick-stats" id="stockSummary"></div>
-    <div class="stock-layout">
-      <div class="card stock-card stock-card--catalog">
-        <div class="card-head">
-          <h2>Produtos</h2>
-          <span class="stock-head-sub" id="stockCatalogCount"></span>
-        </div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:10px;padding:12px">
-          <div class="stock-search">
-            <input class="fc" id="stockSearch" placeholder="Buscar por nome, categoria ou cor…" />
+
+  <div class="stock-grid2">
+    <div class="stock-main">
+      <div class="card">
+        <div class="stock-tabbar">
+          <button type="button" class="stock-subtab active" data-stocksubtab="produtos">Produtos</button>
+          <button type="button" class="stock-subtab" data-stocksubtab="categorias">Categorias</button>
+          <button type="button" class="stock-subtab" data-stocksubtab="variacoes">Variações</button>
+          <div class="stock-table-search">
+            <input class="fc" id="stockTableSearch" placeholder="Buscar produto..." />
           </div>
-          <div id="stockProductResults" class="stock-result-list"></div>
         </div>
+        <div class="stock-table-wrap">
+          <table class="stock-table" id="stockTable"></table>
+        </div>
+        <div class="stock-pagination" id="stockPagination"></div>
       </div>
-      <div class="stock-right">
-        <div class="card stock-card stock-card--detail">
-          <div class="card-head"><h2>Saldo do produto</h2><span class="stock-head-sub">por variação e tamanho</span></div>
-          <div class="card-body" id="stockPreview">
-            <div class="form-empty" style="padding:28px 12px">Selecione um produto para ver saldos e variações.</div>
+
+      <div class="card">
+        <div class="card-head"><h2>Alertas de estoque</h2></div>
+        <div class="card-body" id="stockAlerts" style="padding:6px 18px 14px"></div>
+      </div>
+    </div>
+
+    <div class="stock-side">
+      <div class="card">
+        <div class="card-head"><h2>Saldo por categoria</h2></div>
+        <div class="card-body" id="stockDonut"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Movimentações recentes</h2></div>
+        <div class="card-body" id="stockMovementsFeed"></div>
+      </div>
+
+      <div class="card" id="stockQuickOpCard">
+        <div class="card-head"><h2>Registrar operação rápida</h2></div>
+        <div class="card-body">
+          <div id="estoqueNotice" class="notice"></div>
+          <div class="fg">
+            <label class="fl">Tipo de operação</label>
+            <select class="fc" id="estoq_tipo">
+              <option value="entrada">Entrada de mercadoria</option>
+              <option value="ajuste_entrada">Ajuste para mais</option>
+              <option value="ajuste_saida">Ajuste para menos</option>
+              <option value="inventario">Inventário / saldo inicial</option>
+            </select>
           </div>
-        </div>
-        <div class="card stock-card stock-card--entry">
-          <div class="card-head"><h2>Registrar operação</h2><span class="stock-head-sub">Entrada, ajuste ou inventário</span></div>
-          <div class="card-body">
-            <div id="estoqueNotice" class="notice"></div>
-            <div class="frow">
-              <div class="fg" style="margin-bottom:0">
-                <label class="fl">Tipo de operação</label>
-                <select class="fc" id="estoq_tipo">
-                  <option value="entrada">Entrada de mercadoria</option>
-                  <option value="ajuste_entrada">Ajuste para mais</option>
-                  <option value="ajuste_saida">Ajuste para menos</option>
-                  <option value="inventario">Inventário / saldo inicial</option>
-                </select>
-              </div>
-              <div class="fg" style="margin-bottom:0">
-                <label class="fl">Produto</label>
-                <select class="fc" id="estoq_prod"><option value="">— Selecione —</option></select>
-              </div>
-            </div>
-            <div class="fg" style="margin-top:12px">
-              <label class="fl">Cor / Variação</label>
-              <select class="fc" id="estoq_cor"><option value="">— Selecione o produto —</option></select>
-            </div>
-            <div id="estoq_sizes"></div>
-            <div class="form-actions" style="margin-top:8px;padding-top:12px">
-              <button class="btn btn--primary" id="btnStockOperation">Registrar operação</button>
-              <p id="stockOperationHelp" style="margin:0;font-size:12px;color:var(--muted);line-height:1.5;align-self:center">Entradas somam ao saldo. Saídas são geradas automaticamente pelo checkout.</p>
-            </div>
+          <div class="fg">
+            <label class="fl">Produto</label>
+            <select class="fc" id="estoq_prod"><option value="">— Selecione —</option></select>
           </div>
-        </div>
-        <div class="card stock-card stock-card--movement">
-          <div class="card-head"><h2>Movimentações</h2><span class="stock-head-sub">Entradas, saídas e devoluções</span></div>
-          <div class="card-body">
-            <div class="frow">
-              <div class="fg">
-                <label class="fl">Filtrar movimentações</label>
-                <input class="fc" id="stockMovementSearch" placeholder="Produto, cor, tamanho, pedido..." />
-              </div>
-              <div class="fg">
-                <label class="fl">Tipo</label>
-                <select class="fc" id="stockMovementType">
-                  <option value="">Todas</option>
-                  <option value="entrada">Entradas</option>
-                  <option value="saida">Saídas</option>
-                  <option value="ajuste">Ajustes</option>
-                </select>
-              </div>
-            </div>
-            <div id="stockMovementSummary" style="font-size:12px;color:var(--muted);margin:-4px 0 10px"></div>
-            <div id="stockMovementAudit"></div>
-            <div id="stockMovements"></div>
+          <div class="fg">
+            <label class="fl">Cor / Variação</label>
+            <select class="fc" id="estoq_cor"><option value="">— Selecione o produto —</option></select>
+          </div>
+          <div id="estoq_sizes"></div>
+          <div class="form-actions" style="margin-top:8px;padding-top:12px">
+            <button class="btn btn--primary" id="btnStockOperation" style="width:100%;justify-content:center">Registrar operação</button>
+            <p id="stockOperationHelp" style="margin:0;font-size:12px;color:var(--muted);line-height:1.5">Entradas somam ao saldo. Saídas são geradas automaticamente pelo checkout.</p>
           </div>
         </div>
       </div>
     </div>
+  </div>
 </div>
+
+<dialog id="stockDetailModal">
+  <div class="stock-modal__head">
+    <h2>Saldo do produto</h2>
+    <button type="button" class="stock-modal__close" id="stockDetailClose">✕</button>
+  </div>
+  <div class="stock-modal__body" id="stockPreview">
+    <div class="form-empty" style="padding:28px 12px">Selecione um produto para ver saldos e variações.</div>
+  </div>
+</dialog>
+
+<dialog id="stockMovementsModal">
+  <div class="stock-modal__head">
+    <h2>Movimentações</h2>
+    <button type="button" class="stock-modal__close" id="stockMovementsClose">✕</button>
+  </div>
+  <div class="stock-modal__body">
+    <div class="frow">
+      <div class="fg">
+        <label class="fl">Filtrar movimentações</label>
+        <input class="fc" id="stockMovementSearch" placeholder="Produto, cor, tamanho, pedido..." />
+      </div>
+      <div class="fg">
+        <label class="fl">Tipo</label>
+        <select class="fc" id="stockMovementType">
+          <option value="">Todas</option>
+          <option value="entrada">Entradas</option>
+          <option value="saida">Saídas</option>
+          <option value="ajuste">Ajustes</option>
+        </select>
+      </div>
+    </div>
+    <div id="stockMovementSummary" style="font-size:12px;color:var(--muted);margin:-4px 0 10px"></div>
+    <div id="stockMovementAudit"></div>
+    <div id="stockMovements"></div>
+  </div>
+</dialog>
 
 <!-- ── PEDIDOS ───────────────────────────────────── -->
 <div id="tab-pedidos" class="tab-panel">
@@ -1133,6 +1231,8 @@ function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
 let produtos=[], combos=[], atacado=[], pedidos=[], cupons=[], stockMovimentos=[], stockAuditData=null, stockAuditProductId='', activeProdId=null, activeComboId=null, activeAtacadoId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', stockMovementSearch='', stockMovementType='', relDateStart='', relDateEnd='';
+let stockSubTab='produtos', stockPage=1, stockAlertFilter=null;
+const STOCK_PAGE_SIZE=8, STOCK_LOW_THRESHOLD=5;
 let colorCounter=0, newOrderItems=[], prodListSortable=null, comboListSortable=null, atacadoListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
@@ -2305,7 +2405,9 @@ function fillEstoqueSelect(){
   if(cur) sel.value=cur;
   renderStockSummary();
   renderStockPreview();
-  renderStockProductResults();
+  renderStockTable();
+  renderStockDonut();
+  renderStockAlerts();
 }
 
 $('estoq_prod').addEventListener('change',async()=>{
@@ -2315,7 +2417,6 @@ $('estoq_prod').addEventListener('change',async()=>{
   p.cores.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.nome||`Cor ${i+1}`;cs.appendChild(o)});
   renderSizes(p,0);
   renderStockPreview();
-  renderStockProductResults();
   renderStockMovements();
   await loadStockAudit();
 });
@@ -2327,11 +2428,13 @@ $('estoq_cor').addEventListener('change',()=>{
   renderStockMovements();
 });
 
-const stockSearchInput=$('stockSearch');
-if(stockSearchInput){
-  stockSearchInput.addEventListener('input',()=>{
-    stockSearch=stockSearchInput.value;
-    renderStockProductResults();
+const stockTableSearchInput=$('stockTableSearch');
+if(stockTableSearchInput){
+  stockTableSearchInput.addEventListener('input',()=>{
+    stockSearch=stockTableSearchInput.value;
+    stockPage=1;
+    stockAlertFilter=null;
+    renderStockTable();
   });
 }
 const stockMovementSearchInput=$('stockMovementSearch');
@@ -2348,16 +2451,39 @@ if(stockMovementTypeInput){
     renderStockMovements();
   });
 }
+$$('.stock-subtab').forEach(btn=>btn.addEventListener('click',()=>{
+  stockSubTab=btn.dataset.stocksubtab;
+  stockPage=1;
+  stockAlertFilter=null;
+  $$('.stock-subtab').forEach(b=>b.classList.toggle('active',b===btn));
+  renderStockTable();
+}));
+$('stockDetailClose')?.addEventListener('click',()=>$('stockDetailModal').close());
+$('stockMovementsClose')?.addEventListener('click',()=>$('stockMovementsModal').close());
+$('stockMovementsFeed')?.addEventListener('click',(e)=>{
+  if(e.target.closest('[data-open-movements]')){
+    renderStockMovements();
+    $('stockMovementsModal').showModal();
+  }
+});
+$('btnStockGoOperation')?.addEventListener('click',()=>{
+  $('stockQuickOpCard')?.scrollIntoView({behavior:'smooth',block:'center'});
+  $('estoq_prod')?.focus();
+});
 
 async function refreshStockScreen(){
   await loadProdutos();
   await loadCombos();
+  await loadPedidos();
   await loadStockMovements();
   await loadStockAudit();
   renderStockSummary();
-  renderStockProductResults();
+  renderStockTable();
   renderStockPreview();
   renderStockMovements();
+  renderStockDonut();
+  renderStockAlerts();
+  renderStockMovementsFeed();
 }
 
 async function loadStockMovements(){
@@ -2367,6 +2493,7 @@ async function loadStockMovements(){
     if(!r.ok) return;
     stockMovimentos=await r.json();
     renderStockMovements();
+    renderStockMovementsFeed();
   }catch(e){console.error('[estoque-movimentos]',e)}
 }
 
@@ -2467,40 +2594,271 @@ function productStockTotal(p){
   },0);
 }
 
-function renderStockProductResults(){
-  const el=$('stockProductResults');
-  if(!el) return;
+function getFilteredStockProducts(){
   const q=normalizeColorKey(stockSearch);
-  const selectedId=$('estoq_prod')?.value;
-  const rows=produtos.filter(p=>{
+  let list=produtos.filter(p=>{
     if(!q) return true;
     const hay=[
       p.nome,p.categoria,p.ativo===false?'inativo':'ativo',
       ...(Array.isArray(p.cores)?p.cores.map(c=>c.nome):[])
     ].filter(Boolean).join(' ');
     return normalizeColorKey(hay).includes(q);
-  }).slice(0,60);
-  const countEl=$('stockCatalogCount');
-  if(countEl) countEl.textContent=`${rows.length} item${rows.length!==1?'s':''}`;
-  el.innerHTML=rows.length?rows.map(p=>{
-    const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
-    const img=c?.imagens?.[0]||c?.imagem||'';
-    const src=img?(img.startsWith('http')?img:'/'+img):'';
-    const total=productStockTotal(p);
-    return `<button type="button" class="stock-result ${String(p.id)===String(selectedId)?'active':''}" data-stock-product="${esc(String(p.id))}">
-      ${src?`<img class="stock-result__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:`<span class="stock-result__img"></span>`}
-      <span style="min-width:0">
-        <span class="stock-result__name">${esc(p.nome)}</span>
-        <span class="stock-result__meta">${esc(p.categoria||'Sem categoria')} · ${p.ativo===false?'Inativo':'Ativo'}</span>
-      </span>
-      <span class="stock-result__qty">${total} un.</span>
-    </button>`;
-  }).join(''):'<div style="color:#64748b;font-size:13px;padding:12px">Nenhum produto encontrado.</div>';
-  $$('[data-stock-product]').forEach(btn=>btn.addEventListener('click',()=>{
-    const sel=$('estoq_prod');
-    sel.value=btn.dataset.stockProduct;
-    sel.dispatchEvent(new Event('change'));
+  });
+  if(stockAlertFilter==='zerado') list=list.filter(p=>productStockTotal(p)<=0);
+  return list;
+}
+
+function computeReservedTransit(){
+  const reserved={}, transit={};
+  (pedidos||[]).forEach(ped=>{
+    const status=String(ped.status||'reservado').toLowerCase();
+    if(status!=='reservado' && status!=='enviado') return;
+    const target=status==='reservado'?reserved:transit;
+    const itens=Array.isArray(ped.itens)&&ped.itens.length?ped.itens:(Array.isArray(ped.itensEstoque)?ped.itensEstoque:[]);
+    itens.forEach(it=>{
+      const pid=Number(it.productId);
+      if(!Number.isFinite(pid)) return;
+      const qty=Math.max(1,Number(it.quantidade)||1);
+      target[pid]=(target[pid]||0)+qty;
+    });
+  });
+  return {reserved,transit};
+}
+
+function openStockDetailFromRow(productId){
+  const sel=$('estoq_prod');
+  sel.value=productId;
+  sel.dispatchEvent(new Event('change'));
+  $('stockDetailModal')?.showModal();
+}
+
+function renderStockTable(){
+  if(stockSubTab==='categorias') return renderStockTableCategorias();
+  if(stockSubTab==='variacoes') return renderStockTableVariacoes();
+  return renderStockTableProdutos();
+}
+
+function renderStockTableProdutos(){
+  const table=$('stockTable');
+  if(!table) return;
+  const {reserved,transit}=computeReservedTransit();
+  const all=getFilteredStockProducts().sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999));
+  const totalPages=Math.max(1,Math.ceil(all.length/STOCK_PAGE_SIZE));
+  if(stockPage>totalPages) stockPage=totalPages;
+  const start=(stockPage-1)*STOCK_PAGE_SIZE;
+  const rows=all.slice(start,start+STOCK_PAGE_SIZE);
+  table.innerHTML=`
+    <thead><tr>
+      <th>Produto</th><th>Categoria</th><th>Variações</th><th>Estoque total</th>
+      <th>Disponível</th><th>Reservado</th><th>Em trânsito</th><th>Status</th>
+    </tr></thead>
+    <tbody>${rows.length?rows.map(p=>{
+      const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
+      const img=c?.imagens?.[0]||c?.imagem||'';
+      const src=img?(img.startsWith('http')?img:'/'+img):'';
+      const total=productStockTotal(p);
+      const res=reserved[p.id]||0;
+      const tra=transit[p.id]||0;
+      const disp=Math.max(0,total-res);
+      const nVar=Array.isArray(p.cores)?p.cores.length:0;
+      return `<tr data-stock-row="${esc(String(p.id))}">
+        <td><div class="stock-row__prod">
+          ${src?`<img class="stock-row__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:`<span class="stock-row__img"></span>`}
+          <div><div class="stock-row__name">${esc(p.nome)}</div><div class="stock-row__sub">${esc(p.categoria||'Sem categoria')}</div></div>
+        </div></td>
+        <td>${esc(p.categoria||'—')}</td>
+        <td class="stock-num--muted">${nVar}</td>
+        <td class="stock-num">${total} un.</td>
+        <td class="${disp<=0?'stock-num--warn':'stock-num--good'}">${disp} un.</td>
+        <td class="stock-num--muted">${res} un.</td>
+        <td class="stock-num--muted">${tra} un.</td>
+        <td><span class="status-dot ${p.ativo!==false?'status-dot--on':'status-dot--off'}">${p.ativo!==false?'Ativo':'Inativo'}</span></td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhum produto encontrado.</td></tr>`}</tbody>`;
+  $$('[data-stock-row]',table).forEach(tr=>tr.addEventListener('click',()=>openStockDetailFromRow(tr.dataset.stockRow)));
+  renderStockPagination(all.length,totalPages);
+}
+
+function renderStockTableCategorias(){
+  const table=$('stockTable');
+  if(!table) return;
+  $('stockPagination').innerHTML='';
+  const byCat={};
+  produtos.forEach(p=>{
+    const cat=p.categoria||'Sem categoria';
+    if(!byCat[cat]) byCat[cat]={produtos:0,ativos:0,total:0};
+    byCat[cat].produtos++;
+    byCat[cat].total+=productStockTotal(p);
+    if(p.ativo!==false) byCat[cat].ativos++;
+  });
+  const q=normalizeColorKey(stockSearch);
+  const rows=Object.entries(byCat).filter(([cat])=>!q||normalizeColorKey(cat).includes(q)).sort((a,b)=>b[1].total-a[1].total);
+  table.innerHTML=`
+    <thead><tr><th>Categoria</th><th>Produtos</th><th>Ativos</th><th>Estoque total</th></tr></thead>
+    <tbody>${rows.length?rows.map(([cat,d])=>`<tr>
+      <td><div class="stock-row__name">${esc(cat)}</div></td>
+      <td class="stock-num">${d.produtos}</td>
+      <td class="stock-num--muted">${d.ativos}</td>
+      <td class="stock-num">${d.total} un.</td>
+    </tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Nenhuma categoria encontrada.</td></tr>'}</tbody>`;
+}
+
+function renderStockTableVariacoes(){
+  const table=$('stockTable');
+  if(!table) return;
+  const q=normalizeColorKey(stockSearch);
+  const all=[];
+  produtos.forEach(p=>{
+    (Array.isArray(p.cores)?p.cores:[]).forEach((c,ci)=>{
+      const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+      const total=Object.values(e).reduce((s,v)=>s+(Number(v)||0),0);
+      all.push({p,c,ci,total,nSizes:Object.keys(e).length});
+    });
+  });
+  let filtered=all.filter(({p,c})=>{
+    if(!q) return true;
+    const hay=[p.nome,p.categoria,c.nome].filter(Boolean).join(' ');
+    return normalizeColorKey(hay).includes(q);
+  });
+  if(stockAlertFilter==='baixo') filtered=filtered.filter(({total})=>total>0&&total<STOCK_LOW_THRESHOLD);
+  const totalPages=Math.max(1,Math.ceil(filtered.length/STOCK_PAGE_SIZE));
+  if(stockPage>totalPages) stockPage=totalPages;
+  const start=(stockPage-1)*STOCK_PAGE_SIZE;
+  const rows=filtered.slice(start,start+STOCK_PAGE_SIZE);
+  table.innerHTML=`
+    <thead><tr><th>Produto</th><th>Variação</th><th>Tamanhos</th><th>Saldo</th><th>Status</th></tr></thead>
+    <tbody>${rows.length?rows.map(({p,c,ci,total,nSizes})=>`<tr data-stock-row="${esc(String(p.id))}">
+      <td><div class="stock-row__name">${esc(p.nome)}</div></td>
+      <td><div style="display:flex;align-items:center;gap:6px"><span class="stock-pick__swatch" style="width:16px;height:16px;border-radius:5px;--tone:${esc(c.swatch||defaultSwatchForName(c.nome))}"></span>${esc(c.nome||`Cor ${ci+1}`)}</div></td>
+      <td class="stock-num--muted">${nSizes}</td>
+      <td class="${total<=0?'stock-num--warn':'stock-num'}">${total} un.</td>
+      <td><span class="status-dot ${c.ativo!==false?'status-dot--on':'status-dot--off'}">${c.ativo!==false?'Visível':'Oculta'}</span></td>
+    </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhuma variação encontrada.</td></tr>'}</tbody>`;
+  $$('[data-stock-row]',table).forEach(tr=>tr.addEventListener('click',()=>openStockDetailFromRow(tr.dataset.stockRow)));
+  renderStockPagination(filtered.length,totalPages);
+}
+
+function renderStockPagination(totalItems,totalPages){
+  const el=$('stockPagination');
+  if(!el) return;
+  if(!totalItems){ el.innerHTML=''; return; }
+  const start=(stockPage-1)*STOCK_PAGE_SIZE+1;
+  const end=Math.min(totalItems,stockPage*STOCK_PAGE_SIZE);
+  const pages=[];
+  for(let i=1;i<=totalPages;i++){
+    if(i===1||i===totalPages||Math.abs(i-stockPage)<=1) pages.push(i);
+    else if(pages[pages.length-1]!=='...') pages.push('...');
+  }
+  el.innerHTML=`
+    <div class="stock-pagination__info">Mostrando ${start} a ${end} de ${totalItems} ${stockSubTab==='categorias'?'categorias':(stockSubTab==='variacoes'?'variações':'produtos')}</div>
+    <div class="stock-pagination__pages">
+      <button type="button" class="stock-page-btn" data-stockpage="prev" ${stockPage<=1?'disabled':''}>‹</button>
+      ${pages.map(p=>p==='...'?'<span class="stock-page-dots">…</span>':`<button type="button" class="stock-page-btn ${p===stockPage?'active':''}" data-stockpage="${p}">${p}</button>`).join('')}
+      <button type="button" class="stock-page-btn" data-stockpage="next" ${stockPage>=totalPages?'disabled':''}>›</button>
+    </div>`;
+  $$('[data-stockpage]',el).forEach(btn=>btn.addEventListener('click',()=>{
+    const v=btn.dataset.stockpage;
+    if(v==='prev') stockPage=Math.max(1,stockPage-1);
+    else if(v==='next') stockPage=Math.min(totalPages,stockPage+1);
+    else stockPage=Number(v);
+    renderStockTable();
   }));
+}
+
+function renderStockDonut(){
+  const el=$('stockDonut');
+  if(!el) return;
+  const byCat={};
+  stockEntries().forEach(e=>{
+    const cat=e.produto.categoria||'Sem categoria';
+    byCat[cat]=(byCat[cat]||0)+e.qty;
+  });
+  const entries=Object.entries(byCat).filter(([,q])=>q>0).sort((a,b)=>b[1]-a[1]);
+  const total=entries.reduce((s,[,q])=>s+q,0);
+  if(!total){ el.innerHTML='<div class="form-empty" style="padding:20px 8px">Sem estoque cadastrado ainda.</div>'; return; }
+  const palette=['#A8C63A','#8B6F5A','#C6A88F','#C75A65','#6F8522','#DCE9A4','#92400E'];
+  let acc=0;
+  const stops=entries.map(([cat,qty],i)=>{
+    const pct=qty/total*100;
+    const seg=`${palette[i%palette.length]} ${acc.toFixed(2)}% ${(acc+pct).toFixed(2)}%`;
+    acc+=pct;
+    return seg;
+  }).join(', ');
+  el.innerHTML=`
+    <div class="stock-donut-wrap">
+      <div class="stock-donut" style="background:conic-gradient(${stops})">
+        <div class="stock-donut__hole"><span>${total}</span><small>un. total</small></div>
+      </div>
+      <div class="stock-donut__legend">
+        ${entries.map(([cat,qty],i)=>`<div class="stock-donut__item"><span class="stock-donut__dot" style="background:${palette[i%palette.length]}"></span>${esc(cat)}<b>${qty} un. (${Math.round(qty/total*100)}%)</b></div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderStockAlerts(){
+  const el=$('stockAlerts');
+  if(!el) return;
+  const zerados=produtos.filter(p=>p.ativo!==false && productStockTotal(p)<=0);
+  const baixos=[];
+  produtos.forEach(p=>{
+    (Array.isArray(p.cores)?p.cores:[]).forEach(c=>{
+      if(c.ativo===false) return;
+      const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+      Object.values(e).forEach(qty=>{
+        const n=Number(qty)||0;
+        if(n>0 && n<STOCK_LOW_THRESHOLD) baixos.push(n);
+      });
+    });
+  });
+  const rows=[
+    {ok:!zerados.length,title:'Estoque zerado',
+      sub: zerados.length?`${zerados.length} produto${zerados.length!==1?'s':''} ${zerados.length!==1?'estão':'está'} sem estoque`:'Nenhum produto sem estoque',
+      action: zerados.length?{key:'zerado',tab:'produtos',label:'Ver produtos'}:null},
+    {ok:!baixos.length,title:'Estoque baixo',
+      sub: baixos.length?`${baixos.length} variaç${baixos.length!==1?'ões':'ão'} com estoque abaixo de ${STOCK_LOW_THRESHOLD} un.`:'Nenhuma variação com saldo baixo',
+      action: baixos.length?{key:'baixo',tab:'variacoes',label:'Ver variações'}:null}
+  ];
+  el.innerHTML=rows.map(r=>`
+    <div class="stock-alert-row">
+      <div class="stock-alert-icon ${r.ok?'':(r.title==='Estoque zerado'?'stock-alert-icon--danger':'stock-alert-icon--warn')}">${r.ok?'✓':'!'}</div>
+      <div style="min-width:0">
+        <div class="stock-alert-title">${r.title}</div>
+        <div class="stock-alert-sub">${r.sub}</div>
+      </div>
+      ${r.action?`<button type="button" class="btn btn--ghost btn--sm" data-stockalert-key="${r.action.key}" data-stockalert-tab="${r.action.tab}" style="margin-left:auto">${r.action.label}</button>`:''}
+    </div>`).join('');
+  $$('[data-stockalert-key]',el).forEach(btn=>btn.addEventListener('click',()=>{
+    stockAlertFilter=btn.dataset.stockalertKey;
+    stockSubTab=btn.dataset.stockalertTab;
+    stockPage=1;
+    $$('.stock-subtab').forEach(b=>b.classList.toggle('active',b.dataset.stocksubtab===stockSubTab));
+    renderStockTable();
+    $('stockTable')?.scrollIntoView({behavior:'smooth',block:'start'});
+  }));
+}
+
+function renderStockMovementsFeed(){
+  const el=$('stockMovementsFeed');
+  if(!el) return;
+  const rows=[...stockMovimentos].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,6);
+  const list=rows.length?`<div class="stock-feed">${rows.map(m=>{
+    const quantity=Number(m.quantity)||0;
+    const isOut=m.type==='saida'||quantity<0;
+    const isAdjust=m.type==='ajuste';
+    const displayQty=isOut&&quantity>0?-quantity:quantity;
+    const qty=(displayQty>0?'+':'')+displayQty;
+    const iconCls=isAdjust?'stock-feed-icon--adj':(isOut?'stock-feed-icon--out':'stock-feed-icon--in');
+    const iconChar=isAdjust?'±':(isOut?'↓':'↑');
+    return `<div class="stock-feed-row">
+      <div class="stock-feed-icon ${iconCls}">${iconChar}</div>
+      <div style="min-width:0">
+        <div class="stock-feed-name">${esc(movementLabel(m))}</div>
+        <div class="stock-feed-meta">${esc(m.productName||'Produto')} · ${esc(m.colorName||'Variação')}${m.size?` (${esc(m.size)})`:''} · ${fmtD(m.createdAt)}</div>
+      </div>
+      <div class="stock-feed-qty" style="color:${isOut?'#9F1239':'#065F46'}">${qty} un.</div>
+    </div>`;
+  }).join('')}</div>`:'<div class="stock-feed-empty">Nenhuma movimentação registrada ainda.</div>';
+  el.innerHTML=`${list}<div class="stock-feed-footer"><button type="button" class="btn btn--ghost btn--sm" data-open-movements>Ver todas</button></div>`;
 }
 
 function movementLabel(m){
