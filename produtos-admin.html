@@ -239,18 +239,7 @@
     .stock-donut__dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
     .stock-donut__item b{margin-left:auto;color:var(--text);font-weight:700;white-space:nowrap}
 
-    .stock-feed{display:flex;flex-direction:column;gap:2px}
-    .stock-feed-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #F3EDE5}
-    .stock-feed-row:last-child{border-bottom:none}
-    .stock-feed-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:800}
-    .stock-feed-icon--in{background:var(--green-l);color:#065F46}
-    .stock-feed-icon--out{background:var(--rose-l);color:#9F1239}
-    .stock-feed-icon--adj{background:#DBEAFE;color:#1E40AF}
-    .stock-feed-name{font-size:12.5px;font-weight:700;color:var(--text)}
-    .stock-feed-meta{font-size:11px;color:var(--muted)}
-    .stock-feed-qty{margin-left:auto;font-size:12px;font-weight:800;white-space:nowrap}
-    .stock-feed-empty{font-size:12.5px;color:var(--muted);padding:6px 0}
-    .stock-feed-footer{margin-top:8px;padding-top:10px;border-top:1px solid var(--brd);text-align:center}
+    .stock-feed-footer{padding-top:10px;border-top:1px solid var(--brd);text-align:center}
 
     #stockDetailModal,#stockMovementsModal{border:none;border-radius:16px;padding:0;box-shadow:var(--sh-lg);max-height:88vh;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);margin:0}
     #stockDetailModal{width:min(92vw,480px)}
@@ -685,6 +674,11 @@
         </div>
         <div class="stock-pagination" id="stockPagination"></div>
       </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Movimentações recentes</h2></div>
+        <div class="card-body" id="stockMovementsFeed" style="padding:0"></div>
+      </div>
     </div>
 
     <div class="stock-side">
@@ -720,11 +714,6 @@
       <div class="card">
         <div class="card-head"><h2>Saldo por categoria</h2></div>
         <div class="card-body" id="stockDonut"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><h2>Movimentações recentes</h2></div>
-        <div class="card-body" id="stockMovementsFeed"></div>
       </div>
     </div>
   </div>
@@ -2784,25 +2773,32 @@ function renderStockDonut(){
 function renderStockMovementsFeed(){
   const el=$('stockMovementsFeed');
   if(!el) return;
-  const rows=[...stockMovimentos].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,6);
-  const list=rows.length?`<div class="stock-feed">${rows.map(m=>{
-    const quantity=Number(m.quantity)||0;
-    const isOut=m.type==='saida'||quantity<0;
-    const isAdjust=m.type==='ajuste';
-    const displayQty=isOut&&quantity>0?-quantity:quantity;
-    const qty=(displayQty>0?'+':'')+displayQty;
-    const iconCls=isAdjust?'stock-feed-icon--adj':(isOut?'stock-feed-icon--out':'stock-feed-icon--in');
-    const iconChar=isAdjust?'±':(isOut?'↓':'↑');
-    return `<div class="stock-feed-row">
-      <div class="stock-feed-icon ${iconCls}">${iconChar}</div>
-      <div style="min-width:0">
-        <div class="stock-feed-name">${esc(movementLabel(m))}</div>
-        <div class="stock-feed-meta">${esc(m.productName||'Produto')} · ${esc(m.colorName||'Variação')}${m.size?` (${esc(m.size)})`:''} · ${fmtD(m.createdAt)}</div>
-      </div>
-      <div class="stock-feed-qty" style="color:${isOut?'#9F1239':'#065F46'}">${qty} un.</div>
+  const rows=[...stockMovimentos].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,8);
+  if(!rows.length){
+    el.innerHTML='<div class="form-empty" style="padding:24px 12px">Nenhuma movimentação registrada ainda.</div>';
+    return;
+  }
+  const table=`
+    <div class="stock-table-wrap">
+      <table class="stock-table">
+        <colgroup><col style="width:28%"><col style="width:20%"><col style="width:20%"><col style="width:16%"><col style="width:16%"></colgroup>
+        <thead><tr><th>Produto</th><th>Variação</th><th>Movimento</th><th>Quantidade</th><th>Quando</th></tr></thead>
+        <tbody>${rows.map(m=>{
+          const quantity=Number(m.quantity)||0;
+          const isOut=m.type==='saida'||quantity<0;
+          const displayQty=isOut&&quantity>0?-quantity:quantity;
+          const qty=(displayQty>0?'+':'')+displayQty;
+          return `<tr>
+            <td><div class="stock-row__name">${esc(m.productName||'Produto')}</div></td>
+            <td class="stock-num--muted">${esc(m.colorName||'—')}${m.size?` · ${esc(m.size)}`:''}</td>
+            <td class="stock-num--muted">${esc(movementLabel(m))}</td>
+            <td style="color:${isOut?'#9F1239':'#065F46'};font-weight:800">${qty} un.</td>
+            <td class="stock-num--muted">${fmtD(m.createdAt)}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
     </div>`;
-  }).join('')}</div>`:'<div class="stock-feed-empty">Nenhuma movimentação registrada ainda.</div>';
-  el.innerHTML=`${list}<div class="stock-feed-footer"><button type="button" class="btn btn--ghost btn--sm" data-open-movements>Ver todas</button></div>`;
+  el.innerHTML=`${table}<div class="stock-feed-footer" style="margin:0 14px 14px"><button type="button" class="btn btn--ghost btn--sm" data-open-movements>Ver todas</button></div>`;
 }
 
 function movementLabel(m){
