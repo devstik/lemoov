@@ -638,22 +638,21 @@
       const btn = el("#gateRegisterSubmit");
       btn.disabled = true;
       const originalLabel = btn.textContent;
-      btn.textContent = "Enviando código…";
+      btn.textContent = "Cadastrando…";
       try {
-        const res = await fetch("/api/atacado/access/request-code", {
+        const res = await fetch("/api/atacado/access/register", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nome, whatsapp, cidade, email })
         });
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          showGateError(data.error || "Falha ao enviar código.");
+          showGateError(data.error || "Falha ao cadastrar.");
           return;
         }
-        pendingWhats = whatsapp;
-        el("#gateCodeSub").textContent = `Enviamos um código de 6 dígitos para o WhatsApp ${whatsapp}.`;
-        switchGateView("code");
+        showAtacadoMain();
+        loadAtacado();
       } catch (_e) {
-        showGateError("Falha ao enviar código. Tente novamente.");
+        showGateError("Falha ao cadastrar. Tente novamente.");
       } finally {
         btn.disabled = false;
         btn.textContent = originalLabel;

@@ -3051,7 +3051,36 @@ app.post('/api/atacado/access/check-phone', async (req, res) => {
   }
 });
 
+// Cadastro direto, sem confirmação por código (enquanto o envio pago de WhatsApp/SMS
+// não está configurado): valida os dados, grava o lead e já libera o acesso.
+app.post('/api/atacado/access/register', async (req, res) => {
+  try {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+    if (rateLimitCheck(`atacado-register:${ip}`, 15 * 60 * 1000, 15)) {
+      return res.status(429).json({ ok: false, error: 'Muitas tentativas. Aguarde alguns minutos.' });
+    }
+    const nome = String(req.body?.nome || '').trim();
+    const cidade = String(req.body?.cidade || '').trim();
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const whatsapp = normalizeAtacadoPhone(req.body?.whatsapp);
+
+    if (nome.length < 2) return res.status(400).json({ ok: false, error: 'Informe seu nome.' });
+    if (cidade.length < 2) return res.status(400).json({ ok: false, error: 'Informe sua cidade.' });
+    if (whatsapp.length < 10 || whatsapp.length > 11) return res.status(400).json({ ok: false, error: 'WhatsApp inválido.' });
+    if (!isPlausibleEmailFormat(email)) return res.status(400).json({ ok: false, error: 'Informe um e-mail válido.' });
+    if (!(await domainHasMailProvider(email))) return res.status(400).json({ ok: false, error: 'O domínio desse e-mail não existe. Confira o e-mail informado.' });
+
+    await upsertVerifiedAtacadoLead({ nome, whatsapp, cidade, email });
+    grantAtacadoAccess(res, whatsapp);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[register]', e.message);
+    res.status(500).json({ ok: false, error: 'Falha ao cadastrar' });
+  }
+});
+
 // Primeiro acesso: valida os dados e envia um código de 6 dígitos pro WhatsApp informado.
+// (Em espera até configurar um provedor pago de WhatsApp/SMS — ver /register acima.)
 app.post('/api/atacado/access/request-code', async (req, res) => {
   try {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
