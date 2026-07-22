@@ -168,13 +168,14 @@
     .hero-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0}
 
     /* ──────── KPI / Stats ──────── */
-    .quick-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:14px}
+    .quick-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
     .quick-stat-group{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px}
-    .quick-stat{background:var(--sur);border:1px solid var(--brd);border-radius:12px;padding:16px;box-shadow:var(--sh);position:relative;overflow:hidden}
+    .quick-stat{background:var(--sur);border:1px solid var(--brd);border-radius:12px;padding:12px 14px;box-shadow:var(--sh);position:relative;overflow:hidden;min-width:0}
     .quick-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--p),var(--cyan))}
-    .quick-stat__label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
-    .quick-stat__value{font-size:24px;font-weight:800;margin-top:4px;color:var(--text);letter-spacing:-.02em}
-    .quick-stat__hint{font-size:12px;color:var(--muted);margin-top:2px}
+    .quick-stat__label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;line-height:1.35}
+    .quick-stat__value{font-size:20px;font-weight:800;margin-top:4px;color:var(--text);letter-spacing:-.02em}
+    .quick-stat__hint{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
+    @media(max-width:640px){.quick-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
     /* ──────── Stock ──────── */
     .stock-head-sub{font-size:12px;color:var(--muted);margin-left:auto;white-space:nowrap}
@@ -195,13 +196,18 @@
     .stock-table-search input{padding-left:30px;font-size:12.5px;height:34px}
 
     .stock-table-wrap{overflow-x:auto}
-    .stock-table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
-    .stock-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;padding:10px 14px;border-bottom:1px solid var(--brd);white-space:nowrap}
-    .stock-table td{padding:10px 14px;border-bottom:1px solid #F3EDE5;vertical-align:middle;white-space:nowrap}
+    .stock-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12.5px}
+    .stock-table th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;padding:9px 8px;border-bottom:1px solid var(--brd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .stock-table td{padding:8px;border-bottom:1px solid #F3EDE5;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .stock-table th:first-child,.stock-table td:first-child{padding-left:14px}
+    .stock-table th:last-child,.stock-table td:last-child{padding-right:14px}
     .stock-table tbody tr{cursor:pointer;transition:background .12s}
     .stock-table tbody tr:hover{background:var(--bg)}
     .stock-table tbody tr:last-child td{border-bottom:none}
-    .stock-row__prod{display:flex;align-items:center;gap:10px;min-width:180px;white-space:normal}
+    .stock-row__prod{display:flex;align-items:center;gap:8px;min-width:0;white-space:normal}
+    .stock-row__prod>div{min-width:0}
+    .stock-row__name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .stock-row__sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .stock-row__img{width:34px;height:34px;border-radius:8px;object-fit:cover;background:var(--bg);flex-shrink:0}
     .stock-row__name{font-weight:700;color:var(--text);font-size:12.5px}
     .stock-row__sub{font-size:11px;color:var(--muted)}
@@ -222,15 +228,6 @@
     .stock-page-btn.active{background:var(--p);border-color:var(--p);color:#fff}
     .stock-page-btn:disabled{opacity:.4;cursor:not-allowed}
     .stock-page-dots{color:var(--muted);font-size:12px;padding:0 2px}
-
-    .stock-alert-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F3EDE5}
-    .stock-alert-row:last-child{border-bottom:none}
-    .stock-alert-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px}
-    .stock-alert-icon--danger{background:var(--rose-l);color:var(--rose)}
-    .stock-alert-icon--warn{background:var(--amber-l);color:#92400E}
-    .stock-alert-title{font-size:13px;font-weight:700;color:var(--text)}
-    .stock-alert-sub{font-size:12px;color:var(--muted)}
-    .stock-alert-empty{font-size:13px;color:var(--muted);padding:6px 0}
 
     .stock-donut-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
     .stock-donut{width:150px;height:150px;border-radius:50%;position:relative;flex-shrink:0}
@@ -670,10 +667,10 @@
       <button class="btn btn--primary" id="btnStockGoOperation">+ Registrar operação</button>
     </div>
   </div>
-  <div class="quick-stats" id="stockSummary"></div>
-
   <div class="stock-grid2">
     <div class="stock-main">
+      <div class="quick-stats" id="stockSummary"></div>
+
       <div class="card">
         <div class="stock-tabbar">
           <button type="button" class="stock-subtab active" data-stocksubtab="produtos">Produtos</button>
@@ -688,24 +685,9 @@
         </div>
         <div class="stock-pagination" id="stockPagination"></div>
       </div>
-
-      <div class="card">
-        <div class="card-head"><h2>Alertas de estoque</h2></div>
-        <div class="card-body" id="stockAlerts" style="padding:6px 18px 14px"></div>
-      </div>
     </div>
 
     <div class="stock-side">
-      <div class="card">
-        <div class="card-head"><h2>Saldo por categoria</h2></div>
-        <div class="card-body" id="stockDonut"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><h2>Movimentações recentes</h2></div>
-        <div class="card-body" id="stockMovementsFeed"></div>
-      </div>
-
       <div class="card" id="stockQuickOpCard">
         <div class="card-head"><h2>Registrar operação rápida</h2></div>
         <div class="card-body">
@@ -733,6 +715,16 @@
             <p id="stockOperationHelp" style="margin:0;font-size:12px;color:var(--muted);line-height:1.5">Entradas somam ao saldo. Saídas são geradas automaticamente pelo checkout.</p>
           </div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Saldo por categoria</h2></div>
+        <div class="card-body" id="stockDonut"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Movimentações recentes</h2></div>
+        <div class="card-body" id="stockMovementsFeed"></div>
       </div>
     </div>
   </div>
@@ -1231,8 +1223,8 @@ function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
 
 // ── State ───────────────────────────────────────────────────
 let produtos=[], combos=[], atacado=[], pedidos=[], cupons=[], stockMovimentos=[], stockAuditData=null, stockAuditProductId='', activeProdId=null, activeComboId=null, activeAtacadoId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', stockMovementSearch='', stockMovementType='', relDateStart='', relDateEnd='';
-let stockSubTab='produtos', stockPage=1, stockAlertFilter=null;
-const STOCK_PAGE_SIZE=8, STOCK_LOW_THRESHOLD=5;
+let stockSubTab='produtos', stockPage=1;
+const STOCK_PAGE_SIZE=8;
 let colorCounter=0, newOrderItems=[], prodListSortable=null, comboListSortable=null, atacadoListSortable=null;
 
 // ── Tabs ────────────────────────────────────────────────────
@@ -2407,7 +2399,6 @@ function fillEstoqueSelect(){
   renderStockPreview();
   renderStockTable();
   renderStockDonut();
-  renderStockAlerts();
 }
 
 $('estoq_prod').addEventListener('change',async()=>{
@@ -2433,7 +2424,6 @@ if(stockTableSearchInput){
   stockTableSearchInput.addEventListener('input',()=>{
     stockSearch=stockTableSearchInput.value;
     stockPage=1;
-    stockAlertFilter=null;
     renderStockTable();
   });
 }
@@ -2454,7 +2444,6 @@ if(stockMovementTypeInput){
 $$('.stock-subtab').forEach(btn=>btn.addEventListener('click',()=>{
   stockSubTab=btn.dataset.stocksubtab;
   stockPage=1;
-  stockAlertFilter=null;
   $$('.stock-subtab').forEach(b=>b.classList.toggle('active',b===btn));
   renderStockTable();
 }));
@@ -2482,7 +2471,6 @@ async function refreshStockScreen(){
   renderStockPreview();
   renderStockMovements();
   renderStockDonut();
-  renderStockAlerts();
   renderStockMovementsFeed();
 }
 
@@ -2540,10 +2528,7 @@ function renderStockSummary(){
     ['Estoque total',total+' un.','saldo atual consolidado'],
     ['Itens com saldo',stockedProducts,`${variants} variações cadastradas`],
   ];
-  summary.innerHTML=[cards.slice(0,2),cards.slice(2,4)].map(group=>`
-    <div class="quick-stat-group">
-      ${group.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('')}
-    </div>`).join('');
+  summary.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
 }
 
 function renderStockPreview(){
@@ -2596,7 +2581,7 @@ function productStockTotal(p){
 
 function getFilteredStockProducts(){
   const q=normalizeColorKey(stockSearch);
-  let list=produtos.filter(p=>{
+  return produtos.filter(p=>{
     if(!q) return true;
     const hay=[
       p.nome,p.categoria,p.ativo===false?'inativo':'ativo',
@@ -2604,8 +2589,6 @@ function getFilteredStockProducts(){
     ].filter(Boolean).join(' ');
     return normalizeColorKey(hay).includes(q);
   });
-  if(stockAlertFilter==='zerado') list=list.filter(p=>productStockTotal(p)<=0);
-  return list;
 }
 
 function computeReservedTransit(){
@@ -2648,8 +2631,12 @@ function renderStockTableProdutos(){
   const start=(stockPage-1)*STOCK_PAGE_SIZE;
   const rows=all.slice(start,start+STOCK_PAGE_SIZE);
   table.innerHTML=`
+    <colgroup>
+      <col style="width:30%"><col style="width:10%"><col style="width:13%">
+      <col style="width:13%"><col style="width:12%"><col style="width:12%"><col style="width:10%">
+    </colgroup>
     <thead><tr>
-      <th>Produto</th><th>Categoria</th><th>Variações</th><th>Estoque total</th>
+      <th>Produto</th><th>Variações</th><th>Estoque total</th>
       <th>Disponível</th><th>Reservado</th><th>Em trânsito</th><th>Status</th>
     </tr></thead>
     <tbody>${rows.length?rows.map(p=>{
@@ -2666,7 +2653,6 @@ function renderStockTableProdutos(){
           ${src?`<img class="stock-row__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:`<span class="stock-row__img"></span>`}
           <div><div class="stock-row__name">${esc(p.nome)}</div><div class="stock-row__sub">${esc(p.categoria||'Sem categoria')}</div></div>
         </div></td>
-        <td>${esc(p.categoria||'—')}</td>
         <td class="stock-num--muted">${nVar}</td>
         <td class="stock-num">${total} un.</td>
         <td class="${disp<=0?'stock-num--warn':'stock-num--good'}">${disp} un.</td>
@@ -2674,7 +2660,7 @@ function renderStockTableProdutos(){
         <td class="stock-num--muted">${tra} un.</td>
         <td><span class="status-dot ${p.ativo!==false?'status-dot--on':'status-dot--off'}">${p.ativo!==false?'Ativo':'Inativo'}</span></td>
       </tr>`;
-    }).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Nenhum produto encontrado.</td></tr>`}</tbody>`;
+    }).join(''):`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Nenhum produto encontrado.</td></tr>`}</tbody>`;
   $$('[data-stock-row]',table).forEach(tr=>tr.addEventListener('click',()=>openStockDetailFromRow(tr.dataset.stockRow)));
   renderStockPagination(all.length,totalPages);
 }
@@ -2694,6 +2680,7 @@ function renderStockTableCategorias(){
   const q=normalizeColorKey(stockSearch);
   const rows=Object.entries(byCat).filter(([cat])=>!q||normalizeColorKey(cat).includes(q)).sort((a,b)=>b[1].total-a[1].total);
   table.innerHTML=`
+    <colgroup><col style="width:40%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>
     <thead><tr><th>Categoria</th><th>Produtos</th><th>Ativos</th><th>Estoque total</th></tr></thead>
     <tbody>${rows.length?rows.map(([cat,d])=>`<tr>
       <td><div class="stock-row__name">${esc(cat)}</div></td>
@@ -2715,12 +2702,11 @@ function renderStockTableVariacoes(){
       all.push({p,c,ci,total,nSizes:Object.keys(e).length});
     });
   });
-  let filtered=all.filter(({p,c})=>{
+  const filtered=all.filter(({p,c})=>{
     if(!q) return true;
     const hay=[p.nome,p.categoria,c.nome].filter(Boolean).join(' ');
     return normalizeColorKey(hay).includes(q);
   });
-  if(stockAlertFilter==='baixo') filtered=filtered.filter(({total})=>total>0&&total<STOCK_LOW_THRESHOLD);
   const totalPages=Math.max(1,Math.ceil(filtered.length/STOCK_PAGE_SIZE));
   if(stockPage>totalPages) stockPage=totalPages;
   const start=(stockPage-1)*STOCK_PAGE_SIZE;
@@ -2793,48 +2779,6 @@ function renderStockDonut(){
         ${entries.map(([cat,qty],i)=>`<div class="stock-donut__item"><span class="stock-donut__dot" style="background:${palette[i%palette.length]}"></span>${esc(cat)}<b>${qty} un. (${Math.round(qty/total*100)}%)</b></div>`).join('')}
       </div>
     </div>`;
-}
-
-function renderStockAlerts(){
-  const el=$('stockAlerts');
-  if(!el) return;
-  const zerados=produtos.filter(p=>p.ativo!==false && productStockTotal(p)<=0);
-  const baixos=[];
-  produtos.forEach(p=>{
-    (Array.isArray(p.cores)?p.cores:[]).forEach(c=>{
-      if(c.ativo===false) return;
-      const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
-      Object.values(e).forEach(qty=>{
-        const n=Number(qty)||0;
-        if(n>0 && n<STOCK_LOW_THRESHOLD) baixos.push(n);
-      });
-    });
-  });
-  const rows=[
-    {ok:!zerados.length,title:'Estoque zerado',
-      sub: zerados.length?`${zerados.length} produto${zerados.length!==1?'s':''} ${zerados.length!==1?'estão':'está'} sem estoque`:'Nenhum produto sem estoque',
-      action: zerados.length?{key:'zerado',tab:'produtos',label:'Ver produtos'}:null},
-    {ok:!baixos.length,title:'Estoque baixo',
-      sub: baixos.length?`${baixos.length} variaç${baixos.length!==1?'ões':'ão'} com estoque abaixo de ${STOCK_LOW_THRESHOLD} un.`:'Nenhuma variação com saldo baixo',
-      action: baixos.length?{key:'baixo',tab:'variacoes',label:'Ver variações'}:null}
-  ];
-  el.innerHTML=rows.map(r=>`
-    <div class="stock-alert-row">
-      <div class="stock-alert-icon ${r.ok?'':(r.title==='Estoque zerado'?'stock-alert-icon--danger':'stock-alert-icon--warn')}">${r.ok?'✓':'!'}</div>
-      <div style="min-width:0">
-        <div class="stock-alert-title">${r.title}</div>
-        <div class="stock-alert-sub">${r.sub}</div>
-      </div>
-      ${r.action?`<button type="button" class="btn btn--ghost btn--sm" data-stockalert-key="${r.action.key}" data-stockalert-tab="${r.action.tab}" style="margin-left:auto">${r.action.label}</button>`:''}
-    </div>`).join('');
-  $$('[data-stockalert-key]',el).forEach(btn=>btn.addEventListener('click',()=>{
-    stockAlertFilter=btn.dataset.stockalertKey;
-    stockSubTab=btn.dataset.stockalertTab;
-    stockPage=1;
-    $$('.stock-subtab').forEach(b=>b.classList.toggle('active',b.dataset.stocksubtab===stockSubTab));
-    renderStockTable();
-    $('stockTable')?.scrollIntoView({behavior:'smooth',block:'start'});
-  }));
 }
 
 function renderStockMovementsFeed(){
