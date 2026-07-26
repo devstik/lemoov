@@ -555,7 +555,18 @@
   function showAtacadoMain() {
     el("#atacadoGate")?.remove();
     const main = el("#atacadoMain");
-    if (main) main.style.display = "block";
+    if (main) {
+      main.dataset.stage = "presentation";
+      main.style.display = "block";
+    }
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+  function showCatalog() {
+    const main = el("#atacadoMain");
+    if (!main) return;
+    main.dataset.stage = "catalog";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => el("#atacadoCatalogTitle")?.focus({ preventScroll: true }), 350);
   }
   function showGateError(msg) {
     const box = el("#atacadoGateError");
@@ -729,6 +740,7 @@
     el("#atacadoCartClose")?.addEventListener("click", closeCart);
     el("#atacadoCartBackdrop")?.addEventListener("click", closeCart);
     el("#atacadoCartWhats")?.addEventListener("click", finalizarNoWhatsApp);
+    el("#atacadoOpenCatalog")?.addEventListener("click", showCatalog);
   }
 
   if (document.readyState === "loading") {
