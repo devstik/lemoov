@@ -3885,6 +3885,7 @@ loadCupons();
 let crmDays = 30;
 let crmSessions = [];
 let crmAtacadoLeads = [];
+let crmAtacadoError = '';
 
 const CRM_EVENT_LABELS = {
   page_view: 'Visitou', product_view: 'Viu produto', add_to_cart: 'Adicionou ao carrinho',
@@ -3951,12 +3952,16 @@ async function loadCRM(){
       fetch(`/api/crm/funnel?days=${crmDays}`),
       fetch('/api/admin/atacado-leads')
     ]);
-    const [sesData, funData, atacadoData] = await Promise.all([sesRes.json(), funRes.json(), atacadoRes.json()]);
+    const [sesData, funData, atacadoData] = await Promise.all([
+      sesRes.json(),
+      funRes.json(),
+      atacadoRes.json().catch(()=>({ ok:false, error:'Resposta inválida do servidor.' }))
+    ]);
     if(!sesRes.ok || sesData.ok === false) throw new Error(sesData.error || 'Não foi possível carregar sessões.');
     if(!funRes.ok || funData.ok === false) throw new Error(funData.error || 'Não foi possível carregar funil.');
-    if(!atacadoRes.ok || atacadoData.ok === false) throw new Error(atacadoData.error || 'Não foi possível carregar clientes do atacado.');
     crmSessions = sesData.sessions || [];
-    crmAtacadoLeads = atacadoData.leads || [];
+    crmAtacadoLeads = atacadoRes.ok && atacadoData.ok !== false ? (atacadoData.leads || []) : [];
+    crmAtacadoError = atacadoRes.ok && atacadoData.ok !== false ? '' : (atacadoData.error || 'Não foi possível carregar clientes do atacado.');
     renderCRM(crmSessions, funData);
   } catch(e){ panel.innerHTML = `<p style="color:#f87171">Erro ao carregar CRM: ${e.message}</p>`; }
 }
@@ -3997,6 +4002,7 @@ function renderCRM(sessions, funnel){
       <span class="stock-head-sub">${crmAtacadoLeads.length} cadastro${crmAtacadoLeads.length!==1?'s':''} via catálogo</span>
     </div>
     <div class="card-body">
+      ${crmAtacadoError?`<div style="margin-bottom:12px;padding:10px 12px;border-radius:8px;background:#fff7ed;color:#c2410c;font-size:12px">A área administrativa continua disponível, mas os cadastros do atacado não puderam ser carregados: ${esc(crmAtacadoError)}</div>`:''}
       <div style="overflow-x:auto">
         <table class="crm-table">
           <thead><tr><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Cidade</th><th>Cadastro</th><th>Status</th></tr></thead>
