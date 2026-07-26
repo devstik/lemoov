@@ -191,11 +191,34 @@
       :root {
         --frame-pad-top: clamp(14px, 2vh, 22px);
         --frame-pad-bottom: clamp(12px, 2.2vh, 22px);
-        --logo-width: clamp(170px, 13vw, 220px);
+        --logo-width: clamp(160px, 12vw, 195px);
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        background: #2f302d;
+      }
+
+      .bg,
+      .bg-overlay {
+        inset: auto;
+        top: 50%;
+        left: 50%;
+        width: min(430px, calc(100vw - 40px));
+        height: min(760px, calc(100dvh - 32px));
+        transform: translate(-50%, -50%);
+        border-radius: 20px;
       }
 
       .frame {
         width: min(430px, calc(100vw - 40px));
+        min-height: 0;
+        height: min(760px, calc(100dvh - 32px));
+        margin: 0;
+        overflow: hidden;
+        border-radius: 20px;
+        box-shadow: 0 28px 80px rgba(0,0,0,.38);
       }
     }
 
@@ -266,25 +289,36 @@
             <rect x="14" y="14" width="7" height="7" rx="1.5" fill="#fff" opacity=".5"/>
           </svg>
         </span>
-        <span class="cta__label">Compre aqui</span>
+        <span class="cta__label">Varejo</span>
         <span class="cta__arrow">›</span>
       </a>
 
-      <a class="cta cta--yellow" href="https://wa.me/558587408457?text=Ol%C3%A1%2C%20vim%20pelo%20Instagram%20e%20quero%20atendimento%20personalizado." target="_blank" rel="noopener">
+      <a class="cta cta--yellow" href="https://lemoov.com.br/catalogo-atacado.html?utm_source=instagram&utm_medium=bio&utm_campaign=link_bio&origem=instagram_bio" target="_blank" rel="noopener">
         <span class="cta__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
-            <path d="M20.4 3.6A11.2 11.2 0 0 0 12 0a11.3 11.3 0 0 0-9.8 16.9L0 24l7.4-2a11.3 11.3 0 0 0 4.6 1 11.3 11.3 0 0 0 8-3.3 11.2 11.2 0 0 0 3.3-8 11.2 11.2 0 0 0-3.3-8.1Z" fill="#383838" opacity="0.15"/>
-            <path d="M8.4 6.9c.2-.4.5-.4.8-.4h.7c.2 0 .5 0 .7.5.2.5.9 2.2 1 2.4.1.2.1.4 0 .6l-.4.6c-.1.2-.3.4-.1.8.1.4.7 1.3 1.5 2.1.8.8 1.6 1.4 2 1.5.4.1.6.1.8-.1l.7-.4c.2-.1.4-.1.6 0 .2.1 1.9.9 2.2 1 .3.1.5.2.5.4 0 .2 0 1.2-.5 1.8-.5.6-1.4 1.3-3 1.1-1.5-.2-3.4-1.2-5.3-3-1.9-1.9-3.1-4.2-3.3-5.6-.2-1.4.6-2.2.8-2.6Z" fill="#383838"/>
+            <path d="M3 9.5 12 4l9 5.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5Z" fill="#383838" opacity=".15"/>
+            <path d="M6 11h12v10H6V11Zm2 2v2h3v-2H8Zm5 0v2h3v-2h-3ZM8 17v2h3v-2H8Zm5 0v2h3v-2h-3Z" fill="#383838"/>
+          </svg>
+        </span>
+        <span class="cta__label">Atacado</span>
+        <span class="cta__arrow">›</span>
+      </a>
+
+      <a class="cta cta--green" href="https://wa.me/558587408457?text=Ol%C3%A1%2C%20vim%20pelo%20Instagram%20e%20quero%20atendimento%20personalizado." target="_blank" rel="noopener">
+        <span class="cta__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M20.4 3.6A11.2 11.2 0 0 0 12 0a11.3 11.3 0 0 0-9.8 16.9L0 24l7.4-2a11.3 11.3 0 0 0 4.6 1 11.3 11.3 0 0 0 8-3.3 11.2 11.2 0 0 0 3.3-8 11.2 11.2 0 0 0-3.3-8.1Z" fill="#fff" opacity="0.2"/>
+            <path d="M8.4 6.9c.2-.4.5-.4.8-.4h.7c.2 0 .5 0 .7.5.2.5.9 2.2 1 2.4.1.2.1.4 0 .6l-.4.6c-.1.2-.3.4-.1.8.1.4.7 1.3 1.5 2.1.8.8 1.6 1.4 2 1.5.4.1.6.1.8-.1l.7-.4c.2-.1.4-.1.6 0 .2.1 1.9.9 2.2 1 .3.1.5.2.5.4 0 .2 0 1.2-.5 1.8-.5.6-1.4 1.3-3 1.1-1.5-.2-3.4-1.2-5.3-3-1.9-1.9-3.1-4.2-3.3-5.6-.2-1.4.6-2.2.8-2.6Z" fill="#fff"/>
           </svg>
         </span>
         <span class="cta__label">Atendimento personalizado</span>
         <span class="cta__arrow">›</span>
       </a>
 
-      <a class="cta cta--green" href="https://lemoov.com.br/?utm_source=instagram&utm_medium=bio&utm_campaign=link_bio&origem=instagram_bio" target="_blank" rel="noopener">
+      <a class="cta cta--yellow" href="https://lemoov.com.br/?utm_source=instagram&utm_medium=bio&utm_campaign=link_bio&origem=instagram_bio" target="_blank" rel="noopener">
         <span class="cta__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
-            <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.5Z" fill="#fff"/>
+            <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.5Z" fill="#383838"/>
           </svg>
         </span>
         <span class="cta__label">Nos conheça</span>
