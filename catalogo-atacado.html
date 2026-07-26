@@ -18,20 +18,129 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     .atacado-hero {
-      background: linear-gradient(135deg, rgba(168,198,58,0.14), rgba(235,216,199,0.5));
+      min-height: min(680px, calc(100vh - 76px));
+      display: flex;
+      align-items: center;
+      background:
+        radial-gradient(circle at 84% 18%, rgba(168,198,58,.26), transparent 28%),
+        linear-gradient(135deg, #fbf8f4 0%, #f0e3d7 100%);
       border-bottom: 1px solid var(--border-color);
-      padding: 32px 0 24px;
+      padding: 64px 0;
     }
-    .atacado-hero__inner { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+    .atacado-hero__inner {
+      width: min(100% - 40px, 1180px);
+      margin-inline: auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(240px, .75fr);
+      align-items: center;
+      gap: clamp(36px, 8vw, 100px);
+    }
+    .atacado-hero__eyebrow, .atacado-story__eyebrow {
+      display: inline-block;
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
     .atacado-hero h1 {
       font-family: var(--font-heading);
-      font-size: clamp(24px, 3vw, 32px);
+      font-size: clamp(36px, 5.5vw, 68px);
+      line-height: 1.05;
+      color: var(--secondary-color);
+      margin: 0 0 20px;
+    }
+    .atacado-hero p { color: var(--text-muted); margin: 0; max-width: 620px; font-size: clamp(16px, 2vw, 20px); }
+    .atacado-hero__brand {
+      aspect-ratio: 1;
+      border: 1px solid rgba(168,198,58,.35);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.45);
+      box-shadow: 0 24px 70px rgba(46,46,46,.08);
+    }
+    .atacado-hero__brand img { width: min(72%, 260px); height: auto; }
+
+    .atacado-story { padding: clamp(64px, 9vw, 110px) 20px; }
+    .atacado-story__inner { width: min(100%, 1080px); margin-inline: auto; }
+    .atacado-story__heading {
+      font-family: var(--font-heading);
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.12;
+      color: var(--secondary-color);
+      margin: 0;
+      max-width: 760px;
+    }
+    .atacado-benefits { background: var(--surface-color); }
+    .atacado-benefits__grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-top: 40px;
+    }
+    .atacado-benefit {
+      min-height: 150px;
+      padding: 22px 18px;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      background: var(--bg-light);
+    }
+    .atacado-benefit i { color: var(--primary-dark); font-size: 20px; margin-bottom: 24px; }
+    .atacado-benefit h3 {
+      color: var(--secondary-color);
+      font-family: var(--font-heading);
+      font-size: 15px;
+      line-height: 1.35;
+      margin: 0;
+    }
+    .atacado-positioning {
+      background: var(--secondary-color);
+      color: #fff;
+    }
+    .atacado-positioning .atacado-story__eyebrow { color: var(--primary-color); }
+    .atacado-positioning .atacado-story__heading { color: #fff; }
+    .atacado-positioning__content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(32px, 7vw, 90px);
+      align-items: end;
+    }
+    .atacado-positioning__copy { color: rgba(255,255,255,.72); line-height: 1.7; margin: 0; }
+    .atacado-positioning__note {
+      margin-top: 22px;
+      padding-left: 16px;
+      border-left: 3px solid var(--primary-color);
+      color: rgba(255,255,255,.9);
+      font-weight: 600;
+    }
+    .atacado-products-intro {
+      width: min(100% - 40px, 1180px);
+      margin: 0 auto;
+      padding-top: 54px;
+    }
+    .atacado-products-intro h2 {
+      font-family: var(--font-heading);
+      font-size: clamp(28px, 4vw, 40px);
       color: var(--secondary-color);
       margin: 0 0 8px;
     }
-    .atacado-hero p { color: var(--text-muted); margin: 0; max-width: 640px; }
+    .atacado-products-intro p { color: var(--text-muted); margin: 0; }
 
     .atacado-wrap { width: min(100% - 40px, 1180px); margin-inline: auto; padding: 24px 0 60px; }
+
+    @media (max-width: 900px) {
+      .atacado-benefits__grid { grid-template-columns: repeat(2, 1fr); }
+      .atacado-benefit:last-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 680px) {
+      .atacado-hero { min-height: auto; padding: 70px 0; }
+      .atacado-hero__inner { grid-template-columns: 1fr; }
+      .atacado-hero__brand { width: min(62vw, 240px); justify-self: center; }
+      .atacado-benefits__grid, .atacado-positioning__content { grid-template-columns: 1fr; }
+      .atacado-benefit:last-child { grid-column: auto; }
+    }
 
     .atacado-search {
       display: flex; align-items: center; gap: 10px;
@@ -368,9 +477,64 @@
 
   <section class="atacado-hero">
     <div class="atacado-hero__inner">
-      <h1>Catálogo de Atacado</h1>
+      <div>
+        <span class="atacado-hero__eyebrow">Catálogo de atacado</span>
+        <h1>Moda Fitness Premium para lojas que valorizam qualidade.</h1>
+        <p>Peças que unem design, desempenho e acabamento para elevar a experiência das suas clientes.</p>
+      </div>
+      <div class="atacado-hero__brand" aria-hidden="true">
+        <img src="image/logo_lemoov_semfundo.png" alt="">
+      </div>
     </div>
   </section>
+
+  <section class="atacado-story atacado-benefits" aria-labelledby="atacadoBenefitsTitle">
+    <div class="atacado-story__inner">
+      <span class="atacado-story__eyebrow">Por que escolher a Lemoov?</span>
+      <h2 class="atacado-story__heading" id="atacadoBenefitsTitle">Uma marca pensada para gerar valor na sua loja.</h2>
+      <div class="atacado-benefits__grid">
+        <article class="atacado-benefit">
+          <i class="fas fa-gem" aria-hidden="true"></i>
+          <h3>Poliamida premium</h3>
+        </article>
+        <article class="atacado-benefit">
+          <i class="fas fa-pen-ruler" aria-hidden="true"></i>
+          <h3>Modelagens exclusivas</h3>
+        </article>
+        <article class="atacado-benefit">
+          <i class="fas fa-scissors" aria-hidden="true"></i>
+          <h3>Excelente acabamento</h3>
+        </article>
+        <article class="atacado-benefit">
+          <i class="fas fa-heart" aria-hidden="true"></i>
+          <h3>Peças pensadas para fidelizar clientes</h3>
+        </article>
+        <article class="atacado-benefit">
+          <i class="fas fa-arrow-trend-up" aria-hidden="true"></i>
+          <h3>Ticket médio de revenda elevado</h3>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="atacado-story atacado-positioning" aria-labelledby="atacadoPositioningTitle">
+    <div class="atacado-story__inner atacado-positioning__content">
+      <div>
+        <span class="atacado-story__eyebrow">Valor percebido</span>
+        <h2 class="atacado-story__heading" id="atacadoPositioningTitle">Quanto uma peça premium pode representar na sua loja?</h2>
+      </div>
+      <div>
+        <p class="atacado-positioning__copy">Produtos com matéria-prima superior, modelagem diferenciada e acabamento cuidadoso ocupam uma faixa de maior valor percebido. Isso permite que cada lojista construa um preço de revenda coerente com seu público, sua região e seu posicionamento.</p>
+        <p class="atacado-positioning__note">A Lemoov entrega o produto e a apresentação para você vender valor — não apenas preço.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="atacado-products-intro">
+    <span class="atacado-story__eyebrow">Coleção Lemoov</span>
+    <h2>Escolha as peças para a sua loja</h2>
+    <p>Consulte fotos, cores, especificações e valores de atacado.</p>
+  </div>
 
   <div class="atacado-wrap">
     <div class="atacado-search">
