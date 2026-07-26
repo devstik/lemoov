@@ -368,7 +368,7 @@
 
     /* ──────── CRM ──────── */
     .crm-shell{display:grid;gap:14px}
-    .crm-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .crm-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
     .crm-grid{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:14px;align-items:start}
     .crm-main,.crm-side{display:grid;gap:14px}
     .crm-note{font-size:12px;color:var(--muted);line-height:1.6}
@@ -3884,6 +3884,7 @@ loadCupons();
 // ── CRM ──────────────────────────────────────────────────────
 let crmDays = 30;
 let crmSessions = [];
+let crmAtacadoLeads = [];
 
 const CRM_EVENT_LABELS = {
   page_view: 'Visitou', product_view: 'Viu produto', add_to_cart: 'Adicionou ao carrinho',
@@ -3945,14 +3946,17 @@ async function loadCRM(){
   if(!panel) return;
   panel.innerHTML = `<div style="color:#94a3b8;padding:32px;text-align:center">Carregando...</div>`;
   try {
-    const [sesRes, funRes] = await Promise.all([
+    const [sesRes, funRes, atacadoRes] = await Promise.all([
       fetch(`/api/crm/sessions?days=${crmDays}`),
-      fetch(`/api/crm/funnel?days=${crmDays}`)
+      fetch(`/api/crm/funnel?days=${crmDays}`),
+      fetch('/api/admin/atacado-leads')
     ]);
-    const [sesData, funData] = await Promise.all([sesRes.json(), funRes.json()]);
+    const [sesData, funData, atacadoData] = await Promise.all([sesRes.json(), funRes.json(), atacadoRes.json()]);
     if(!sesRes.ok || sesData.ok === false) throw new Error(sesData.error || 'Não foi possível carregar sessões.');
     if(!funRes.ok || funData.ok === false) throw new Error(funData.error || 'Não foi possível carregar funil.');
+    if(!atacadoRes.ok || atacadoData.ok === false) throw new Error(atacadoData.error || 'Não foi possível carregar clientes do atacado.');
     crmSessions = sesData.sessions || [];
+    crmAtacadoLeads = atacadoData.leads || [];
     renderCRM(crmSessions, funData);
   } catch(e){ panel.innerHTML = `<p style="color:#f87171">Erro ao carregar CRM: ${e.message}</p>`; }
 }
@@ -3980,10 +3984,26 @@ function renderCRM(sessions, funnel){
     ${[
       ['Sessões',f.total||0,`${crmDays} dias`],
       ['Identificados',identified,'com conta/cliente'],
+      ['Clientes atacado',crmAtacadoLeads.length,'cadastros do catálogo'],
       ['Leads quentes',hotLeads.length,'alta intenção sem compra'],
       ['Conversão',conv+'%','compras no período'],
       ['Abandono',abandon+'%','carrinho sem compra'],
     ].map(([l,v,h])=>`<div class="quick-stat"><div class="quick-stat__label">${l}</div><div class="quick-stat__value">${v}</div><div class="quick-stat__hint">${h}</div></div>`).join('')}
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Clientes do atacado</h2>
+      <span class="stock-head-sub">${crmAtacadoLeads.length} cadastro${crmAtacadoLeads.length!==1?'s':''} via catálogo</span>
+    </div>
+    <div class="card-body">
+      <div style="overflow-x:auto">
+        <table class="crm-table">
+          <thead><tr><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Cidade</th><th>Cadastro</th><th>Status</th></tr></thead>
+          <tbody>${renderAtacadoLeadRows(crmAtacadoLeads)}</tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div class="crm-grid">
@@ -4065,6 +4085,30 @@ function renderCRM(sessions, funnel){
   document.getElementById('crmStatusFilter')?.addEventListener('change', applyCrmFilters);
   updateCrmCount(sessions.length);
   bindCrmRows();
+}
+
+function formatAtacadoWhatsApp(value){
+  const digits=String(value||'').replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');
+  if(digits.length===11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+  if(digits.length===10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return value||'—';
+}
+
+function renderAtacadoLeadRows(leads){
+  if(!leads.length) return `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Nenhum cadastro realizado pelo catálogo de atacado.</td></tr>`;
+  return leads.map(lead=>{
+    const phoneDigits=String(lead.whatsapp||'').replace(/\D/g,'');
+    const waPhone=phoneDigits.startsWith('55')?phoneDigits:`55${phoneDigits}`;
+    const date=lead.verified_at||lead.created_at;
+    return `<tr>
+      <td><strong>${esc(lead.nome||'—')}</strong></td>
+      <td>${phoneDigits?`<a href="https://wa.me/${waPhone}" target="_blank" rel="noopener" style="color:#6F8522;font-weight:700;white-space:nowrap">${esc(formatAtacadoWhatsApp(lead.whatsapp))}</a>`:'—'}</td>
+      <td>${lead.email?`<a href="mailto:${esc(lead.email)}" style="color:#475569">${esc(lead.email)}</a>`:'—'}</td>
+      <td>${esc(lead.cidade||'—')}</td>
+      <td style="white-space:nowrap">${fmtDt(date)}</td>
+      <td><span class="crm-badge" style="color:${lead.verified?'#16a34a':'#d97706'}">${lead.verified?'Verificado':'Pendente'}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 function renderCrmRows(sessions){

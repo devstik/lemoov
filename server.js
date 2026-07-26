@@ -3034,6 +3034,23 @@ app.get('/api/atacado/access/check', (req, res) => {
   res.json({ ok: true, access: hasAtacadoAccess(req) });
 });
 
+// Clientes captados pelo formulário do catálogo de atacado — somente no admin.
+app.get('/api/admin/atacado-leads', authRequired, async (_req, res) => {
+  try {
+    requireMysqlStorage();
+    await initDatabase();
+    const [rows] = await mysqlPool.execute(
+      `SELECT id, nome, whatsapp, cidade, email, verified, created_at, verified_at
+       FROM lemoov_atacado_leads
+       ORDER BY COALESCE(verified_at, created_at) DESC`
+    );
+    res.json({ ok: true, total: rows.length, leads: rows });
+  } catch (e) {
+    console.error('[admin/atacado-leads]', e.message);
+    res.status(500).json({ ok: false, error: 'Erro ao buscar clientes do atacado.' });
+  }
+});
+
 // Acesso rápido pra quem já se cadastrou antes: só o WhatsApp, sem precisar de código de novo.
 app.post('/api/atacado/access/check-phone', async (req, res) => {
   try {
