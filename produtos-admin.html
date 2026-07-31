@@ -567,6 +567,7 @@
   <div class="screen-hero">
     <div><h1 class="screen-title">Produtos</h1></div>
   </div>
+  <div class="quick-stats" id="prodKpis"></div>
   <div class="prod-layout">
     <div class="card prod-sidebar">
       <div class="card-head">
@@ -597,6 +598,7 @@
   <div class="screen-hero">
     <div><h1 class="screen-title">Combos</h1></div>
   </div>
+  <div class="quick-stats" id="comboKpis"></div>
   <div class="prod-layout">
     <div class="card prod-sidebar">
       <div class="card-head">
@@ -630,6 +632,7 @@
       <p class="screen-copy">Catálogo próprio para venda por atacado — fotos, descrições e cores independentes do varejo. Sem controle de estoque.</p>
     </div>
   </div>
+  <div class="quick-stats" id="atacadoKpis"></div>
   <div class="prod-layout">
     <div class="card prod-sidebar">
       <div class="card-head">
@@ -825,6 +828,7 @@
       <h1 class="screen-title">Cupons</h1>
     </div>
   </div>
+  <div class="quick-stats" id="couponKpis"></div>
   <div class="card" id="couponPanel">
     <div class="card-head"><h2>Gestão de cupons</h2><span style="font-size:12px;color:#64748b">Cadastro salvo no banco</span></div>
     <div class="card-body" id="couponPanelBody">
@@ -1286,7 +1290,23 @@ async function loadProdutos(){
   renderStockSummary();
 }
 
+function renderProdKpis(){
+  const el=$('prodKpis');
+  if(!el) return;
+  const ativos=produtos.filter(p=>p.ativo!==false).length;
+  const inativos=produtos.length-ativos;
+  const categorias=new Set(produtos.map(p=>p.categoria).filter(Boolean)).size;
+  const cards=[
+    ['Total de produtos',produtos.length,'no catálogo'],
+    ['Ativos',ativos,'visíveis no site'],
+    ['Inativos',inativos,'ocultos no catálogo'],
+    ['Categorias',categorias,'categorias distintas'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
 function renderProdList(){
+  renderProdKpis();
   const q=($('prodSearch')?.value||'').toLowerCase().trim();
   const sorted=[...produtos].sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999))
     .filter(p=>!q||[p.nome,p.categoria,...(p.cores||[]).map(c=>c.nome)].join(' ').toLowerCase().includes(q));
@@ -1788,7 +1808,26 @@ function comboAsSellable(combo){
 function sellableItems(){
   return [...produtos,...combos.map(comboAsSellable)];
 }
+function renderComboKpis(){
+  const el=$('comboKpis');
+  if(!el) return;
+  const ativos=combos.filter(c=>c.ativo!==false).length;
+  const inativos=combos.length-ativos;
+  const esgotados=combos.filter(c=>{
+    const stock=Number.isFinite(Number(c.estoqueCalculado))?Number(c.estoqueCalculado):comboStockLocal(c);
+    return stock<=0;
+  }).length;
+  const cards=[
+    ['Total de combos',combos.length,'ofertas cadastradas'],
+    ['Ativos',ativos,'visíveis no site'],
+    ['Inativos',inativos,'ocultos no catálogo'],
+    ['Esgotados',esgotados,'sem estoque disponível'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
 function renderComboList(){
+  renderComboKpis();
   const q=($('comboSearch')?.value||'').toLowerCase().trim();
   const sorted=[...combos].sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999))
     .filter(c=>!q||[c.nome,c.categoria,...(c.components||[]).map(i=>i.nome)].join(' ').toLowerCase().includes(q));
@@ -2048,7 +2087,26 @@ async function loadAtacado(){
   }
 }
 
+function renderAtacadoKpis(){
+  const el=$('atacadoKpis');
+  if(!el) return;
+  const ativos=atacado.filter(p=>p.ativo!==false).length;
+  const inativos=atacado.length-ativos;
+  const semFoto=atacado.filter(p=>{
+    const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
+    return !(c?.imagens?.[0]||c?.imagem);
+  }).length;
+  const cards=[
+    ['Total de produtos',atacado.length,'no catálogo atacado'],
+    ['Ativos',ativos,'visíveis no catálogo'],
+    ['Inativos',inativos,'ocultos'],
+    ['Sem foto',semFoto,'precisam de imagem'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
 function renderAtacadoList(){
+  renderAtacadoKpis();
   const q=($('atacadoSearch')?.value||'').toLowerCase().trim();
   const sorted=[...atacado].sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999))
     .filter(p=>!q||[p.nome,p.categoria,...(p.cores||[]).map(c=>c.nome)].join(' ').toLowerCase().includes(q));
@@ -3107,7 +3165,23 @@ async function loadCupons(){
   }catch(e){console.error(e)}
 }
 
+function renderCouponKpis(){
+  const el=$('couponKpis');
+  if(!el) return;
+  const ativos=cupons.filter(c=>c.active).length;
+  const inativos=cupons.length-ativos;
+  const primeiraCompra=cupons.filter(c=>c.firstPurchaseOnly).length;
+  const cards=[
+    ['Total de cupons',cupons.length,'cadastrados'],
+    ['Ativos',ativos,'disponíveis para uso'],
+    ['Inativos',inativos,'desativados'],
+    ['1ª compra',primeiraCompra,'restritos a novos clientes'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
 function renderCouponsPanel(){
+  renderCouponKpis();
   const body=$('couponPanelBody');
   if(!body) return;
   body.innerHTML=`
@@ -4228,8 +4302,28 @@ async function loadClientes(){
     if(r.status===401){redirect401();return;}
     const d=await r.json();
     _clientes=Array.isArray(d.clientes)?d.clientes:[];
+    renderClientesKpis();
     renderClientesList();
   }catch(e){console.error(e); if(body)body.innerHTML='<div class="form-empty" style="color:#e8445a">Erro ao carregar clientes.</div>';}
+}
+
+function renderClientesKpis(){
+  const el=$('clientesKpis');
+  if(!el) return;
+  const total=_clientes.length;
+  const comPedidos=_clientes.filter(c=>c.hasOrders).length;
+  const comTelefone=_clientes.filter(c=>c.telefone).length;
+  const recentes=_clientes.filter(c=>{
+    const d=new Date(c.createdAt);
+    return !isNaN(d) && (Date.now()-d.getTime())<=30*24*60*60*1000;
+  }).length;
+  const cards=[
+    ['Total de clientes',total,'cadastrados'],
+    ['Com pedidos',comPedidos,'já compraram'],
+    ['Com WhatsApp',comTelefone,'telefone cadastrado'],
+    ['Novos (30 dias)',recentes,'cadastros recentes'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
 }
 
 function renderClientesList(){
@@ -4586,6 +4680,7 @@ function bindNovoCliente(){
       <h1 class="screen-title">Clientes</h1>
     </div>
   </div>
+  <div class="quick-stats" id="clientesKpis"></div>
   <div class="card-stack">
 
   <!-- Formulário de cadastro manual -->
