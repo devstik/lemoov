@@ -1,0 +1,3544 @@
+// ── Helpers ─────────────────────────────────────────────────
+const $  = id  => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function fmtR(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) }
+function fmtD(iso){ if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) }
+function sLabel(s){ return ({reservado:'Reservado',confirmado:'Confirmado',enviado:'Enviado',entregue:'Entregue',cancelado:'Cancelado'})[s]||s||'Reservado' }
+function sPill(s){ return `<span class="status-pill s-${s||'reservado'}">${sLabel(s)}</span>` }
+function normalizeCouponCode(v){return String(v||'').trim().toUpperCase().replace(/\s+/g,'')}
+function orderCoupon(p){return normalizeCouponCode(p?.cupom||p?.couponCode||p?.pedidoPayload?.cupom||'')}
+function orderDiscount(p){return Number(p?.desconto||p?.discountTotal||p?.pedidoPayload?.desconto||0)||0}
+function origemLabel(o){
+  const key=String(o||'').trim().toLowerCase();
+  return ({ecommerce:'Ecommerce',admin:'Admin',whatsapp:'WhatsApp',instagram:'Instagram','loja_fisica':'Loja física',telefone:'Telefone',outro:'Outro'})[key]||o||'—';
+}
+const SOLD_STATUSES=['confirmado','enviado','entregue'];
+function effectiveSales(list){
+  const map=new Map();
+  list.forEach(p=>{
+    if(!SOLD_STATUSES.includes(String(p.status||'').toLowerCase())) return;
+    const key=String(p.pedido||p.order_nsu||p.id||Math.random());
+    if(!map.has(key)) map.set(key,p);
+  });
+  return Array.from(map.values());
+}
+function filterByReportDate(list){
+  const start=relDateStart?new Date(relDateStart+'T00:00:00'):null;
+  const end=relDateEnd?new Date(relDateEnd+'T23:59:59.999'):null;
+  return list.filter(p=>{
+    const d=new Date(p.recebidoEm||p.confirmedAt||p.createdAt||0);
+    if(Number.isNaN(d.getTime())) return false;
+    if(start&&d<start) return false;
+    if(end&&d>end) return false;
+    return true;
+  });
+}
+const COLOR_SWATCH_MAP={
+  "preto":"#111111","branco":"#f7f7f2","azul":"#1a3d6b","azul marinho":"#1a3d6b","azul bic":"#0045c8","azul frozen":"#b0d0e8",
+  "cinza":"#7c8590","grafite":"#4e4e6e","verde":"#107878","verde agua":"#a5e8d2","verde suzy":"#1dafb0","verde pavao":"#006f68",
+  "verde militar":"#4a5520","fucsia":"#c030cc","rosa":"#e7a3b5","lilas":"#b69bd8","terracota":"#bf5030","chocolate":"#7a4a2a",
+  "cacau":"#6b3f2a","manteiga":"#f0edd0","amarelo":"#ffdf00","vermelho":"#c0392b","aurora":"#c05070"
+};
+const COLOR_TONE_PRESETS=[
+  {nome:'Preto',hex:'#111111',aliases:['preto','black']},
+  {nome:'Branco',hex:'#f7f7f2',aliases:['branco','off white','gelo']},
+  {nome:'Manteiga',hex:'#f0edd0',aliases:['manteiga','creme','bege claro','amarelo claro']},
+  {nome:'Azul marinho',hex:'#1a3d6b',aliases:['azul','azul escuro','marinho']},
+  {nome:'Azul bic',hex:'#0045c8',aliases:['azul bic','azul royal','azul vivo']},
+  {nome:'Azul frozen',hex:'#b0d0e8',aliases:['azul frozen','azul claro','azul bebe','azul bebê']},
+  {nome:'Cinza',hex:'#7c8590',aliases:['cinza','prata']},
+  {nome:'Grafite',hex:'#4e4e6e',aliases:['grafite','cinza escuro','chumbo']},
+  {nome:'Verde',hex:'#107878',aliases:['verde','verde medio','verde médio']},
+  {nome:'Verde agua',hex:'#a5e8d2',aliases:['verde agua','verde água','verde claro','menta']},
+  {nome:'Verde suzy',hex:'#1dafb0',aliases:['verde suzy','turquesa','verde azulado']},
+  {nome:'Verde pavao',hex:'#006f68',aliases:['verde pavao','verde pavão','verde petróleo','petroleo','petróleo']},
+  {nome:'Verde militar',hex:'#4a5520',aliases:['verde militar','oliva']},
+  {nome:'Fucsia',hex:'#c030cc',aliases:['fucsia','fúcsia','pink','magenta']},
+  {nome:'Rosa',hex:'#e7a3b5',aliases:['rosa','rosa claro']},
+  {nome:'Lilas',hex:'#b69bd8',aliases:['lilas','lilás','roxo claro']},
+  {nome:'Terracota',hex:'#bf5030',aliases:['terracota','telha','laranja queimado']},
+  {nome:'Chocolate',hex:'#7a4a2a',aliases:['chocolate','marrom','marrom escuro']},
+  {nome:'Cacau',hex:'#6b3f2a',aliases:['cacau','café','cafe','marrom medio','marrom médio']},
+  {nome:'Amarelo',hex:'#ffdf00',aliases:['amarelo','dourado']},
+  {nome:'Vermelho',hex:'#c0392b',aliases:['vermelho','red']},
+  {nome:'Aurora',hex:'#c05070',aliases:['aurora','rosê','rose','rosa queimado']}
+];
+function normalizeColorKey(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
+function isHexColor(value){return /^#[0-9a-f]{6}$/i.test(String(value||''))}
+function findTonePreset(value){
+  const key=normalizeColorKey(value);
+  if(!key) return null;
+  return COLOR_TONE_PRESETS.find(p=>normalizeColorKey(p.nome)===key||p.aliases.some(a=>normalizeColorKey(a)===key))||null;
+}
+function findToneByHex(value){
+  const hex=String(value||'').toLowerCase();
+  return COLOR_TONE_PRESETS.find(p=>p.hex===hex)||null;
+}
+function defaultSwatchForName(nome){const preset=findTonePreset(nome);return preset?.hex||COLOR_SWATCH_MAP[normalizeColorKey(nome)]||'#e6e6e6'}
+function renderToneOptions(){
+  const list=$('colorToneOptions');
+  if(!list) return;
+  list.innerHTML=COLOR_TONE_PRESETS.map(p=>`<option value="${esc(p.nome)}">${esc(p.aliases.slice(0,3).join(', '))}</option>`).join('');
+}
+const SIZE_ORDER=['PP','P','M','G','GG','XG','EG'];
+function sortSizes(sizes){return [...sizes].sort((a,b)=>{const ai=SIZE_ORDER.indexOf(a.toUpperCase()),bi=SIZE_ORDER.indexOf(b.toUpperCase());if(ai!==-1&&bi!==-1)return ai-bi;if(ai!==-1)return -1;if(bi!==-1)return 1;const na=Number(a),nb=Number(b);if(!isNaN(na)&&!isNaN(nb))return na-nb;return a.localeCompare(b)});}
+function parseStock(raw){
+  const text=String(raw||'').trim(); if(!text) return null;
+  const st={};
+  text.split(',').forEach(p=>{const[k,v]=p.split(/[:=]/);const sz=String(k||'').trim().toUpperCase();if(sz)st[sz]=Math.max(0,Number(String(v||'0').trim())||0)});
+  return Object.keys(st).length?st:null;
+}
+function fmtStock(e){ if(!e||typeof e!=='object'||Array.isArray(e)) return ''; return Object.entries(e).map(([s,q])=>`${s}:${q}`).join(', ') }
+function totalStock(p){
+  if(!Array.isArray(p?.cores)) return null;
+  let t=0,m=false;
+  p.cores.forEach(c=>{if(!c?.estoque||typeof c.estoque!=='object'||Array.isArray(c.estoque))return;m=true;Object.values(c.estoque).forEach(q=>{t+=Number(q)||0})});
+  return m?t:null;
+}
+function toast(msg,type='success'){
+  const root=document.getElementById('toastRoot');
+  const el=document.createElement('div');
+  el.className=`toast toast--${type}`;
+  el.innerHTML=`<span class="toast-ico">${type==='success'?'✓':'✕'}</span><span>${msg}</span>`;
+  root.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(110%)';setTimeout(()=>el.remove(),380)},3500);
+}
+function showNotice(_el,msg,type='success'){toast(msg,type)}
+function redirect401(){ location.href='/login?redirect=/api/produtos-admin' }
+
+// ── State ───────────────────────────────────────────────────
+let produtos=[], combos=[], atacado=[], pedidos=[], cupons=[], stockMovimentos=[], stockAuditData=null, stockAuditProductId='', activeProdId=null, activeComboId=null, activeAtacadoId=null, activePedNum=null, orderFilter='', orderSearch='', stockSearch='', stockMovementSearch='', stockMovementType='', relDateStart='', relDateEnd='';
+let stockSubTab='produtos', stockPage=1, ordersPage=1;
+const STOCK_PAGE_SIZE=8, ORDERS_PAGE_SIZE=10;
+let colorCounter=0, newOrderItems=[], prodListSortable=null, comboListSortable=null, atacadoListSortable=null;
+
+// ── Tabs ────────────────────────────────────────────────────
+$$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  const tab=btn.dataset.tab;
+  $$('.tab-btn').forEach(b=>b.classList.remove('active'));
+  $$('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  const panel = $(`tab-${tab}`);
+  if(panel) panel.classList.add('active');
+  if(tab==='combos') loadCombos();
+  if(tab==='atacado') loadAtacado();
+  if(tab==='pedidos') { loadCupons(); loadPedidos(); }
+  if(tab==='cupons') loadCupons();
+  if(tab==='estoque') refreshStockScreen();
+  if(tab==='relatorio') loadRelatorio();
+  if(tab==='crm') loadCRM();
+  if(tab==='qrcode') qrgInitUI();
+}));
+
+// ── Logout ───────────────────────────────────────────────────
+$('btnLogout').addEventListener('click',async()=>{
+  await fetch('/api/logout',{method:'POST'}); location.href='/login';
+});
+
+// ── Sidebar toggle ────────────────────────────────────────────────────────
+(function(){
+  const toggle = document.getElementById('sidebarToggle');
+  if(!toggle) return;
+  const collapsed = localStorage.getItem('sb_collapsed') === '1';
+  if(collapsed) document.body.classList.add('sb-collapsed');
+  toggle.addEventListener('click', () => {
+    const isNow = document.body.classList.toggle('sb-collapsed');
+    localStorage.setItem('sb_collapsed', isNow ? '1' : '0');
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════
+// PRODUTOS
+// ═══════════════════════════════════════════════════════════
+async function loadProdutos(){
+  const r=await fetch('/api/admin/produtos');
+  if(r.status===401){redirect401();return}
+  if(!r.ok) return;
+  produtos=await r.json();
+  renderProdList();
+  fillEstoqueSelect();
+  renderStockSummary();
+}
+
+function renderProdKpis(){
+  const el=$('prodKpis');
+  if(!el) return;
+  const ativos=produtos.filter(p=>p.ativo!==false).length;
+  const inativos=produtos.length-ativos;
+  const categorias=new Set(produtos.map(p=>p.categoria).filter(Boolean)).size;
+  const cards=[
+    ['Total de produtos',produtos.length,'no catálogo'],
+    ['Ativos',ativos,'visíveis no site'],
+    ['Inativos',inativos,'ocultos no catálogo'],
+    ['Categorias',categorias,'categorias distintas'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
+function renderProdList(){
+  renderProdKpis();
+  const q=($('prodSearch')?.value||'').toLowerCase().trim();
+  const sorted=[...produtos].sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999))
+    .filter(p=>!q||[p.nome,p.categoria,...(p.cores||[]).map(c=>c.nome)].join(' ').toLowerCase().includes(q));
+  $('listaProdutos').innerHTML=sorted.map(p=>{
+    const inativo=p.ativo===false;
+    const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
+    const img=c?.imagens?.[0]||c?.imagem||'';
+    const src=img?(img.startsWith('http')?img:'/'+img):'';
+    const st=totalStock(p);
+    const [bc,bt]=p.soldOut?['badge--out','Esgotado']:(st==null?['badge--na','—']:[`badge--ok`,`${st} un.`]);
+    const active=String(p.id)===String(activeProdId);
+    return `<div class="prod-item ${active?'active':''} ${inativo?'prod-inativo':''}" data-id="${p.id}">
+      <span class="drag-handle" title="Arrastar para reordenar">⠿</span>
+      ${src?`<img class="prod-item__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:
+             `<div class="prod-item__img" style="font-size:9px;color:#94a3b8;display:flex;align-items:center;justify-content:center">Sem foto</div>`}
+      <div style="flex:1;min-width:0">
+        <div class="prod-item__name">${esc(p.nome)}</div>
+        <div class="prod-item__meta">${esc(p.categoria)} · ${fmtR(p.preco)}</div>
+      </div>
+      ${inativo?'<span class="badge badge--out" style="font-size:9px;padding:2px 5px">OFF</span>':`<span class="badge ${bc}">${bt}</span>`}
+    </div>`;
+  }).join('');
+  $$('#listaProdutos .prod-item').forEach(el=>el.addEventListener('click',()=>{
+    activeProdId=el.dataset.id;
+    renderProdList();
+    renderProdForm(produtos.find(p=>String(p.id)===String(activeProdId)));
+  }));
+  if(typeof Sortable!=='undefined'){
+    if(prodListSortable) prodListSortable.destroy();
+    prodListSortable=Sortable.create($('listaProdutos'),{
+      animation:150,handle:'.drag-handle',
+      onEnd:async()=>{
+        const ids=Array.from($$('#listaProdutos .prod-item')).map(el=>Number(el.dataset.id));
+        ids.forEach((id,i)=>{const p=produtos.find(p=>Number(p.id)===id);if(p)p.ordem=i+1});
+        try{await fetch('/api/admin/produtos/ordem',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})})}
+        catch(e){console.error('Erro ao reordenar:',e)}
+      }
+    });
+  }
+}
+
+$('btnNovo').addEventListener('click',()=>{
+  activeProdId=null; renderProdList(); renderProdForm(null);
+});
+$('prodSearch').addEventListener('input',()=>renderProdList());
+
+function renderProdForm(p){
+  $('formTitle').textContent=p?p.nome:'Novo produto';
+  $('formActions').innerHTML=p?`<button class="btn btn--danger btn--sm" id="btnExcluir">Excluir</button>`:'';
+  if(p) $('btnExcluir').addEventListener('click',()=>excluirProd(p.id));
+
+  const descTxt=p?.desc?.texto||(p?.desc?[p.desc.tecido,p.desc.compressao].filter(Boolean).join(' • '):'');
+  const tamTxt=Array.isArray(p?.tamanhos)?p.tamanhos.join(', '):'';
+  $('formPanel').innerHTML=`
+    <form id="prodForm">
+      <div class="frow">
+        <div class="fg"><label class="fl">Nome *</label><input class="fc" id="f_nome" required /></div>
+        <div class="fg"><label class="fl">Categoria *</label><input class="fc" id="f_cat" required /></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Preço (R$) *</label><input class="fc" type="number" step="0.01" id="f_preco" required /></div>
+        <div class="fg"><label class="fl">Preço promo (R$)</label><input class="fc" type="number" step="0.01" id="f_promo" /></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Tamanhos (vírgula)</label><input class="fc" id="f_tam" placeholder="P, M, G, GG" /></div>
+        <div class="fg" style="display:flex;align-items:center;gap:14px;padding-top:18px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;cursor:pointer">
+            <input type="checkbox" id="f_soldout" /> Esgotado
+          </label>
+          <div class="toggle-wrap" id="f_ativo" data-state="on" role="switch" aria-checked="true">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span id="f_ativo_lbl" style="font-size:13px;font-weight:600;color:#22c55e">Visível no site</span>
+          </div>
+          <div class="toggle-wrap" id="f_lancamento" data-state="off" role="switch" aria-checked="false">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span id="f_lancamento_lbl" style="font-size:13px;font-weight:600;color:#64748b">Não é lançamento</span>
+          </div>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="f_desc"></textarea></div>
+      <div class="fg" style="margin-top:10px">
+        <label class="fl">Vídeo do produto</label>
+        <div class="video-upload-box">
+          <label class="video-upload-label" for="f_video_file">&#9654; Enviar vídeo</label>
+          <input type="file" id="f_video_file" accept="video/mp4,video/webm,.mp4,.webm,.mov">
+          <select id="f_video_select" class="fc" style="flex:1;min-width:0;font-size:12px;padding:5px 8px;height:32px;">
+            <option value="">— ou selecionar existente —</option>
+          </select>
+          <span class="video-current" id="f_video_name" style="display:none">Nenhum vídeo</span>
+          <button type="button" class="video-remove" id="f_video_remove" style="display:none">✕ Remover</button>
+        </div>
+        <input type="hidden" id="f_video_path">
+      </div>
+      <div style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;color:#475569;letter-spacing:.04em">Cores / Variações</span>
+          <button type="button" class="btn btn--secondary btn--sm" id="btnAddCor">+ Cor</button>
+        </div>
+        <div id="colorsList"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary" id="btnSalvar">Salvar produto</button>
+        <button type="button" class="btn btn--ghost" id="btnCancel">Cancelar</button>
+      </div>
+    </form>`;
+
+  // Set values programmatically to avoid escaping issues
+  $('f_nome').value=p?.nome||'';
+  $('f_cat').value=p?.categoria||'';
+  $('f_preco').value=p?.preco??'';
+  $('f_promo').value=p?.precoPromo??'';
+  $('f_tam').value=tamTxt;
+  $('f_soldout').checked=Boolean(p?.soldOut);
+  const fAtivo=$('f_ativo');
+  const fAtivoLbl=$('f_ativo_lbl');
+  const fLancamento=$('f_lancamento');
+  const fLancamentoLbl=$('f_lancamento_lbl');
+  function setFAtivo(on){
+    fAtivo.dataset.state=on?'on':'off';
+    fAtivo.setAttribute('aria-checked',String(on));
+    fAtivoLbl.textContent=on?'Visível no site':'Oculto no site';
+    fAtivoLbl.style.color=on?'#22c55e':'#ef4444';
+  }
+  function setFLancamento(on){
+    fLancamento.dataset.state=on?'on':'off';
+    fLancamento.setAttribute('aria-checked',String(on));
+    fLancamentoLbl.textContent=on?'Lançamento':'Não é lançamento';
+    fLancamentoLbl.style.color=on?'#6F8522':'#64748b';
+  }
+  setFAtivo(p?.ativo!==false);
+  setFLancamento(Boolean(p?.lancamento));
+  fAtivo.onclick=()=>setFAtivo(fAtivo.dataset.state!=='on');
+  fLancamento.onclick=()=>setFLancamento(fLancamento.dataset.state!=='on');
+  $('f_desc').value=descTxt;
+
+  // Vídeo
+  const fVideoPath=$('f_video_path');
+  const fVideoName=$('f_video_name');
+  const fVideoRemove=$('f_video_remove');
+  const fVideoFile=$('f_video_file');
+  const fVideoSelect=$('f_video_select');
+  // Carregar lista de vídeos existentes
+  fetch('/api/admin/videos').then(r=>r.json()).then(d=>{
+    if(!d?.files) return;
+    d.files.forEach(f=>{
+      const opt=document.createElement('option');
+      opt.value=f.path; opt.textContent=f.name;
+      fVideoSelect.appendChild(opt);
+    });
+    if(fVideoPath.value) fVideoSelect.value=fVideoPath.value;
+  }).catch(()=>{});
+  function setVideo(path){
+    fVideoPath.value=path||'';
+    fVideoName.textContent=path?path.split('/').pop():'Nenhum vídeo';
+    fVideoName.style.display=path?'':'none';
+    fVideoRemove.style.display=path?'':'none';
+    if(fVideoSelect) fVideoSelect.value=path||'';
+  }
+  setVideo(p?.video||'');
+  fVideoSelect.addEventListener('change',()=>{ setVideo(fVideoSelect.value); });
+  fVideoRemove.addEventListener('click',()=>{ fVideoFile.value=''; fVideoSelect.value=''; setVideo(''); });
+  fVideoFile.addEventListener('change',async()=>{
+    const file=fVideoFile.files[0]; if(!file) return;
+    fVideoName.textContent='Enviando…';
+    try{
+      const fd=new FormData(); fd.append('file',file);
+      const r=await fetch('/api/admin/upload-video',{method:'POST',body:fd});
+      if(r.status===401){redirect401();return;}
+      if(!r.ok) throw new Error('Falha no upload');
+      const d=await r.json();
+      setVideo(d.path);
+    }catch(e){ toast(e.message,'error'); fVideoName.textContent=fVideoPath.value?fVideoPath.value.split('/').pop():'Nenhum vídeo'; }
+  });
+
+  const cores=Array.isArray(p?.cores)?p.cores:[];
+  cores.forEach(c=>addColorRow(c));
+  if(!cores.length) addColorRow({});
+
+  $('btnAddCor').addEventListener('click',()=>addColorRow({}));
+  $('btnCancel').addEventListener('click',cancelForm);
+  $('prodForm').addEventListener('submit',async e=>{e.preventDefault();await salvarProd(p?.id)});
+}
+
+function cancelForm(){
+  activeProdId=null; renderProdList();
+  $('formTitle').textContent='Selecione um produto';
+  $('formActions').innerHTML='';
+  $('saveNotice').className='notice';
+  $('formPanel').innerHTML='<div class="form-empty">Clique em um produto para editar<br>ou em "+ Novo" para cadastrar.</div>';
+}
+
+function addColorRow(cor={}){
+  colorCounter++;
+  const cid=colorCounter;
+  const list=$('colorsList');
+  const div=document.createElement('div');
+  div.className='color-row';
+  const imgs=Array.isArray(cor.imagens)?cor.imagens.filter(Boolean):[];
+  const i1=cor.imagem||imgs[0]||'', i2=imgs[1]||'', i3=imgs[2]||'';
+  div.dataset.i1=i1; div.dataset.i2=i2; div.dataset.i3=i3;
+
+  div.innerHTML=`
+    <div class="color-row-head">
+      <span class="color-row-title">Variação de cor</span>
+      <button type="button" class="btn btn--danger btn--sm" data-rm>Remover</button>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Nome da cor</label><input class="fc" data-cn /></div>
+      <div class="fg">
+        <label class="fl">Tom da bolinha</label>
+        <div class="color-picker">
+          <input type="color" data-cw aria-label="Selecionar cor da bolinha" />
+          <input class="fc color-picker__tone" data-cw-tone list="colorToneOptions" placeholder="Buscar tom: azul claro" />
+          <span class="color-picker__hex" data-cw-label></span>
+        </div>
+        <div class="color-palette" data-cw-palette aria-label="Paleta de tons"></div>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Tamanhos (por cor)</label><input class="fc" data-cs placeholder="P, M, G" /></div>
+      <div class="fg"><label class="fl">Preço desta cor (R$)</label><input class="fc" type="number" step="0.01" min="0" data-cp placeholder="Vazio = usa preço do produto" /></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Preço promo desta cor (R$)</label><input class="fc" type="number" step="0.01" min="0" data-cpp placeholder="Opcional" /></div>
+    </div>
+    <div class="fg">
+      <label class="fl">Saldo atual por tamanho</label>
+      <input class="fc" data-ck readonly placeholder="Gerenciado na aba Estoque" />
+      <div style="font-size:11px;color:#64748b;margin-top:3px">Campo apenas consultivo. Faça entradas, inventário e ajustes na aba Estoque.</div>
+    </div>
+    <div class="color-images">
+      ${[['1','Principal'],['2','Foto 2'],['3','Foto 3']].map(([idx,lbl])=>`
+        <div class="img-slot">
+          <div class="img-placeholder" data-ph="${idx}" id="ph_${cid}_${idx}">+ Foto</div>
+          <img class="img-preview" data-pv="${idx}" style="display:none" />
+          <input type="file" id="cf_${cid}_${idx}" data-cf="${idx}" accept="image/jpeg,image/png" style="display:none" />
+          <label class="img-slot-label" for="cf_${cid}_${idx}">${lbl}</label>
+        </div>`).join('')}
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+        <input type="checkbox" data-cso /> Esgotada
+      </label>
+      <div class="toggle-wrap" data-cativo data-state="on" role="switch" aria-checked="true">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span data-cativo-label style="font-size:13px;font-weight:600;color:#22c55e">Visível</span>
+      </div>
+    </div>`;
+
+  // Set values
+  const nameInput=div.querySelector('[data-cn]');
+  const swatchInput=div.querySelector('[data-cw]');
+  const toneInput=div.querySelector('[data-cw-tone]');
+  const swatchLabel=div.querySelector('[data-cw-label]');
+  const paletteEl=div.querySelector('[data-cw-palette]');
+  const initialSwatch=isHexColor(cor.swatch)?cor.swatch:defaultSwatchForName(cor.nome);
+  div.dataset.swatchManual=isHexColor(cor.swatch)?'1':'0';
+  paletteEl.innerHTML=COLOR_TONE_PRESETS.map(p=>`<button type="button" class="color-palette__btn" data-tone-hex="${p.hex}" title="${esc(p.nome)}" aria-label="${esc(p.nome)}" style="--tone:${p.hex}"></button>`).join('');
+  function setSwatchValue(value){
+    const hex=isHexColor(value)?value.toLowerCase():'#e6e6e6';
+    swatchInput.value=hex;
+    swatchLabel.textContent=hex.toUpperCase();
+    const preset=findToneByHex(hex);
+    toneInput.value=preset?.nome||'Personalizada';
+    paletteEl.querySelectorAll('[data-tone-hex]').forEach(btn=>{btn.dataset.selected=btn.dataset.toneHex===hex?'true':'false'});
+  }
+  nameInput.value=cor.nome||'';
+  setSwatchValue(initialSwatch);
+  div.querySelector('[data-cs]').value=Array.isArray(cor.tamanhos)?cor.tamanhos.join(', '):'';
+  div.querySelector('[data-ck]').value=fmtStock(cor.estoque);
+  div.querySelector('[data-cp]').value=cor.preco!=null?cor.preco:'';
+  div.querySelector('[data-cpp]').value=cor.precoPromo!=null?cor.precoPromo:'';
+  div.querySelector('[data-cso]').checked=Boolean(cor.soldOut);
+  const togEl=div.querySelector('[data-cativo]');
+  const togLbl=div.querySelector('[data-cativo-label]');
+  function setTogState(on){
+    togEl.dataset.state=on?'on':'off';
+    togEl.setAttribute('aria-checked',String(on));
+    togLbl.textContent=on?'Visível':'Oculta';
+    togLbl.style.color=on?'#22c55e':'#ef4444';
+  }
+  setTogState(cor.ativo!==false);
+  togEl.onclick=()=>setTogState(togEl.dataset.state!=='on');
+  swatchInput.addEventListener('input',()=>{div.dataset.swatchManual='1';setSwatchValue(swatchInput.value)});
+  paletteEl.addEventListener('click',(e)=>{
+    const btn=e.target.closest('[data-tone-hex]');
+    if(!btn) return;
+    const preset=findToneByHex(btn.dataset.toneHex);
+    div.dataset.swatchManual='1';
+    setSwatchValue(btn.dataset.toneHex);
+    if(preset&&!nameInput.value.trim()) nameInput.value=preset.nome;
+  });
+  toneInput.addEventListener('input',()=>{
+    const preset=findTonePreset(toneInput.value);
+    if(!preset) return;
+    div.dataset.swatchManual='1';
+    setSwatchValue(preset.hex);
+    if(!nameInput.value.trim()) nameInput.value=preset.nome;
+  });
+  nameInput.addEventListener('input',()=>{
+    if(div.dataset.swatchManual!=='1') setSwatchValue(defaultSwatchForName(nameInput.value));
+  });
+
+  // Image previews
+  [[i1,'1'],[i2,'2'],[i3,'3']].forEach(([src,idx])=>{
+    if(!src) return;
+    const ph=div.querySelector(`[data-ph="${idx}"]`);
+    const pv=div.querySelector(`[data-pv="${idx}"]`);
+    const fullSrc=src.startsWith('http')?src:'/'+src;
+    pv.src=fullSrc; pv.style.display=''; if(ph) ph.style.display='none';
+  });
+
+  // File inputs
+  div.querySelectorAll('[data-cf]').forEach(inp=>{
+    const idx=inp.dataset.cf;
+    const ph=div.querySelector(`[data-ph="${idx}"]`);
+    const pv=div.querySelector(`[data-pv="${idx}"]`);
+    // Clicking placeholder also triggers file input
+    if(ph) ph.addEventListener('click',()=>inp.click());
+    pv.addEventListener('click',()=>inp.click());
+    inp.addEventListener('change',()=>{
+      const f=inp.files?.[0]; if(!f) return;
+      const url=URL.createObjectURL(f);
+      pv.src=url; pv.style.display=''; if(ph) ph.style.display='none';
+    });
+  });
+
+  div.querySelector('[data-rm]').addEventListener('click',()=>div.remove());
+  list.appendChild(div);
+}
+
+async function uploadImg(file){
+  const fd=new FormData(); fd.append('file',file);
+  const r=await fetch('/api/admin/upload',{method:'POST',body:fd});
+  if(r.status===401){redirect401();throw new Error('Sem login')}
+  if(!r.ok) throw new Error('Falha no upload');
+  const d=await r.json();
+  if(!d?.path) throw new Error('Upload inválido');
+  return d.path;
+}
+
+async function buildCores(){
+  const rows=Array.from($$('#colorsList .color-row'));
+  const cores=[];
+  for(const row of rows){
+    const nome=row.querySelector('[data-cn]').value.trim();
+    const swatch=row.querySelector('[data-cw]')?.value || defaultSwatchForName(nome);
+    const sizesRaw=row.querySelector('[data-cs]').value;
+    const stock=parseStock(row.querySelector('[data-ck]')?.value||'');
+    const tamanhos=sortSizes(stock?Object.keys(stock):sizesRaw.split(',').map(t=>t.trim()).filter(Boolean));
+    const soldOut=row.querySelector('[data-cso]').checked;
+    const ativo=row.querySelector('[data-cativo]')?.dataset.state!=='off';
+    const cpRaw=row.querySelector('[data-cp]')?.value;
+    const cppRaw=row.querySelector('[data-cpp]')?.value;
+    let i1=row.dataset.i1||'', i2=row.dataset.i2||'', i3=row.dataset.i3||'';
+    for(const [idx,setter] of [['1',v=>i1=v],['2',v=>i2=v],['3',v=>i3=v]]){
+      const inp=row.querySelector(`[data-cf="${idx}"]`);
+      if(inp?.files?.[0]){ const p=await uploadImg(inp.files[0]); setter(p); }
+    }
+    const imagens=[i1,i2,i3].filter(Boolean);
+    if(!nome&&!imagens.length) continue;
+    const c={nome,swatch:isHexColor(swatch)?swatch.toLowerCase():defaultSwatchForName(nome),imagem:imagens[0]||'',imagens,tamanhos,soldOut,ativo};
+    if(stock){c.estoque=stock;c.tamanhos=sortSizes(Object.keys(stock).filter(s=>Number(stock[s])>0));c.soldOut=c.tamanhos.length===0}
+    if(cpRaw) c.preco=Number(cpRaw);
+    c.precoPromo=cppRaw?Number(cppRaw):null;
+    cores.push(c);
+  }
+  return cores;
+}
+
+async function salvarProd(id){
+  const btn=$('btnSalvar'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    const cores=await buildCores();
+    const descTxt=($('f_desc').value||'').trim();
+    const tamanhos=sortSizes($('f_tam').value.split(',').map(t=>t.trim()).filter(Boolean));
+    const payload={
+      nome:$('f_nome').value.trim(), categoria:$('f_cat').value.trim(),
+      preco:Number($('f_preco').value), precoPromo:$('f_promo').value?Number($('f_promo').value):null,
+      tamanhos, soldOut:$('f_soldout').checked, ativo:$('f_ativo')?.dataset.state!=='off',
+      lancamento:$('f_lancamento')?.dataset.state==='on',
+      video:$('f_video_path')?.value||undefined,
+      desc:descTxt?{texto:descTxt}:undefined, cores
+    };
+    if(!payload.nome||!payload.categoria||!payload.preco) throw new Error('Preencha nome, categoria e preço.');
+    const r=await fetch(id?`/api/admin/produtos/${id}`:'/api/admin/produtos',{
+      method:id?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    if(r.status===401){redirect401();return}
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Falha ao salvar')}
+    const d=await r.json();
+    activeProdId=String(d?.item?.id||id||'');
+    const coresItem=d?.item?.cores||[];
+    const ocultas=coresItem.filter(c=>c.ativo===false).length;
+    await loadProdutos();
+    if(activeProdId){
+      const prod=produtos.find(p=>String(p.id)===activeProdId);
+      if(prod){
+        $('formTitle').textContent=prod.nome;
+        renderProdList();
+        // Re-renderiza o form com dados do servidor para garantir que as imagens
+        // salvas fiquem corretamente nos dataset dos color rows
+        renderProdForm(prod);
+      }
+    }
+    const msg=ocultas?`Produto salvo — ${ocultas} cor${ocultas>1?'es':''} oculta${ocultas>1?'s':''}`:'Produto salvo com sucesso';
+    toast(msg,'success');
+  }catch(e){ toast(e.message,'error') }
+  finally{ btn.disabled=false; btn.textContent='Salvar produto' }
+}
+
+async function excluirProd(id){
+  if(!confirm('Excluir este produto?')) return;
+  const r=await fetch(`/api/admin/produtos/${id}`,{method:'DELETE'});
+  if(r.status===401){redirect401();return}
+  if(!r.ok){alert('Falha ao excluir.');return}
+  activeProdId=null; await loadProdutos(); cancelForm();
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMBOS
+// ═══════════════════════════════════════════════════════════
+async function loadCombos(){
+  const r=await fetch('/api/admin/combos');
+  if(r.status===401){redirect401();return}
+  if(!r.ok) return;
+  combos=await r.json();
+  renderComboList();
+  if(activeComboId){
+    const combo=combos.find(c=>String(c.id)===String(activeComboId));
+    if(combo) renderComboForm(combo);
+  }
+}
+
+function getProductColor(p, ci){
+  return Array.isArray(p?.cores) ? p.cores[Number(ci)||0] : null;
+}
+function getColorImagesForAdmin(cor){
+  if(!cor) return [];
+  const imgs=Array.isArray(cor.imagens)?cor.imagens.filter(Boolean):[];
+  return Array.from(new Set([cor.imagem,...imgs].filter(Boolean)));
+}
+function getComboDerivedImages(combo){
+  const components=Array.isArray(combo?.components)?combo.components:[];
+  const imgs=[];
+  components.forEach(it=>{
+    const p=produtos.find(p=>Number(p.id)===Number(it.productId));
+    const cor=getProductColor(p,it.colorIndex);
+    getColorImagesForAdmin(cor).forEach(src=>{if(src&&!imgs.includes(src)) imgs.push(src)});
+  });
+  return imgs.slice(0,6);
+}
+function getComboImageList(combo){
+  const saved=Array.isArray(combo?.imagens)?combo.imagens.filter(Boolean):[];
+  const derived=getComboDerivedImages(combo);
+  return derived.length?derived:saved;
+}
+function getProductSizes(p, ci){
+  const c=getProductColor(p, ci);
+  const stock=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+  const base=c?.tamanhos?.length?c.tamanhos:(p?.tamanhos?.length?p.tamanhos:[]);
+  const sizes=Array.from(new Set([...base,...Object.keys(stock)]));
+  return sizes.length?sizes:['UNICO'];
+}
+function comboStockLocal(combo){
+  const components=Array.isArray(combo?.components)?combo.components:[];
+  if(!components.length) return 0;
+  return components.reduce((min,it)=>{
+    const p=produtos.find(p=>Number(p.id)===Number(it.productId));
+    const c=getProductColor(p,it.colorIndex);
+    const stock=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+    const size=String(it.tamanhoSelecionado||it.tamanho||'UNICO').toUpperCase();
+    const per=Math.max(1,Number(it.quantidade)||1);
+    return Math.min(min,Math.floor((Number(stock[size])||0)/per));
+  },Infinity);
+}
+function comboAsSellable(combo){
+  const stock=Number.isFinite(Number(combo?.estoqueCalculado))?Number(combo.estoqueCalculado):comboStockLocal(combo);
+  const imgs=getComboImageList(combo);
+  return {
+    ...combo,
+    id:`combo-${combo.id}`,
+    comboId:combo.id,
+    tipoProduto:'combo',
+    categoria:combo.categoria||'Combo',
+    tamanhos:['UNICO'],
+    soldOut:stock<=0,
+    cores:[{
+      nome:'Combo',
+      imagem:combo.imagem||imgs[0]||'',
+      imagens:imgs,
+      tamanhos:stock>0?['UNICO']:[],
+      estoque:{UNICO:stock},
+      soldOut:stock<=0,
+      ativo:true
+    }]
+  };
+}
+function sellableItems(){
+  return [...produtos,...combos.map(comboAsSellable)];
+}
+function renderComboKpis(){
+  const el=$('comboKpis');
+  if(!el) return;
+  const ativos=combos.filter(c=>c.ativo!==false).length;
+  const inativos=combos.length-ativos;
+  const esgotados=combos.filter(c=>{
+    const stock=Number.isFinite(Number(c.estoqueCalculado))?Number(c.estoqueCalculado):comboStockLocal(c);
+    return stock<=0;
+  }).length;
+  const cards=[
+    ['Total de combos',combos.length,'ofertas cadastradas'],
+    ['Ativos',ativos,'visíveis no site'],
+    ['Inativos',inativos,'ocultos no catálogo'],
+    ['Esgotados',esgotados,'sem estoque disponível'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
+function renderComboList(){
+  renderComboKpis();
+  const q=($('comboSearch')?.value||'').toLowerCase().trim();
+  const sorted=[...combos].sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999))
+    .filter(c=>!q||[c.nome,c.categoria,...(c.components||[]).map(i=>i.nome)].join(' ').toLowerCase().includes(q));
+  $('comboCount').textContent=`${sorted.length}`;
+  $('listaCombos').innerHTML=sorted.map(c=>{
+    const inativo=c.ativo===false;
+    const img=getComboImageList(c)[0]||c.imagem||'';
+    const src=img?(img.startsWith('http')?img:'/'+img):'';
+    const stock=Number.isFinite(Number(c.estoqueCalculado))?Number(c.estoqueCalculado):comboStockLocal(c);
+    const active=String(c.id)===String(activeComboId);
+    return `<div class="prod-item ${active?'active':''} ${inativo?'prod-inativo':''}" data-id="${c.id}">
+      <span class="drag-handle" title="Arrastar para reordenar">⠿</span>
+      ${src?`<img class="prod-item__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:
+             `<div class="prod-item__img" style="font-size:9px;color:#94a3b8;display:flex;align-items:center;justify-content:center">Sem foto</div>`}
+      <div style="flex:1;min-width:0">
+        <div class="prod-item__name">${esc(c.nome)}</div>
+        <div class="prod-item__meta">${esc(c.categoria||'Combo')} · ${fmtR(c.preco)}</div>
+      </div>
+      ${inativo?'<span class="badge badge--out" style="font-size:9px;padding:2px 5px">OFF</span>':`<span class="badge ${stock>0?'badge--ok':'badge--out'}">${stock>0?stock+' un.':'Esgotado'}</span>`}
+    </div>`;
+  }).join('');
+  $$('#listaCombos .prod-item').forEach(el=>el.addEventListener('click',()=>{
+    activeComboId=el.dataset.id;
+    renderComboList();
+    renderComboForm(combos.find(c=>String(c.id)===String(activeComboId)));
+  }));
+  if(typeof Sortable!=='undefined'){
+    if(comboListSortable) comboListSortable.destroy();
+    comboListSortable=Sortable.create($('listaCombos'),{
+      animation:150,handle:'.drag-handle',
+      onEnd:async()=>{
+        const ids=Array.from($$('#listaCombos .prod-item')).map(el=>Number(el.dataset.id));
+        ids.forEach((id,i)=>{const c=combos.find(c=>Number(c.id)===id);if(c)c.ordem=i+1});
+        try{await fetch('/api/admin/combos/ordem',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})})}
+        catch(e){console.error('Erro ao reordenar combos:',e)}
+      }
+    });
+  }
+}
+
+function cancelComboForm(){
+  activeComboId=null; renderComboList();
+  $('comboFormTitle').textContent='Selecione um combo';
+  $('comboFormActions').innerHTML='';
+  $('comboFormPanel').innerHTML='<div class="form-empty">Clique em um combo para editar<br>ou em "+ Novo" para cadastrar.</div>';
+}
+function renderComboForm(combo){
+  $('comboFormTitle').textContent=combo?combo.nome:'Novo combo';
+  $('comboFormActions').innerHTML=combo?`<button class="btn btn--danger btn--sm" id="btnExcluirCombo">Excluir</button>`:'';
+  if(combo) $('btnExcluirCombo').addEventListener('click',()=>excluirCombo(combo.id));
+  $('comboFormPanel').innerHTML=`
+    <form id="comboForm">
+      <div class="frow">
+        <div class="fg"><label class="fl">Nome *</label><input class="fc" id="cb_nome" required /></div>
+        <div class="fg"><label class="fl">Categoria</label><input class="fc" id="cb_cat" placeholder="Combo" /></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Preço (R$) *</label><input class="fc" type="number" step="0.01" id="cb_preco" required /></div>
+        <div class="fg"><label class="fl">Preço promo (R$)</label><input class="fc" type="number" step="0.01" id="cb_promo" /></div>
+      </div>
+      <div class="fg" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div class="toggle-wrap" id="cb_ativo" data-state="on" role="switch" aria-checked="true">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span id="cb_ativo_lbl" style="font-size:13px;font-weight:600;color:#22c55e">Visível no site</span>
+        </div>
+        <div class="toggle-wrap" id="cb_lancamento" data-state="off" role="switch" aria-checked="false">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span id="cb_lancamento_lbl" style="font-size:13px;font-weight:600;color:#64748b">Não é lançamento</span>
+        </div>
+        <span id="cb_stock_hint" class="badge badge--na"></span>
+      </div>
+      <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="cb_desc"></textarea></div>
+      <div class="fg">
+        <label class="fl">Fotos do combo</label>
+        <p class="combo-derived-note">Geradas automaticamente pelas fotos dos produtos e cores selecionados nos itens.</p>
+        <div class="color-images" id="comboImages"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px">
+        <span style="font-size:11px;font-weight:600;text-transform:uppercase;color:#475569;letter-spacing:.04em">Itens do combo</span>
+        <button type="button" class="btn btn--secondary btn--sm" id="btnAddComboItem">+ Item</button>
+      </div>
+      <div id="comboItems"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary" id="btnSalvarCombo">Salvar combo</button>
+        <button type="button" class="btn btn--ghost" id="btnCancelCombo">Cancelar</button>
+      </div>
+    </form>`;
+  $('cb_nome').value=combo?.nome||'';
+  $('cb_cat').value=combo?.categoria||'Combo';
+  $('cb_preco').value=combo?.preco??'';
+  $('cb_promo').value=combo?.precoPromo??'';
+  $('cb_desc').value=combo?.desc?.texto||combo?.descricao||'';
+  function setToggle(el,lbl,on,onText,offText){
+    el.dataset.state=on?'on':'off'; el.setAttribute('aria-checked',String(on));
+    lbl.textContent=on?onText:offText; lbl.style.color=on?'#22c55e':'#64748b';
+  }
+  setToggle($('cb_ativo'),$('cb_ativo_lbl'),combo?.ativo!==false,'Visível no site','Oculto no site');
+  setToggle($('cb_lancamento'),$('cb_lancamento_lbl'),Boolean(combo?.lancamento),'Lançamento','Não é lançamento');
+  $('cb_ativo').onclick=()=>setToggle($('cb_ativo'),$('cb_ativo_lbl'),$('cb_ativo').dataset.state!=='on','Visível no site','Oculto no site');
+  $('cb_lancamento').onclick=()=>setToggle($('cb_lancamento'),$('cb_lancamento_lbl'),$('cb_lancamento').dataset.state!=='on','Lançamento','Não é lançamento');
+  (Array.isArray(combo?.components)&&combo.components.length?combo.components:[{}]).forEach(addComboItemRow);
+  $('btnAddComboItem').addEventListener('click',()=>addComboItemRow({}));
+  $('btnCancelCombo').addEventListener('click',cancelComboForm);
+  $('comboForm').addEventListener('submit',async e=>{e.preventDefault();await salvarCombo(combo?.id)});
+  updateComboStockHint();
+}
+function renderComboImageSlots(values=[]){
+  const wrap=$('comboImages');
+  if(!wrap) return;
+  const imgs=values.filter(Boolean);
+  wrap.innerHTML=imgs.length?imgs.map((src,idx)=>`
+    <div class="img-slot">
+      <img class="img-preview" src="${src.startsWith('http')?esc(src):'/'+esc(src)}" />
+      <span class="img-slot-label">${idx===0?'Principal':'Foto '+(idx+1)}</span>
+    </div>`).join(''):`<div class="combo-color-empty">Selecione produto e cor nos itens para carregar as fotos.</div>`;
+}
+function addComboItemRow(item={}){
+  const row=document.createElement('div');
+  row.className='color-row';
+  row.innerHTML=`
+    <div class="color-row-head"><span class="color-row-title">Item do combo</span><button type="button" class="btn btn--danger btn--sm" data-cb-rm>Remover</button></div>
+    <div class="fg"><label class="fl">Produto</label><select class="fc" data-cb-prod><option value="">— Selecione —</option>${produtos.map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('')}</select></div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Cor</label><input type="hidden" data-cb-cor value="0" /><div class="combo-color-swatches" data-cb-swatches></div></div>
+      <div class="fg"><label class="fl">Tamanho</label><select class="fc" data-cb-size></select></div>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Qtd por combo</label><input class="fc" type="number" min="1" value="1" data-cb-qty /></div>
+      <div class="fg"><label class="fl">Saldo deste item</label><input class="fc" readonly data-cb-stock /></div>
+    </div>`;
+  $('comboItems').appendChild(row);
+  const prodSel=row.querySelector('[data-cb-prod]');
+  const corInput=row.querySelector('[data-cb-cor]');
+  const swatches=row.querySelector('[data-cb-swatches]');
+  const sizeSel=row.querySelector('[data-cb-size]');
+  const qtyInp=row.querySelector('[data-cb-qty]');
+  function fillColors(){
+    const p=produtos.find(p=>String(p.id)===String(prodSel.value));
+    const colors=Array.isArray(p?.cores)&&p.cores.length?p.cores:[{nome:'Única',swatch:'#e2e8f0'}];
+    const desired=Number(item.colorIndex)||Number(corInput.value)||0;
+    corInput.value=String(Math.min(desired,colors.length-1));
+    swatches.innerHTML=colors.map((c,i)=>{
+      const tone=isHexColor(c?.swatch)?c.swatch:defaultSwatchForName(c?.nome);
+      const thumb=getColorImagesForAdmin(c)[0];
+      return `<button type="button" class="combo-color-swatch" data-cb-color-index="${i}" data-selected="${i===Number(corInput.value)?'true':'false'}" title="${esc(c?.nome||'Cor '+(i+1))}" aria-label="${esc(c?.nome||'Cor '+(i+1))}" style="--tone:${esc(tone)}">${thumb?`<img src="${thumb.startsWith('http')?esc(thumb):'/'+esc(thumb)}" alt="">`:''}</button>`;
+    }).join('');
+    swatches.querySelectorAll('[data-cb-color-index]').forEach(btn=>btn.addEventListener('click',()=>{
+      corInput.value=btn.dataset.cbColorIndex;
+      swatches.querySelectorAll('[data-cb-color-index]').forEach(b=>b.dataset.selected=b===btn?'true':'false');
+      fillSizes();
+    }));
+    fillSizes();
+  }
+  function fillSizes(){
+    const p=produtos.find(p=>String(p.id)===String(prodSel.value));
+    const sizes=getProductSizes(p,Number(corInput.value)||0);
+    sizeSel.innerHTML=sizes.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    if(item.tamanhoSelecionado) sizeSel.value=item.tamanhoSelecionado;
+    updateItemStock(row); updateComboStockHint(); updateComboImagePreview();
+  }
+  prodSel.addEventListener('change',fillColors);
+  sizeSel.addEventListener('change',()=>{updateItemStock(row);updateComboStockHint();updateComboImagePreview()});
+  qtyInp.addEventListener('input',()=>{updateItemStock(row);updateComboStockHint()});
+  row.querySelector('[data-cb-rm]').addEventListener('click',()=>{row.remove();updateComboStockHint();updateComboImagePreview()});
+  prodSel.value=item.productId||'';
+  fillColors();
+  corInput.value=String(Number(item.colorIndex)||0);
+  fillSizes();
+  if(item.tamanhoSelecionado) sizeSel.value=item.tamanhoSelecionado;
+  qtyInp.value=Math.max(1,Number(item.quantidade)||1);
+  updateItemStock(row);
+}
+function updateItemStock(row){
+  const p=produtos.find(p=>String(p.id)===String(row.querySelector('[data-cb-prod]').value));
+  const c=getProductColor(p,Number(row.querySelector('[data-cb-cor]').value)||0);
+  const stock=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+  const size=String(row.querySelector('[data-cb-size]').value||'UNICO').toUpperCase();
+  const qty=Number(stock[size])||0;
+  row.querySelector('[data-cb-stock]').value=`${qty} un.`;
+}
+function collectComboComponents(){
+  return Array.from($$('#comboItems .color-row')).map(row=>{
+    const productId=Number(row.querySelector('[data-cb-prod]').value);
+    const p=produtos.find(p=>Number(p.id)===productId);
+    const colorIndex=Number(row.querySelector('[data-cb-cor]').value)||0;
+    const cor=getProductColor(p,colorIndex);
+    return {
+      productId,colorIndex,
+      tamanhoSelecionado:row.querySelector('[data-cb-size]').value||'UNICO',
+      quantidade:Math.max(1,Number(row.querySelector('[data-cb-qty]').value)||1),
+      nome:p?.nome||'',
+      cor:cor?.nome||''
+    };
+  }).filter(i=>Number.isFinite(i.productId));
+}
+function updateComboStockHint(){
+  const hint=$('cb_stock_hint'); if(!hint) return;
+  const stock=comboStockLocal({components:collectComboComponents()});
+  hint.textContent=`Saldo calculado: ${Number.isFinite(stock)?stock:0} un.`;
+  hint.className=`badge ${stock>0?'badge--ok':'badge--out'}`;
+}
+function updateComboImagePreview(){
+  renderComboImageSlots(getComboDerivedImages({components:collectComboComponents()}));
+}
+async function salvarCombo(id){
+  const btn=$('btnSalvarCombo'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    const components=collectComboComponents();
+    const imagens=getComboDerivedImages({components});
+    const payload={
+      nome:$('cb_nome').value.trim(),
+      categoria:$('cb_cat').value.trim()||'Combo',
+      preco:Number($('cb_preco').value),
+      precoPromo:$('cb_promo').value?Number($('cb_promo').value):null,
+      ativo:$('cb_ativo').dataset.state!=='off',
+      lancamento:$('cb_lancamento').dataset.state==='on',
+      desc:($('cb_desc').value||'').trim()?{texto:($('cb_desc').value||'').trim()}:undefined,
+      imagem:imagens[0]||'',
+      imagens,
+      components
+    };
+    if(!payload.nome||!payload.preco) throw new Error('Preencha nome e preço.');
+    if(!components.length) throw new Error('Adicione ao menos um item ao combo.');
+    const r=await fetch(id?`/api/admin/combos/${id}`:'/api/admin/combos',{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(r.status===401){redirect401();return}
+    const d=await r.json();
+    if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao salvar combo');
+    activeComboId=String(d.item.id||id);
+    await loadCombos();
+    toast('Combo salvo com sucesso','success');
+  }catch(e){toast(e.message,'error')}
+  finally{btn.disabled=false;btn.textContent='Salvar combo'}
+}
+async function excluirCombo(id){
+  if(!confirm('Excluir este combo?')) return;
+  const r=await fetch(`/api/admin/combos/${id}`,{method:'DELETE'});
+  if(r.status===401){redirect401();return}
+  if(!r.ok){alert('Falha ao excluir combo.');return}
+  activeComboId=null; await loadCombos(); cancelComboForm();
+}
+$('btnNovoCombo')?.addEventListener('click',()=>{activeComboId=null;renderComboList();renderComboForm(null)});
+$('comboSearch')?.addEventListener('input',()=>renderComboList());
+
+// ═══════════════════════════════════════════════════════════
+// ATACADO — catálogo próprio, sem estoque. Não compartilha dados
+// com Produtos/Combos (varejo): endpoints, tabela e uploads são à parte.
+// ═══════════════════════════════════════════════════════════
+async function loadAtacado(){
+  const r=await fetch('/api/admin/atacado');
+  if(r.status===401){redirect401();return}
+  if(!r.ok) return;
+  atacado=await r.json();
+  renderAtacadoList();
+  if(activeAtacadoId){
+    const item=atacado.find(p=>String(p.id)===String(activeAtacadoId));
+    if(item) renderAtacadoForm(item);
+  }
+}
+
+function renderAtacadoKpis(){
+  const el=$('atacadoKpis');
+  if(!el) return;
+  const ativos=atacado.filter(p=>p.ativo!==false).length;
+  const inativos=atacado.length-ativos;
+  const semFoto=atacado.filter(p=>{
+    const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
+    return !(c?.imagens?.[0]||c?.imagem);
+  }).length;
+  const cards=[
+    ['Total de produtos',atacado.length,'no catálogo atacado'],
+    ['Ativos',ativos,'visíveis no catálogo'],
+    ['Inativos',inativos,'ocultos'],
+    ['Sem foto',semFoto,'precisam de imagem'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
+function renderAtacadoList(){
+  renderAtacadoKpis();
+  const q=($('atacadoSearch')?.value||'').toLowerCase().trim();
+  const sorted=[...atacado].sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999))
+    .filter(p=>!q||[p.nome,p.categoria,...(p.cores||[]).map(c=>c.nome)].join(' ').toLowerCase().includes(q));
+  $('atacadoCount').textContent=atacado.length?`${atacado.length} produto${atacado.length>1?'s':''}`:'';
+  $('listaAtacado').innerHTML=sorted.map(p=>{
+    const inativo=p.ativo===false;
+    const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
+    const img=c?.imagens?.[0]||c?.imagem||'';
+    const src=img?(img.startsWith('http')?img:'/'+img):'';
+    const active=String(p.id)===String(activeAtacadoId);
+    return `<div class="prod-item ${active?'active':''} ${inativo?'prod-inativo':''}" data-id="${p.id}">
+      <span class="drag-handle" title="Arrastar para reordenar">⠿</span>
+      ${src?`<img class="prod-item__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:
+             `<div class="prod-item__img" style="font-size:9px;color:#94a3b8;display:flex;align-items:center;justify-content:center">Sem foto</div>`}
+      <div style="flex:1;min-width:0">
+        <div class="prod-item__name">${esc(p.nome)}</div>
+        <div class="prod-item__meta">${esc(p.categoria||'Atacado')}${p.preco?` · ${fmtR(p.preco)}`:' · Sob consulta'}</div>
+      </div>
+      ${inativo?'<span class="badge badge--out" style="font-size:9px;padding:2px 5px">OFF</span>':''}
+    </div>`;
+  }).join('');
+  $$('#listaAtacado .prod-item').forEach(elm=>elm.addEventListener('click',()=>{
+    activeAtacadoId=elm.dataset.id;
+    renderAtacadoList();
+    renderAtacadoForm(atacado.find(p=>String(p.id)===String(activeAtacadoId)));
+  }));
+  if(typeof Sortable!=='undefined'){
+    if(atacadoListSortable) atacadoListSortable.destroy();
+    atacadoListSortable=Sortable.create($('listaAtacado'),{
+      animation:150,handle:'.drag-handle',
+      onEnd:async()=>{
+        const ids=Array.from($$('#listaAtacado .prod-item')).map(elm=>Number(elm.dataset.id));
+        ids.forEach((id,i)=>{const p=atacado.find(p=>Number(p.id)===id);if(p)p.ordem=i+1});
+        try{await fetch('/api/admin/atacado/ordem',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})})}
+        catch(e){console.error('Erro ao reordenar atacado:',e)}
+      }
+    });
+  }
+}
+
+$('btnNovoAtacado')?.addEventListener('click',()=>{
+  activeAtacadoId=null; renderAtacadoList(); renderAtacadoForm(null);
+});
+$('atacadoSearch')?.addEventListener('input',()=>renderAtacadoList());
+
+function cancelAtacadoForm(){
+  activeAtacadoId=null; renderAtacadoList();
+  $('atacadoFormTitle').textContent='Selecione um produto';
+  $('atacadoFormActions').innerHTML='';
+  $('atacadoNotice').className='notice';
+  $('atacadoFormPanel').innerHTML='<div class="form-empty">Clique em um produto para editar<br>ou em "+ Novo" para cadastrar.</div>';
+}
+
+function renderAtacadoForm(p){
+  $('atacadoFormTitle').textContent=p?p.nome:'Novo produto (Atacado)';
+  $('atacadoFormActions').innerHTML=p?`<button class="btn btn--danger btn--sm" id="btnExcluirAtacado">Excluir</button>`:'';
+  if(p) $('btnExcluirAtacado').addEventListener('click',()=>excluirAtacado(p.id));
+
+  $('atacadoFormPanel').innerHTML=`
+    <form id="atacadoForm">
+      <div class="frow">
+        <div class="fg"><label class="fl">Nome *</label><input class="fc" id="a_nome" required /></div>
+        <div class="fg"><label class="fl">Categoria</label><input class="fc" id="a_cat" placeholder="Opcional" /></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Preço (R$)</label><input class="fc" type="number" step="0.01" min="0" id="a_preco" placeholder="Vazio = Sob consulta" /></div>
+        <div class="fg" style="display:flex;align-items:center;gap:14px;padding-top:18px">
+          <div class="toggle-wrap" id="a_ativo" data-state="on" role="switch" aria-checked="true">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span id="a_ativo_lbl" style="font-size:13px;font-weight:600;color:#22c55e">Visível no site</span>
+          </div>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Descrição</label><textarea class="fc" id="a_desc"></textarea></div>
+      <div class="fg" style="margin-top:10px">
+        <label class="fl">Vídeo do produto</label>
+        <div class="video-upload-box">
+          <label class="video-upload-label" for="a_video_file">&#9654; Enviar vídeo</label>
+          <input type="file" id="a_video_file" accept="video/mp4,video/webm,.mp4,.webm,.mov">
+          <select id="a_video_select" class="fc" style="flex:1;min-width:0;font-size:12px;padding:5px 8px;height:32px;">
+            <option value="">— ou selecionar existente —</option>
+          </select>
+          <span class="video-current" id="a_video_name" style="display:none">Nenhum vídeo</span>
+          <button type="button" class="video-remove" id="a_video_remove" style="display:none">✕ Remover</button>
+        </div>
+        <input type="hidden" id="a_video_path">
+      </div>
+      <div style="margin-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;color:#475569;letter-spacing:.04em">Cores / Variações</span>
+          <button type="button" class="btn btn--secondary btn--sm" id="btnAddCorAtacado">+ Cor</button>
+        </div>
+        <div id="atacadoColorsList"></div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn--primary" id="btnSalvarAtacado">Salvar produto</button>
+        <button type="button" class="btn btn--ghost" id="btnCancelAtacado">Cancelar</button>
+      </div>
+    </form>`;
+
+  $('a_nome').value=p?.nome||'';
+  $('a_cat').value=p?.categoria||'';
+  $('a_preco').value=p?.preco??'';
+  $('a_desc').value=p?.descricao||'';
+  const aAtivo=$('a_ativo'), aAtivoLbl=$('a_ativo_lbl');
+  function setAAtivo(on){
+    aAtivo.dataset.state=on?'on':'off';
+    aAtivo.setAttribute('aria-checked',String(on));
+    aAtivoLbl.textContent=on?'Visível no site':'Oculto no site';
+    aAtivoLbl.style.color=on?'#22c55e':'#ef4444';
+  }
+  setAAtivo(p?.ativo!==false);
+  aAtivo.onclick=()=>setAAtivo(aAtivo.dataset.state!=='on');
+
+  const aVideoPath=$('a_video_path');
+  const aVideoName=$('a_video_name');
+  const aVideoRemove=$('a_video_remove');
+  const aVideoFile=$('a_video_file');
+  const aVideoSelect=$('a_video_select');
+  aVideoPath.value=p?.video||'';
+  fetch('/api/admin/videos').then(r=>r.json()).then(d=>{
+    if(!d?.files) return;
+    d.files.forEach(f=>{
+      const opt=document.createElement('option');
+      opt.value=f.path; opt.textContent=f.name;
+      aVideoSelect.appendChild(opt);
+    });
+    if(aVideoPath.value) aVideoSelect.value=aVideoPath.value;
+  }).catch(()=>{});
+  function setAVideo(path){
+    aVideoPath.value=path||'';
+    aVideoName.textContent=path?path.split('/').pop():'Nenhum vídeo';
+    aVideoName.style.display=path?'':'none';
+    aVideoRemove.style.display=path?'':'none';
+    if(aVideoSelect) aVideoSelect.value=path||'';
+  }
+  setAVideo(p?.video||'');
+  aVideoSelect.addEventListener('change',()=>{ setAVideo(aVideoSelect.value); });
+  aVideoRemove.addEventListener('click',()=>{ aVideoFile.value=''; aVideoSelect.value=''; setAVideo(''); });
+  aVideoFile.addEventListener('change',async()=>{
+    const file=aVideoFile.files[0]; if(!file) return;
+    aVideoName.textContent='Enviando…'; aVideoName.style.display='';
+    try{
+      const fd=new FormData(); fd.append('file',file);
+      const r=await fetch('/api/admin/upload-video',{method:'POST',body:fd});
+      if(r.status===401){redirect401();return;}
+      if(!r.ok) throw new Error('Falha no upload');
+      const d=await r.json();
+      setAVideo(d.path);
+    }catch(e){ toast(e.message,'error'); aVideoName.textContent=aVideoPath.value?aVideoPath.value.split('/').pop():'Nenhum vídeo'; }
+  });
+
+  const cores=Array.isArray(p?.cores)?p.cores:[];
+  cores.forEach(c=>addAtacadoColorRow(c));
+  if(!cores.length) addAtacadoColorRow({});
+
+  $('btnAddCorAtacado').addEventListener('click',()=>addAtacadoColorRow({}));
+  $('btnCancelAtacado').addEventListener('click',cancelAtacadoForm);
+  $('atacadoForm').addEventListener('submit',async e=>{e.preventDefault();await salvarAtacado(p?.id)});
+}
+
+function addAtacadoColorRow(cor={}){
+  colorCounter++;
+  const cid=colorCounter;
+  const list=$('atacadoColorsList');
+  const div=document.createElement('div');
+  div.className='color-row';
+  const imgs=Array.isArray(cor.imagens)?cor.imagens.filter(Boolean):(cor.imagem?[cor.imagem]:[]);
+  div._photos=imgs.map(path=>({type:'existing',path}));
+
+  div.innerHTML=`
+    <div class="color-row-head">
+      <span class="color-row-title">Variação de cor</span>
+      <button type="button" class="btn btn--danger btn--sm" data-rm>Remover</button>
+    </div>
+    <div class="frow">
+      <div class="fg"><label class="fl">Nome da cor</label><input class="fc" data-cn /></div>
+      <div class="fg">
+        <label class="fl">Tom da bolinha</label>
+        <div class="color-picker">
+          <input type="color" data-cw aria-label="Selecionar cor da bolinha" />
+          <input class="fc color-picker__tone" data-cw-tone list="colorToneOptions" placeholder="Buscar tom: azul claro" />
+          <span class="color-picker__hex" data-cw-label></span>
+        </div>
+        <div class="color-palette" data-cw-palette aria-label="Paleta de tons"></div>
+      </div>
+    </div>
+    <div class="color-images" data-photos></div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:10px;flex-wrap:wrap">
+      <div class="toggle-wrap" data-cativo data-state="on" role="switch" aria-checked="true">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span data-cativo-label style="font-size:13px;font-weight:600;color:#22c55e">Visível</span>
+      </div>
+    </div>`;
+
+  const nameInput=div.querySelector('[data-cn]');
+  const swatchInput=div.querySelector('[data-cw]');
+  const toneInput=div.querySelector('[data-cw-tone]');
+  const swatchLabel=div.querySelector('[data-cw-label]');
+  const paletteEl=div.querySelector('[data-cw-palette]');
+  const initialSwatch=isHexColor(cor.swatch)?cor.swatch:defaultSwatchForName(cor.nome);
+  div.dataset.swatchManual=isHexColor(cor.swatch)?'1':'0';
+  paletteEl.innerHTML=COLOR_TONE_PRESETS.map(p=>`<button type="button" class="color-palette__btn" data-tone-hex="${p.hex}" title="${esc(p.nome)}" aria-label="${esc(p.nome)}" style="--tone:${p.hex}"></button>`).join('');
+  function setSwatchValue(value){
+    const hex=isHexColor(value)?value.toLowerCase():'#e6e6e6';
+    swatchInput.value=hex;
+    swatchLabel.textContent=hex.toUpperCase();
+    const preset=findToneByHex(hex);
+    toneInput.value=preset?.nome||'Personalizada';
+    paletteEl.querySelectorAll('[data-tone-hex]').forEach(btn=>{btn.dataset.selected=btn.dataset.toneHex===hex?'true':'false'});
+  }
+  nameInput.value=cor.nome||'';
+  setSwatchValue(initialSwatch);
+  const togEl=div.querySelector('[data-cativo]');
+  const togLbl=div.querySelector('[data-cativo-label]');
+  function setTogState(on){
+    togEl.dataset.state=on?'on':'off';
+    togEl.setAttribute('aria-checked',String(on));
+    togLbl.textContent=on?'Visível':'Oculta';
+    togLbl.style.color=on?'#22c55e':'#ef4444';
+  }
+  setTogState(cor.ativo!==false);
+  togEl.onclick=()=>setTogState(togEl.dataset.state!=='on');
+  swatchInput.addEventListener('input',()=>{div.dataset.swatchManual='1';setSwatchValue(swatchInput.value)});
+  paletteEl.addEventListener('click',(e)=>{
+    const btn=e.target.closest('[data-tone-hex]');
+    if(!btn) return;
+    const preset=findToneByHex(btn.dataset.toneHex);
+    div.dataset.swatchManual='1';
+    setSwatchValue(btn.dataset.toneHex);
+    if(preset&&!nameInput.value.trim()) nameInput.value=preset.nome;
+  });
+  toneInput.addEventListener('input',()=>{
+    const preset=findTonePreset(toneInput.value);
+    if(!preset) return;
+    div.dataset.swatchManual='1';
+    setSwatchValue(preset.hex);
+    if(!nameInput.value.trim()) nameInput.value=preset.nome;
+  });
+  nameInput.addEventListener('input',()=>{
+    if(div.dataset.swatchManual!=='1') setSwatchValue(defaultSwatchForName(nameInput.value));
+  });
+
+  renderAtacadoPhotos(div,cid);
+
+  div.querySelector('[data-rm]').addEventListener('click',()=>div.remove());
+  list.appendChild(div);
+}
+
+function renderAtacadoPhotos(div,cid){
+  const wrap=div.querySelector('[data-photos]');
+  wrap.innerHTML=div._photos.map((ph,i)=>{
+    const src=ph.type==='existing'?(ph.path.startsWith('http')?ph.path:'/'+ph.path):ph.previewUrl;
+    return `<div class="img-slot img-slot--free">
+      <img class="img-preview" src="${src}" />
+      <button type="button" class="img-slot-remove" data-photo-rm="${i}" title="Remover foto">✕</button>
+    </div>`;
+  }).join('')+`
+    <div class="img-slot img-slot--free">
+      <div class="img-placeholder" data-photo-add>+ Foto</div>
+      <input type="file" id="acf_${cid}_add" accept="image/jpeg,image/png" multiple style="display:none" />
+    </div>`;
+
+  const addInput=wrap.querySelector(`#acf_${cid}_add`);
+  wrap.querySelector('[data-photo-add]').addEventListener('click',()=>addInput.click());
+  addInput.addEventListener('change',()=>{
+    Array.from(addInput.files||[]).forEach(file=>{
+      div._photos.push({type:'new',file,previewUrl:URL.createObjectURL(file)});
+    });
+    renderAtacadoPhotos(div,cid);
+  });
+  wrap.querySelectorAll('[data-photo-rm]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      div._photos.splice(Number(btn.dataset.photoRm),1);
+      renderAtacadoPhotos(div,cid);
+    });
+  });
+}
+
+async function uploadAtacadoImg(file){
+  const fd=new FormData(); fd.append('file',file);
+  const r=await fetch('/api/admin/upload-atacado',{method:'POST',body:fd});
+  if(r.status===401){redirect401();throw new Error('Sem login')}
+  if(!r.ok) throw new Error('Falha no upload');
+  const d=await r.json();
+  if(!d?.path) throw new Error('Upload inválido');
+  return d.path;
+}
+
+async function buildAtacadoCores(){
+  const rows=Array.from($$('#atacadoColorsList .color-row'));
+  const cores=[];
+  for(const row of rows){
+    const nome=row.querySelector('[data-cn]').value.trim();
+    const swatch=row.querySelector('[data-cw]')?.value || defaultSwatchForName(nome);
+    const ativo=row.querySelector('[data-cativo]')?.dataset.state!=='off';
+    const imagens=[];
+    for(const ph of (row._photos||[])){
+      if(ph.type==='existing') imagens.push(ph.path);
+      else imagens.push(await uploadAtacadoImg(ph.file));
+    }
+    if(!nome&&!imagens.length) continue;
+    cores.push({nome,swatch:isHexColor(swatch)?swatch.toLowerCase():defaultSwatchForName(nome),imagem:imagens[0]||'',imagens,ativo});
+  }
+  return cores;
+}
+
+async function salvarAtacado(id){
+  const btn=$('btnSalvarAtacado'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    const cores=await buildAtacadoCores();
+    const payload={
+      nome:$('a_nome').value.trim(), categoria:$('a_cat').value.trim(),
+      preco:$('a_preco').value?Number($('a_preco').value):null,
+      ativo:$('a_ativo')?.dataset.state!=='off',
+      descricao:($('a_desc').value||'').trim(),
+      video:$('a_video_path')?.value||undefined,
+      cores
+    };
+    if(!payload.nome) throw new Error('Preencha o nome do produto.');
+    const r=await fetch(id?`/api/admin/atacado/${id}`:'/api/admin/atacado',{
+      method:id?'PUT':'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    if(r.status===401){redirect401();return}
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Falha ao salvar')}
+    const d=await r.json();
+    activeAtacadoId=String(d?.item?.id||id||'');
+    await loadAtacado();
+    if(activeAtacadoId){
+      const item=atacado.find(p=>String(p.id)===activeAtacadoId);
+      if(item){
+        $('atacadoFormTitle').textContent=item.nome;
+        renderAtacadoList();
+        renderAtacadoForm(item);
+      }
+    }
+    toast('Produto de atacado salvo com sucesso','success');
+  }catch(e){ toast(e.message,'error') }
+  finally{ btn.disabled=false; btn.textContent='Salvar produto' }
+}
+
+async function excluirAtacado(id){
+  if(!confirm('Excluir este produto de atacado?')) return;
+  const r=await fetch(`/api/admin/atacado/${id}`,{method:'DELETE'});
+  if(r.status===401){redirect401();return}
+  if(!r.ok){alert('Falha ao excluir.');return}
+  activeAtacadoId=null; await loadAtacado(); cancelAtacadoForm();
+}
+
+// ═══════════════════════════════════════════════════════════
+// ESTOQUE
+// ═══════════════════════════════════════════════════════════
+function fillEstoqueSelect(){
+  const sel=$('estoq_prod'), cur=sel.value;
+  sel.innerHTML='<option value="">— Selecione um produto —</option>';
+  produtos.forEach(p=>{ const o=document.createElement('option');o.value=p.id;o.textContent=p.nome;sel.appendChild(o) });
+  if(cur) sel.value=cur;
+  renderStockSummary();
+  renderStockPreview();
+  renderStockTable();
+  renderStockDonut();
+}
+
+$('estoq_prod').addEventListener('change',async()=>{
+  const p=produtos.find(p=>String(p.id)===$('estoq_prod').value);
+  const cs=$('estoq_cor'); cs.innerHTML=''; $('estoq_sizes').innerHTML='';
+  if(!p?.cores?.length){cs.innerHTML='<option value="">— Sem cores —</option>';renderStockPreview();await loadStockAudit();return}
+  p.cores.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.nome||`Cor ${i+1}`;cs.appendChild(o)});
+  renderSizes(p,0);
+  renderStockPreview();
+  renderStockMovements();
+  await loadStockAudit();
+});
+
+$('estoq_cor').addEventListener('change',()=>{
+  const p=produtos.find(p=>String(p.id)===$('estoq_prod').value);
+  if(p) renderSizes(p,Number($('estoq_cor').value)||0);
+  renderStockPreview();
+  renderStockMovements();
+});
+
+const stockTableSearchInput=$('stockTableSearch');
+if(stockTableSearchInput){
+  stockTableSearchInput.addEventListener('input',()=>{
+    stockSearch=stockTableSearchInput.value;
+    stockPage=1;
+    renderStockTable();
+  });
+}
+const stockMovementSearchInput=$('stockMovementSearch');
+if(stockMovementSearchInput){
+  stockMovementSearchInput.addEventListener('input',()=>{
+    stockMovementSearch=stockMovementSearchInput.value;
+    renderStockMovements();
+  });
+}
+const stockMovementTypeInput=$('stockMovementType');
+if(stockMovementTypeInput){
+  stockMovementTypeInput.addEventListener('change',()=>{
+    stockMovementType=stockMovementTypeInput.value;
+    renderStockMovements();
+  });
+}
+$$('.stock-subtab').forEach(btn=>btn.addEventListener('click',()=>{
+  stockSubTab=btn.dataset.stocksubtab;
+  stockPage=1;
+  $$('.stock-subtab').forEach(b=>b.classList.toggle('active',b===btn));
+  renderStockTable();
+}));
+$('stockDetailClose')?.addEventListener('click',()=>$('stockDetailModal').close());
+$('stockMovementsClose')?.addEventListener('click',()=>$('stockMovementsModal').close());
+$('stockMovementsFeed')?.addEventListener('click',(e)=>{
+  if(e.target.closest('[data-open-movements]')){
+    renderStockMovements();
+    $('stockMovementsModal').showModal();
+  }
+});
+$('btnStockGoOperation')?.addEventListener('click',()=>{
+  $('stockQuickOpCard')?.scrollIntoView({behavior:'smooth',block:'center'});
+  $('estoq_prod')?.focus();
+});
+
+async function refreshStockScreen(){
+  await loadProdutos();
+  await loadCombos();
+  await loadPedidos();
+  await loadStockMovements();
+  await loadStockAudit();
+  renderStockSummary();
+  renderStockTable();
+  renderStockPreview();
+  renderStockMovements();
+  renderStockDonut();
+  renderStockMovementsFeed();
+}
+
+async function loadStockMovements(){
+  try{
+    const r=await fetch('/api/admin/estoque-movimentos');
+    if(r.status===401){redirect401();return}
+    if(!r.ok) return;
+    stockMovimentos=await r.json();
+    renderStockMovements();
+    renderStockMovementsFeed();
+  }catch(e){console.error('[estoque-movimentos]',e)}
+}
+
+async function loadStockAudit(){
+  const selectedProductId=$('estoq_prod')?.value||'';
+  stockAuditProductId=selectedProductId;
+  stockAuditData=null;
+  if(!selectedProductId){renderStockMovements();return}
+  try{
+    const r=await fetch(`/api/admin/estoque-auditoria/${encodeURIComponent(selectedProductId)}`);
+    if(r.status===401){redirect401();return}
+    if(!r.ok){renderStockMovements();return}
+    const data=await r.json();
+    if(String(stockAuditProductId)===String(selectedProductId)) stockAuditData=data;
+  }catch(e){console.error('[estoque-auditoria]',e)}
+  renderStockMovements();
+}
+
+function stockEntries(){
+  const rows=[];
+  produtos.forEach(p=>{
+    (Array.isArray(p.cores)?p.cores:[]).forEach((c,ci)=>{
+      const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+      Object.entries(e).forEach(([size,qty])=>{
+        rows.push({produto:p,cor:c,corIndex:ci,size,qty:Number(qty)||0});
+      });
+    });
+  });
+  return rows;
+}
+
+function renderStockSummary(){
+  const summary=$('stockSummary');
+  if(!summary) return;
+  const entries=stockEntries();
+  const total=entries.reduce((s,it)=>s+it.qty,0);
+  const active=produtos.filter(p=>p.ativo!==false).length;
+  const inactive=produtos.length-active;
+  const variants=produtos.reduce((s,p)=>s+(Array.isArray(p.cores)?p.cores.length:0),0);
+  const stockedProducts=produtos.filter(p=>productStockTotal(p)>0).length;
+  const cards=[
+    ['Produtos ativos',active,'visíveis no site'],
+    ['Produtos inativos',inactive,'ocultos no catálogo'],
+    ['Estoque total',total+' un.','saldo atual consolidado'],
+    ['Itens com saldo',stockedProducts,`${variants} variações cadastradas`],
+  ];
+  summary.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
+function renderStockPreview(){
+  const el=$('stockPreview');
+  if(!el) return;
+  const p=produtos.find(p=>String(p.id)===$('estoq_prod')?.value);
+  if(!p){
+    el.innerHTML='<div class="form-empty" style="padding:34px 12px">Selecione um produto para visualizar saldos e variações.</div>';
+    return;
+  }
+  const selectedCi=Number($('estoq_cor')?.value);
+  const cores=Array.isArray(p.cores)?p.cores:[];
+  const selected=Number.isFinite(selectedCi)?selectedCi:0;
+  const total=cores.reduce((sum,c)=>{
+    const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+    return sum+Object.values(e).reduce((s,q)=>s+(Number(q)||0),0);
+  },0);
+  const c=cores[selected]||cores[0]||{};
+  el.innerHTML=`
+    <div class="stock-pick">
+      <span class="stock-pick__swatch" style="--tone:${esc(c.swatch||defaultSwatchForName(c.nome))}"></span>
+      <div>
+        <div class="stock-pick__name">${esc(p.nome)}</div>
+        <div class="stock-pick__meta">${p.ativo===false?'Inativo':'Ativo'} · ${cores.length||1} variação${cores.length!==1?'ões':''} · ${total} un. no total</div>
+      </div>
+    </div>
+    <div class="stock-list" style="margin-top:10px">
+      ${cores.length?cores.map((cor,idx)=>{
+        const e=(cor?.estoque&&typeof cor.estoque==='object'&&!Array.isArray(cor.estoque))?cor.estoque:{};
+        const rows=Object.entries(e).sort(([a],[b])=>a.localeCompare(b));
+        const colorTotal=rows.reduce((s,[,q])=>s+(Number(q)||0),0);
+        return `<div style="padding:10px 0;border-bottom:1px solid #f1f5f9">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+            <span class="stock-pick__swatch" style="width:22px;height:22px;border-radius:7px;--tone:${esc(cor.swatch||defaultSwatchForName(cor.nome))}"></span>
+            <strong>${esc(cor.nome||`Variação ${idx+1}`)}</strong>
+            <span style="margin-left:auto;font-weight:900">${colorTotal} un.</span>
+          </div>
+          ${rows.length?rows.map(([size,qty])=>`<div class="stock-list__row" style="padding:6px 0 6px 30px"><span>${esc(size)}</span><div class="stock-list__qty">${Number(qty)||0} un.</div></div>`).join(''):'<div style="color:#64748b;font-size:12px;padding-left:30px">Sem estoque cadastrado.</div>'}
+        </div>`;
+      }).join(''):'<div style="color:#64748b;font-size:13px;padding-top:10px">Sem variações cadastradas.</div>'}
+    </div>`;
+}
+
+function productStockTotal(p){
+  return (Array.isArray(p?.cores)?p.cores:[]).reduce((sum,c)=>{
+    const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+    return sum+Object.values(e).reduce((s,q)=>s+(Number(q)||0),0);
+  },0);
+}
+
+function getFilteredStockProducts(){
+  const q=normalizeColorKey(stockSearch);
+  return produtos.filter(p=>{
+    if(!q) return true;
+    const hay=[
+      p.nome,p.categoria,p.ativo===false?'inativo':'ativo',
+      ...(Array.isArray(p.cores)?p.cores.map(c=>c.nome):[])
+    ].filter(Boolean).join(' ');
+    return normalizeColorKey(hay).includes(q);
+  });
+}
+
+function computeReservedTransit(){
+  const reserved={}, transit={};
+  (pedidos||[]).forEach(ped=>{
+    const status=String(ped.status||'reservado').toLowerCase();
+    if(status!=='reservado' && status!=='enviado') return;
+    const target=status==='reservado'?reserved:transit;
+    const itens=Array.isArray(ped.itens)&&ped.itens.length?ped.itens:(Array.isArray(ped.itensEstoque)?ped.itensEstoque:[]);
+    itens.forEach(it=>{
+      const pid=Number(it.productId);
+      if(!Number.isFinite(pid)) return;
+      const qty=Math.max(1,Number(it.quantidade)||1);
+      target[pid]=(target[pid]||0)+qty;
+    });
+  });
+  return {reserved,transit};
+}
+
+function openStockDetailFromRow(productId){
+  const sel=$('estoq_prod');
+  sel.value=productId;
+  sel.dispatchEvent(new Event('change'));
+  $('stockDetailModal')?.showModal();
+}
+
+function renderStockTable(){
+  if(stockSubTab==='categorias') return renderStockTableCategorias();
+  if(stockSubTab==='variacoes') return renderStockTableVariacoes();
+  return renderStockTableProdutos();
+}
+
+function renderStockTableProdutos(){
+  const table=$('stockTable');
+  if(!table) return;
+  const {reserved,transit}=computeReservedTransit();
+  const all=getFilteredStockProducts().sort((a,b)=>(Number(a.ordem)||9999)-(Number(b.ordem)||9999));
+  const totalPages=Math.max(1,Math.ceil(all.length/STOCK_PAGE_SIZE));
+  if(stockPage>totalPages) stockPage=totalPages;
+  const start=(stockPage-1)*STOCK_PAGE_SIZE;
+  const rows=all.slice(start,start+STOCK_PAGE_SIZE);
+  table.innerHTML=`
+    <colgroup>
+      <col style="width:30%"><col style="width:10%"><col style="width:13%">
+      <col style="width:13%"><col style="width:12%"><col style="width:12%"><col style="width:10%">
+    </colgroup>
+    <thead><tr>
+      <th>Produto</th><th>Variações</th><th>Estoque total</th>
+      <th>Disponível</th><th>Reservado</th><th>Em trânsito</th><th>Status</th>
+    </tr></thead>
+    <tbody>${rows.length?rows.map(p=>{
+      const c=Array.isArray(p.cores)?(p.cores.find(c=>c.ativo!==false)||p.cores[0]):null;
+      const img=c?.imagens?.[0]||c?.imagem||'';
+      const src=img?(img.startsWith('http')?img:'/'+img):'';
+      const total=productStockTotal(p);
+      const res=reserved[p.id]||0;
+      const tra=transit[p.id]||0;
+      const disp=Math.max(0,total-res);
+      const nVar=Array.isArray(p.cores)?p.cores.length:0;
+      return `<tr data-stock-row="${esc(String(p.id))}">
+        <td><div class="stock-row__prod">
+          ${src?`<img class="stock-row__img" src="${esc(src)}" alt="" onerror="this.style.display='none'">`:`<span class="stock-row__img"></span>`}
+          <div><div class="stock-row__name">${esc(p.nome)}</div><div class="stock-row__sub">${esc(p.categoria||'Sem categoria')}</div></div>
+        </div></td>
+        <td class="stock-num--muted">${nVar}</td>
+        <td class="stock-num">${total} un.</td>
+        <td class="${disp<=0?'stock-num--warn':'stock-num--good'}">${disp} un.</td>
+        <td class="stock-num--muted">${res} un.</td>
+        <td class="stock-num--muted">${tra} un.</td>
+        <td><span class="status-dot ${p.ativo!==false?'status-dot--on':'status-dot--off'}">${p.ativo!==false?'Ativo':'Inativo'}</span></td>
+      </tr>`;
+    }).join(''):`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Nenhum produto encontrado.</td></tr>`}</tbody>`;
+  $$('[data-stock-row]',table).forEach(tr=>tr.addEventListener('click',()=>openStockDetailFromRow(tr.dataset.stockRow)));
+  renderStockPagination(all.length,totalPages);
+}
+
+function renderStockTableCategorias(){
+  const table=$('stockTable');
+  if(!table) return;
+  $('stockPagination').innerHTML='';
+  const byCat={};
+  produtos.forEach(p=>{
+    const cat=p.categoria||'Sem categoria';
+    if(!byCat[cat]) byCat[cat]={produtos:0,ativos:0,total:0};
+    byCat[cat].produtos++;
+    byCat[cat].total+=productStockTotal(p);
+    if(p.ativo!==false) byCat[cat].ativos++;
+  });
+  const q=normalizeColorKey(stockSearch);
+  const rows=Object.entries(byCat).filter(([cat])=>!q||normalizeColorKey(cat).includes(q)).sort((a,b)=>b[1].total-a[1].total);
+  table.innerHTML=`
+    <colgroup><col style="width:40%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>
+    <thead><tr><th>Categoria</th><th>Produtos</th><th>Ativos</th><th>Estoque total</th></tr></thead>
+    <tbody>${rows.length?rows.map(([cat,d])=>`<tr>
+      <td><div class="stock-row__name">${esc(cat)}</div></td>
+      <td class="stock-num">${d.produtos}</td>
+      <td class="stock-num--muted">${d.ativos}</td>
+      <td class="stock-num">${d.total} un.</td>
+    </tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Nenhuma categoria encontrada.</td></tr>'}</tbody>`;
+}
+
+function renderStockTableVariacoes(){
+  const table=$('stockTable');
+  if(!table) return;
+  const q=normalizeColorKey(stockSearch);
+  const all=[];
+  produtos.forEach(p=>{
+    (Array.isArray(p.cores)?p.cores:[]).forEach((c,ci)=>{
+      const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+      const total=Object.values(e).reduce((s,v)=>s+(Number(v)||0),0);
+      all.push({p,c,ci,total,nSizes:Object.keys(e).length});
+    });
+  });
+  const filtered=all.filter(({p,c})=>{
+    if(!q) return true;
+    const hay=[p.nome,p.categoria,c.nome].filter(Boolean).join(' ');
+    return normalizeColorKey(hay).includes(q);
+  });
+  const totalPages=Math.max(1,Math.ceil(filtered.length/STOCK_PAGE_SIZE));
+  if(stockPage>totalPages) stockPage=totalPages;
+  const start=(stockPage-1)*STOCK_PAGE_SIZE;
+  const rows=filtered.slice(start,start+STOCK_PAGE_SIZE);
+  table.innerHTML=`
+    <thead><tr><th>Produto</th><th>Variação</th><th>Tamanhos</th><th>Saldo</th><th>Status</th></tr></thead>
+    <tbody>${rows.length?rows.map(({p,c,ci,total,nSizes})=>`<tr data-stock-row="${esc(String(p.id))}">
+      <td><div class="stock-row__name">${esc(p.nome)}</div></td>
+      <td><div style="display:flex;align-items:center;gap:6px"><span class="stock-pick__swatch" style="width:16px;height:16px;border-radius:5px;--tone:${esc(c.swatch||defaultSwatchForName(c.nome))}"></span>${esc(c.nome||`Cor ${ci+1}`)}</div></td>
+      <td class="stock-num--muted">${nSizes}</td>
+      <td class="${total<=0?'stock-num--warn':'stock-num'}">${total} un.</td>
+      <td><span class="status-dot ${c.ativo!==false?'status-dot--on':'status-dot--off'}">${c.ativo!==false?'Visível':'Oculta'}</span></td>
+    </tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhuma variação encontrada.</td></tr>'}</tbody>`;
+  $$('[data-stock-row]',table).forEach(tr=>tr.addEventListener('click',()=>openStockDetailFromRow(tr.dataset.stockRow)));
+  renderStockPagination(filtered.length,totalPages);
+}
+
+function renderStockPagination(totalItems,totalPages){
+  const el=$('stockPagination');
+  if(!el) return;
+  if(!totalItems){ el.innerHTML=''; return; }
+  const start=(stockPage-1)*STOCK_PAGE_SIZE+1;
+  const end=Math.min(totalItems,stockPage*STOCK_PAGE_SIZE);
+  const pages=[];
+  for(let i=1;i<=totalPages;i++){
+    if(i===1||i===totalPages||Math.abs(i-stockPage)<=1) pages.push(i);
+    else if(pages[pages.length-1]!=='...') pages.push('...');
+  }
+  el.innerHTML=`
+    <div class="stock-pagination__info">Mostrando ${start} a ${end} de ${totalItems} ${stockSubTab==='categorias'?'categorias':(stockSubTab==='variacoes'?'variações':'produtos')}</div>
+    <div class="stock-pagination__pages">
+      <button type="button" class="stock-page-btn" data-stockpage="prev" ${stockPage<=1?'disabled':''}>‹</button>
+      ${pages.map(p=>p==='...'?'<span class="stock-page-dots">…</span>':`<button type="button" class="stock-page-btn ${p===stockPage?'active':''}" data-stockpage="${p}">${p}</button>`).join('')}
+      <button type="button" class="stock-page-btn" data-stockpage="next" ${stockPage>=totalPages?'disabled':''}>›</button>
+    </div>`;
+  $$('[data-stockpage]',el).forEach(btn=>btn.addEventListener('click',()=>{
+    const v=btn.dataset.stockpage;
+    if(v==='prev') stockPage=Math.max(1,stockPage-1);
+    else if(v==='next') stockPage=Math.min(totalPages,stockPage+1);
+    else stockPage=Number(v);
+    renderStockTable();
+  }));
+}
+
+function renderStockDonut(){
+  const el=$('stockDonut');
+  if(!el) return;
+  const byCat={};
+  stockEntries().forEach(e=>{
+    const cat=e.produto.categoria||'Sem categoria';
+    byCat[cat]=(byCat[cat]||0)+e.qty;
+  });
+  const entries=Object.entries(byCat).filter(([,q])=>q>0).sort((a,b)=>b[1]-a[1]);
+  const total=entries.reduce((s,[,q])=>s+q,0);
+  if(!total){ el.innerHTML='<div class="form-empty" style="padding:20px 8px">Sem estoque cadastrado ainda.</div>'; return; }
+  const palette=['#A8C63A','#8B6F5A','#C6A88F','#C75A65','#6F8522','#DCE9A4','#92400E'];
+  let acc=0;
+  const stops=entries.map(([cat,qty],i)=>{
+    const pct=qty/total*100;
+    const seg=`${palette[i%palette.length]} ${acc.toFixed(2)}% ${(acc+pct).toFixed(2)}%`;
+    acc+=pct;
+    return seg;
+  }).join(', ');
+  el.innerHTML=`
+    <div class="stock-donut-wrap">
+      <div class="stock-donut" style="background:conic-gradient(${stops})">
+        <div class="stock-donut__hole"><span>${total}</span><small>un. total</small></div>
+      </div>
+      <div class="stock-donut__legend">
+        ${entries.map(([cat,qty],i)=>`<div class="stock-donut__item"><span class="stock-donut__dot" style="background:${palette[i%palette.length]}"></span>${esc(cat)}<b>${qty} un. (${Math.round(qty/total*100)}%)</b></div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderStockMovementsFeed(){
+  const el=$('stockMovementsFeed');
+  if(!el) return;
+  const rows=[...stockMovimentos].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,8);
+  if(!rows.length){
+    el.innerHTML='<div class="form-empty" style="padding:24px 12px">Nenhuma movimentação registrada ainda.</div>';
+    return;
+  }
+  const table=`
+    <div class="stock-table-wrap">
+      <table class="stock-table">
+        <colgroup><col style="width:28%"><col style="width:20%"><col style="width:20%"><col style="width:16%"><col style="width:16%"></colgroup>
+        <thead><tr><th>Produto</th><th>Variação</th><th>Movimento</th><th>Quantidade</th><th>Quando</th></tr></thead>
+        <tbody>${rows.map(m=>{
+          const quantity=Number(m.quantity)||0;
+          const isOut=m.type==='saida'||quantity<0;
+          const displayQty=isOut&&quantity>0?-quantity:quantity;
+          const qty=(displayQty>0?'+':'')+displayQty;
+          return `<tr>
+            <td><div class="stock-row__name">${esc(m.productName||'Produto')}</div></td>
+            <td class="stock-num--muted">${esc(m.colorName||'—')}${m.size?` · ${esc(m.size)}`:''}</td>
+            <td class="stock-num--muted">${esc(movementLabel(m))}</td>
+            <td style="color:${isOut?'#9F1239':'#065F46'};font-weight:800">${qty} un.</td>
+            <td class="stock-num--muted">${fmtD(m.createdAt)}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>`;
+  el.innerHTML=`${table}<div class="stock-feed-footer" style="margin:0 14px 14px"><button type="button" class="btn btn--ghost btn--sm" data-open-movements>Ver todas</button></div>`;
+}
+
+function movementLabel(m){
+  if(m.reason==='saldo_inicial') return 'Saldo inicial';
+  if(m.reason==='entrada_manual') return 'Entrada manual';
+  if(m.reason==='ajuste_entrada') return 'Ajuste para mais';
+  if(m.reason==='ajuste_saida') return 'Ajuste para menos';
+  if(m.reason==='inventario_zerado') return 'Zeragem de inventário';
+  if(m.reason==='inventario') return 'Inventário';
+  if(m.reason==='devolucao') return 'Devolução ao estoque';
+  if(m.reason==='venda') return 'Venda efetiva';
+  if(m.type==='ajuste') return 'Ajuste';
+  return m.type==='saida'?'Saída':'Entrada';
+}
+
+function renderStockMovementAudit(){
+  const el=$('stockMovementAudit');
+  if(!el) return;
+  const selectedProductId=$('estoq_prod')?.value||'';
+  if(!selectedProductId){
+    el.innerHTML='<div class="stock-audit"><div class="stock-audit__title">Auditoria</div><div style="font-size:12px;color:var(--muted)">Selecione um produto para comparar saldo atual e movimentações.</div></div>';
+    return;
+  }
+  const prod=produtos.find(p=>String(p.id)===String(selectedProductId));
+  if(!prod){
+    el.innerHTML='';
+    return;
+  }
+  if(stockAuditData?.ok&&String(stockAuditProductId)===String(selectedProductId)){
+    const rows=Array.isArray(stockAuditData.rows)?stockAuditData.rows:[];
+    const mismatches=Array.isArray(stockAuditData.mismatches)?stockAuditData.mismatches:rows.filter(r=>Number(r.current)!==Number(r.ledger));
+    el.innerHTML=`<div class="stock-audit">
+      <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:5px">
+        <div class="stock-audit__title" style="margin-bottom:0">Auditoria do produto selecionado</div>
+        ${mismatches.length?`<button type="button" class="btn btn--primary btn--sm" data-stock-reconcile="${esc(String(selectedProductId))}">Sincronizar saldo</button>`:''}
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">ID ${esc(String(selectedProductId))} · ${Number(stockAuditData.movementCount)||0} movimento${Number(stockAuditData.movementCount)===1?'':'s'} no histórico · saldo atual ${Number(stockAuditData.currentTotal)||0} un. · líquido movimentações ${Number(stockAuditData.ledgerTotal)||0} un.</div>
+      ${mismatches.length?mismatches.map(r=>`<div class="stock-audit__line">
+        <span>Cor #${esc(String(Number(r.colorIndex)||0))} · ${esc(r.colorName||'Variação')} · ${esc(r.size||'UNICO')}</span>
+        <span>saldo ${Number(r.current)||0} · mov. ${Number(r.ledger)||0} · <span class="stock-audit__diff">dif. ${(Number(r.current)||0)-(Number(r.ledger)||0)}</span></span>
+      </div>`).join(''):`<div style="font-size:12px;color:#047857;font-weight:700">Saldo atual bate com o histórico completo deste produto.</div>`}
+    </div>`;
+    bindStockAuditActions();
+    return;
+  }
+  const current=new Map();
+  (Array.isArray(prod.cores)?prod.cores:[]).forEach((cor,ci)=>{
+    const stock=(cor?.estoque&&typeof cor.estoque==='object'&&!Array.isArray(cor.estoque))?cor.estoque:{};
+    Object.entries(stock).forEach(([size,qty])=>{
+      const key=[ci,String(size||'UNICO').toUpperCase()].join('|');
+      current.set(key,{colorIndex:ci,colorName:cor?.nome||`Cor ${ci+1}`,size:String(size||'UNICO').toUpperCase(),current:Number(qty)||0,ledger:0});
+    });
+  });
+  stockMovimentos.filter(m=>String(m.productId)===String(selectedProductId)).forEach(m=>{
+    const ci=Number(m.colorIndex)||0;
+    const size=String(m.size||'UNICO').toUpperCase();
+    const key=[ci,size].join('|');
+    const cor=(Array.isArray(prod.cores)?prod.cores[ci]:null)||{};
+    const row=current.get(key)||{colorIndex:ci,colorName:m.colorName||cor.nome||`Cor ${ci+1}`,size,current:0,ledger:0};
+    const raw=Number(m.quantity)||0;
+    const signed=(m.type==='saida'&&raw>0)?-raw:raw;
+    row.ledger+=signed;
+    current.set(key,row);
+  });
+  const rows=Array.from(current.values()).sort((a,b)=>String(a.colorName).localeCompare(String(b.colorName))||String(a.size).localeCompare(String(b.size)));
+  const currentTotal=rows.reduce((s,r)=>s+r.current,0);
+  const ledgerTotal=rows.reduce((s,r)=>s+r.ledger,0);
+  const mismatches=rows.filter(r=>r.current!==r.ledger);
+  const movementCount=stockMovimentos.filter(m=>String(m.productId)===String(selectedProductId)).length;
+  el.innerHTML=`<div class="stock-audit">
+    <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:5px">
+      <div class="stock-audit__title" style="margin-bottom:0">Auditoria do produto selecionado</div>
+      ${mismatches.length?`<button type="button" class="btn btn--primary btn--sm" data-stock-reconcile="${esc(String(selectedProductId))}">Sincronizar saldo</button>`:''}
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">ID ${esc(String(selectedProductId))} · ${movementCount} movimento${movementCount!==1?'s':''} carregado${movementCount!==1?'s':''} · saldo atual ${currentTotal} un. · líquido movimentações ${ledgerTotal} un.</div>
+    ${mismatches.length?mismatches.map(r=>`<div class="stock-audit__line">
+      <span>Cor #${r.colorIndex} · ${esc(r.colorName)} · ${esc(r.size)}</span>
+      <span>saldo ${r.current} · mov. ${r.ledger} · <span class="stock-audit__diff">dif. ${r.current-r.ledger}</span></span>
+    </div>`).join(''):`<div style="font-size:12px;color:#047857;font-weight:700">Saldo atual bate com as movimentações carregadas.</div>`}
+  </div>`;
+  bindStockAuditActions();
+}
+
+function bindStockAuditActions(){
+  $$('[data-stock-reconcile]').forEach(btn=>{
+    if(btn.dataset.bound==='1') return;
+    btn.dataset.bound='1';
+    btn.addEventListener('click',async()=>{
+      const prodId=btn.dataset.stockReconcile;
+      const prod=produtos.find(p=>String(p.id)===String(prodId));
+      const ok=confirm(`Sincronizar o saldo atual de "${prod?.nome||'produto'}" pelo histórico de movimentações?\n\nIsso não cria nova entrada. Apenas corrige o saldo salvo no produto para bater com o histórico.`);
+      if(!ok) return;
+      btn.disabled=true;
+      btn.textContent='Sincronizando...';
+      try{
+        const r=await fetch(`/api/admin/estoque-reconciliar/${encodeURIComponent(prodId)}`,{method:'POST'});
+        if(r.status===401){redirect401();return}
+        const data=await r.json().catch(()=>({}));
+        if(!r.ok||!data.ok) throw new Error(data.error||'Falha ao sincronizar');
+        const sel=$('estoq_prod');
+        if(sel) sel.value=prodId;
+        await loadProdutos();
+        if(sel) sel.value=prodId;
+        const refreshed=produtos.find(p=>String(p.id)===String(prodId));
+        const ci=Number($('estoq_cor')?.value)||0;
+        if(refreshed) renderSizes(refreshed,ci);
+        await loadStockMovements();
+        await loadStockAudit();
+        renderStockSummary();
+        renderStockProductResults();
+        renderStockPreview();
+        renderStockMovements();
+        toast('Saldo sincronizado pelo histórico.','success');
+      }catch(e){
+        toast(e.message,'error');
+        btn.disabled=false;
+        btn.textContent='Sincronizar saldo pelo histórico';
+      }
+    });
+  });
+}
+
+function renderStockMovements(){
+  const el=$('stockMovements');
+  if(!el) return;
+  const selectedProductId=$('estoq_prod')?.value||'';
+  const q=normalizeColorKey(stockMovementSearch);
+  let filtered=[...stockMovimentos].filter(m=>{
+    if(stockMovementType){
+      if(stockMovementType==='entrada' && !(m.type==='entrada' || Number(m.quantity)>0)) return false;
+      if(stockMovementType==='saida' && !(m.type==='saida' || Number(m.quantity)<0)) return false;
+      if(stockMovementType==='ajuste' && m.type!=='ajuste') return false;
+    }
+    if(selectedProductId && !q && String(m.productId)!==String(selectedProductId)) return false;
+    if(q){
+      const hay=[
+        m.productId,m.productName,m.colorIndex,m.colorName,m.size,m.reason,m.type,m.orderNumber,m.source
+      ].filter(v=>v!=null).join(' ');
+      if(!normalizeColorKey(hay).includes(q)) return false;
+    }
+    return true;
+  });
+  const totals=filtered.reduce((acc,m)=>{
+    const q=Number(m.quantity)||0;
+    if(m.type==='saida'||q<0) acc.saidas+=Math.abs(q);
+    else acc.entradas+=q;
+    return acc;
+  },{entradas:0,saidas:0});
+  const summary=$('stockMovementSummary');
+  if(summary){
+    const selectedNote=selectedProductId&&!q?' · produto selecionado':'';
+    summary.textContent=`${filtered.length} movimento${filtered.length!==1?'s':''}${selectedNote} · entradas ${totals.entradas} un. · saídas ${totals.saidas} un. · líquido ${totals.entradas-totals.saidas} un.`;
+  }
+  renderStockMovementAudit();
+  const rows=filtered.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,120);
+  el.innerHTML=rows.length?`<div class="stock-ledger">${rows.map(m=>{
+    const quantity=Number(m.quantity)||0;
+    const isOut=m.type==='saida'||quantity<0;
+    const isAdjust=m.type==='ajuste';
+    const displayQty=isOut&&quantity>0?-quantity:quantity;
+    const qty=(displayQty>0?'+':'')+displayQty;
+    const ref=m.orderNumber?` · Pedido #${esc(String(m.orderNumber))}`:'';
+    return `<div class="stock-move">
+      <div class="stock-move__type ${isOut?'out':'in'}">${isAdjust?'±':(isOut?'−':'+')}</div>
+      <div>
+        <div class="stock-move__name">${esc(m.productName||'Produto')}</div>
+        <div class="stock-move__meta">ID ${esc(String(m.productId||'—'))} · Cor #${esc(String(Number(m.colorIndex)||0))} · ${movementLabel(m)}${ref} · ${esc(m.colorName||'Variação')} · ${esc(m.size||'UNICO')} · ${fmtD(m.createdAt)}</div>
+      </div>
+      <div class="stock-move__qty">${qty}<div style="font-size:11px;color:#64748b;font-weight:700">${Number(m.before)||0} → ${Number(m.after)||0}</div></div>
+    </div>`;
+  }).join('')}</div>`:'<div style="color:#64748b;font-size:13px">Nenhuma movimentação encontrada para os filtros.</div>';
+}
+
+function renderSizes(prod,ci){
+  const c=prod?.cores?.[ci];
+  const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+  const base=Array.isArray(c?.tamanhos)&&c.tamanhos.length?c.tamanhos:(Array.isArray(prod?.tamanhos)&&prod.tamanhos.length?prod.tamanhos:['P','M','G','GG']);
+  const all=Array.from(new Set([...base,...Object.keys(e)]));
+  $('estoq_sizes').innerHTML=`
+    <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">Informe quantidades por tamanho:</div>
+    <div class="size-grid">
+      ${all.map(s=>`<div class="size-slot">
+        <div class="size-current">Atual: ${Number(e[s])||0}</div>
+        <label class="fl">${s}</label>
+        <input type="number" class="fc" min="0" placeholder="0" data-sz="${esc(s)}" />
+      </div>`).join('')}
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px dashed #e2e8f0">
+      <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px">Adicionar tamanho não listado:</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div><label class="fl">Tamanho</label><input class="fc" style="width:110px" id="estoq_new_sz" placeholder="XG, UNICO…" /></div>
+        <div><label class="fl">Quantidade</label><input type="number" class="fc" style="width:110px" min="0" placeholder="0" id="estoq_new_qty" /></div>
+      </div>
+    </div>`;
+}
+
+function stockOperationLabel(type){
+  return ({
+    entrada:'Entrada de mercadoria',
+    ajuste_entrada:'Ajuste para mais',
+    ajuste_saida:'Ajuste para menos',
+    inventario:'Inventário / saldo inicial'
+  })[type]||'Operação';
+}
+
+function updateStockOperationHelp(){
+  const type=$('estoq_tipo')?.value||'entrada';
+  const help=$('stockOperationHelp');
+  const btn=$('btnStockOperation');
+  if(btn) btn.textContent=type==='inventario'?'Aplicar inventário':'Registrar operação';
+  if(!help) return;
+  help.textContent=({
+    entrada:'Entrada soma ao saldo atual. Use quando uma coleção ou reposição chegar fisicamente.',
+    ajuste_entrada:'Ajuste para mais corrige divergências aumentando o saldo atual e registra movimentação de ajuste.',
+    ajuste_saida:'Ajuste para menos corrige divergências reduzindo o saldo atual sem passar de zero.',
+    inventario:'Inventário zera primeiro o saldo da variação selecionada e recria o saldo inicial com as quantidades digitadas.'
+  })[type]||'Informe a operação.';
+}
+
+$('estoq_tipo')?.addEventListener('change',updateStockOperationHelp);
+updateStockOperationHelp();
+
+$('btnStockOperation').addEventListener('click',async()=>{
+  const prodId=$('estoq_prod').value, ci=Number($('estoq_cor').value)||0;
+  const tipo=$('estoq_tipo')?.value||'entrada';
+  if(!prodId){showNotice($('estoqueNotice'),'Selecione um produto.','error');return}
+  const quantidades={};
+  $$('#estoq_sizes [data-sz]').forEach(inp=>{
+    const raw=String(inp.value||'').trim();
+    if(tipo==='inventario') quantidades[inp.dataset.sz]=Math.max(0,Number(raw)||0);
+    else {
+      const q=Number(raw)||0;
+      if(q>0) quantidades[inp.dataset.sz]=q;
+    }
+  });
+  const newSz=($('estoq_new_sz')?.value||'').trim().toUpperCase();
+  const newRaw=String($('estoq_new_qty')?.value||'').trim();
+  if(newSz){
+    const q=Math.max(0,Number(newRaw)||0);
+    if(tipo==='inventario' || q>0) quantidades[newSz]=q;
+  }
+  if(tipo!=='inventario'&&!Object.keys(quantidades).length){
+    showNotice($('estoqueNotice'),'Informe ao menos uma quantidade maior que zero.','error');return;
+  }
+  if(tipo==='inventario'&&!confirm('Aplicar inventário? O estoque atual desta variação será zerado e as quantidades digitadas virarão o novo saldo inicial.')) return;
+  try{
+    const r=await fetch('/api/admin/operacao-estoque',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,produtoId:Number(prodId),corIndex:ci,quantidades})});
+    if(r.status===401){redirect401();return}
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||'Falha');
+    showNotice($('estoqueNotice'),`${stockOperationLabel(tipo)} registrada. ${d.movements||0} movimento${d.movements===1?'':'s'} gerado${d.movements===1?'':'s'}.`,'success');
+    await loadProdutos();
+    await loadCombos();
+    await loadStockMovements();
+    await loadStockAudit();
+    const p=produtos.find(p=>String(p.id)===prodId);
+    if(p) renderSizes(p,ci);
+    renderStockPreview();
+    renderStockMovements();
+  }catch(e){ showNotice($('estoqueNotice'),'Erro: '+e.message,'error') }
+});
+
+// ═══════════════════════════════════════════════════════════
+// PEDIDOS
+// ═══════════════════════════════════════════════════════════
+async function loadPedidos(){
+  try{
+    const r=await fetch('/api/pedidos');
+    if(r.status===401){redirect401();return}
+    if(!r.ok) return;
+    pedidos=await r.json();
+    pedidos.sort((a,b)=>new Date(b.recebidoEm||0)-new Date(a.recebidoEm||0));
+    renderOrdersTable();
+  }catch(e){console.error(e)}
+}
+
+async function loadCupons(){
+  try{
+    const r=await fetch('/api/admin/cupons');
+    if(r.status===401){redirect401();return}
+    if(!r.ok) return;
+    cupons=await r.json();
+    renderCouponsPanel();
+  }catch(e){console.error(e)}
+}
+
+function renderCouponKpis(){
+  const el=$('couponKpis');
+  if(!el) return;
+  const ativos=cupons.filter(c=>c.active).length;
+  const inativos=cupons.length-ativos;
+  const primeiraCompra=cupons.filter(c=>c.firstPurchaseOnly).length;
+  const cards=[
+    ['Total de cupons',cupons.length,'cadastrados'],
+    ['Ativos',ativos,'disponíveis para uso'],
+    ['Inativos',inativos,'desativados'],
+    ['1ª compra',primeiraCompra,'restritos a novos clientes'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
+function renderCouponsPanel(){
+  renderCouponKpis();
+  const body=$('couponPanelBody');
+  if(!body) return;
+  body.innerHTML=`
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;background:#f8faff;margin-bottom:20px">
+      <div style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px" id="cpFormTitle">Novo cupom</div>
+      <div class="coupon-form-grid">
+        <div>
+          <label class="fl">Código</label>
+          <input class="fc" id="cp_code" placeholder="Ex.: VERÃO25" style="text-transform:uppercase;font-weight:700;letter-spacing:.04em">
+        </div>
+        <div>
+          <label class="fl">Descrição</label>
+          <input class="fc" id="cp_description" placeholder="Ex.: Primeira compra vinculada ao CPF">
+        </div>
+        <div>
+          <label class="fl">Desconto (%)</label>
+          <input class="fc" id="cp_percent" type="number" min="1" max="100" step="1" placeholder="20">
+        </div>
+        <div>
+          <label class="fl">Status</label>
+          <select class="fc" id="cp_active"><option value="1">Ativo</option><option value="0">Inativo</option></select>
+        </div>
+        <div>
+          <label class="fl">Primeira compra</label>
+          <select class="fc" id="cp_first_purchase"><option value="0">Não</option><option value="1">Sim</option></select>
+        </div>
+        <div class="coupon-form-actions" style="display:flex;gap:8px;padding-bottom:1px">
+          <button class="btn btn--primary btn--sm" id="btnSaveCoupon" type="button" style="white-space:nowrap;padding:9px 18px">Salvar</button>
+          <button class="btn btn--ghost btn--sm" id="btnCancelCoupon" type="button" style="display:none;padding:9px 14px">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="orders-tbl">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Descrição</th>
+            <th style="text-align:center">Desconto</th>
+            <th style="text-align:center">Status</th>
+            <th style="text-align:right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cupons.length ? cupons.map(c => {
+            const firstPurchase = Boolean(c.firstPurchaseOnly);
+            const protectedCoupon = normalizeCouponCode(c.code) === 'PRIMEIRA15';
+            const badge = firstPurchase ? `<span style="font-size:.65rem;background:#fef3c7;color:#92400e;border-radius:6px;padding:2px 6px;margin-left:6px;font-weight:700">1ª compra</span>` : '';
+            const statusDot = c.active
+              ? `<span style="display:inline-flex;align-items:center;gap:5px;color:#059669;font-weight:600;font-size:.82rem"><span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block"></span>Ativo</span>`
+              : `<span style="display:inline-flex;align-items:center;gap:5px;color:#94a3b8;font-weight:600;font-size:.82rem"><span style="width:7px;height:7px;border-radius:50%;background:#cbd5e1;display:inline-block"></span>Inativo</span>`;
+            return `<tr>
+              <td><strong style="letter-spacing:.04em">${esc(c.code)}</strong>${badge}</td>
+              <td style="font-size:12px;color:#64748b">${esc(c.description||'—')}</td>
+              <td style="text-align:center;font-weight:700;color:#383838">${Number(c.percent||0).toLocaleString('pt-BR')}%</td>
+              <td style="text-align:center">${statusDot}</td>
+              <td style="text-align:right">
+                <div style="display:inline-flex;gap:6px">
+                  <button class="btn btn--secondary btn--sm" data-edit-coupon="${esc(c.code)}" type="button">Editar</button>
+                  <button class="btn btn--ghost btn--sm" data-toggle-coupon="${esc(c.code)}" type="button">${c.active ? 'Desativar' : 'Ativar'}</button>
+                  ${protectedCoupon ? '' : `<button class="btn btn--danger btn--sm" data-del-coupon="${esc(c.code)}" type="button">Excluir</button>`}
+                </div>
+              </td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:24px">Nenhum cupom cadastrado.</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+  const resetCouponForm = () => {
+    $('cp_code').value=''; $('cp_description').value=''; $('cp_percent').value=''; $('cp_active').value='1'; $('cp_first_purchase').value='0';
+    $('cp_code').readOnly=false;
+    if($('cpFormTitle')) $('cpFormTitle').textContent='Novo cupom';
+    if($('btnCancelCoupon')) $('btnCancelCoupon').style.display='none';
+    if($('btnSaveCoupon')) $('btnSaveCoupon').textContent='Salvar';
+  };
+  $('btnCancelCoupon')?.addEventListener('click', resetCouponForm);
+  $('btnSaveCoupon')?.addEventListener('click',async()=>{
+    const code=normalizeCouponCode($('cp_code')?.value);
+    const description=($('cp_description')?.value||'').trim();
+    const percent=Number($('cp_percent')?.value);
+    const active=$('cp_active')?.value!=='0';
+    const firstPurchaseOnly=$('cp_first_purchase')?.value==='1';
+    if(!code){toast('Informe o código do cupom','error');$('cp_code').focus();return;}
+    if(!percent||percent<=0||percent>100){toast('Percentual deve ser entre 1 e 100','error');$('cp_percent').focus();return;}
+    try{
+      const r=await fetch('/api/admin/cupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,description,percent,active,firstPurchaseOnly})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao salvar cupom');
+      toast('Cupom salvo com sucesso','success');
+      resetCouponForm();
+      await loadCupons();
+    }catch(e){toast(e.message,'error')}
+  });
+  $$('[data-edit-coupon]').forEach(btn=>btn.addEventListener('click',()=>{
+    const item=cupons.find(c=>normalizeCouponCode(c.code)===normalizeCouponCode(btn.dataset.editCoupon));
+    if(!item) return;
+    $('cp_code').value=item.code;
+    $('cp_code').readOnly=true;
+    $('cp_description').value=item.description||'';
+    $('cp_percent').value=Number(item.percent)||0;
+    $('cp_active').value=item.active?'1':'0';
+    $('cp_first_purchase').value=item.firstPurchaseOnly?'1':'0';
+    if($('cpFormTitle')) $('cpFormTitle').textContent=`Editando: ${item.code}`;
+    if($('btnCancelCoupon')) $('btnCancelCoupon').style.display='';
+    if($('btnSaveCoupon')) $('btnSaveCoupon').textContent='Atualizar';
+    $('cp_percent').focus();
+  }));
+  $$('[data-toggle-coupon]').forEach(btn=>btn.addEventListener('click',async()=>{
+    const item=cupons.find(c=>normalizeCouponCode(c.code)===normalizeCouponCode(btn.dataset.toggleCoupon));
+    if(!item) return;
+    try{
+      const r=await fetch('/api/admin/cupons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:item.code,description:item.description||'',percent:Number(item.percent)||0,active:!item.active,firstPurchaseOnly:Boolean(item.firstPurchaseOnly)})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao atualizar cupom');
+      toast(item.active?'Cupom desativado':'Cupom ativado','success');
+      await loadCupons();
+    }catch(e){toast(e.message,'error')}
+  }));
+  $$('[data-del-coupon]').forEach(btn=>btn.addEventListener('click',async()=>{
+    if(!confirm(`Excluir cupom ${btn.dataset.delCoupon}?`)) return;
+    try{
+      const r=await fetch(`/api/admin/cupons/${encodeURIComponent(btn.dataset.delCoupon)}`,{method:'DELETE'});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao excluir cupom');
+      toast('Cupom excluído','success');
+      await loadCupons();
+    }catch(e){toast(e.message,'error')}
+  }));
+}
+
+function filteredPedidos(){
+  const q=normalizeColorKey(orderSearch);
+  return pedidos.filter(p=>{
+    const okStatus=orderFilter?(p.status||'reservado')===orderFilter:true;
+    if(!okStatus) return false;
+    if(!q) return true;
+    const hay=[
+      p.pedido,p.cliente?.nome,p.nome,p.cliente?.telefone,p.telefone,p.cliente?.email,p.email,
+      p.cliente?.cidade,p.cidade,p.cliente?.uf,p.uf
+    ].filter(Boolean).join(' ');
+    return normalizeColorKey(hay).includes(q);
+  });
+}
+function orderItems(ped){
+  const raw=Array.isArray(ped?.itens)&&ped.itens.length?ped.itens:(Array.isArray(ped?.itensEstoque)?ped.itensEstoque:[]);
+  return raw.map(it=>({
+    nome: it.nome||it.produto||it.item_name||it.description||'—',
+    categoria: it.categoria||it.item_category||'',
+    cor: it.cor||it.corSelecionada||'',
+    tamanho: it.tamanhoSelecionado||it.tamanho||it.size||'',
+    quantidade: Number(it.quantidade||it.quantity)||1,
+    precoUnitario: Number(it.precoUnitario||it.preco||it.price)||0,
+    descricao: it.descricaoCurta||it.description||''
+  }));
+}
+
+function renderOrdersTable(){
+  const all=filteredPedidos();
+  renderOrdersKpis();
+  $('ordersCount').textContent=`${all.length} pedido${all.length!==1?'s':''}`;
+  const totalPages=Math.max(1,Math.ceil(all.length/ORDERS_PAGE_SIZE));
+  if(ordersPage>totalPages) ordersPage=totalPages;
+  const start=(ordersPage-1)*ORDERS_PAGE_SIZE;
+  const rows=all.slice(start,start+ORDERS_PAGE_SIZE);
+  $('ordersBody').innerHTML=rows.length===0
+    ?`<tr><td colspan="8" style="text-align:center;padding:28px;color:#94a3b8">Nenhum pedido encontrado.</td></tr>`
+    :rows.map(p=>{
+	      const nome=p.cliente?.nome||p.nome||'—';
+	      const itens=orderItems(p).length||'—';
+	      const cancelPending=p.cancellation_requested&&String(p.cancellation_request_status||'pendente')==='pendente';
+	      const cupom=orderCoupon(p);
+	      return `<tr data-num="${esc(String(p.pedido))}" class="${String(p.pedido)===String(activePedNum)?'selected':''}">
+	        <td><strong>#${esc(String(p.pedido))}</strong>${cancelPending?'<span class="cancel-dot">Cancelamento</span>':''}</td>
+	        <td>${esc(nome)}</td>
+        <td style="color:#64748b;font-size:12px">${esc(origemLabel(p.origem))}</td>
+        <td style="color:#64748b;font-size:12px">${cupom?`<strong>${esc(cupom)}</strong>`:'—'}</td>
+        <td>${sPill(p.status)}</td>
+        <td>${itens}</td>
+        <td style="font-weight:700;white-space:nowrap">${fmtR(p.total||0)}</td>
+        <td style="white-space:nowrap;font-size:12px;color:#64748b">${fmtD(p.recebidoEm)}</td>
+      </tr>`;
+    }).join('');
+  $$('#ordersBody tr[data-num]').forEach(tr=>tr.addEventListener('click',()=>{
+    activePedNum=tr.dataset.num; renderOrdersTable();
+    renderOrderDetail(pedidos.find(p=>String(p.pedido)===String(activePedNum)));
+    $('orderDetailModal')?.showModal();
+  }));
+  renderOrdersPagination(all.length,totalPages);
+}
+
+function renderOrdersPagination(totalItems,totalPages){
+  const el=$('ordersPagination');
+  if(!el) return;
+  if(!totalItems){ el.innerHTML=''; return; }
+  const start=(ordersPage-1)*ORDERS_PAGE_SIZE+1;
+  const end=Math.min(totalItems,ordersPage*ORDERS_PAGE_SIZE);
+  const pages=[];
+  for(let i=1;i<=totalPages;i++){
+    if(i===1||i===totalPages||Math.abs(i-ordersPage)<=1) pages.push(i);
+    else if(pages[pages.length-1]!=='...') pages.push('...');
+  }
+  el.innerHTML=`
+    <div class="stock-pagination__info">Mostrando ${start} a ${end} de ${totalItems} pedidos</div>
+    <div class="stock-pagination__pages">
+      <button type="button" class="stock-page-btn" data-orderspage="prev" ${ordersPage<=1?'disabled':''}>‹</button>
+      ${pages.map(p=>p==='...'?'<span class="stock-page-dots">…</span>':`<button type="button" class="stock-page-btn ${p===ordersPage?'active':''}" data-orderspage="${p}">${p}</button>`).join('')}
+      <button type="button" class="stock-page-btn" data-orderspage="next" ${ordersPage>=totalPages?'disabled':''}>›</button>
+    </div>`;
+  $$('[data-orderspage]',el).forEach(btn=>btn.addEventListener('click',()=>{
+    const v=btn.dataset.orderspage;
+    if(v==='prev') ordersPage=Math.max(1,ordersPage-1);
+    else if(v==='next') ordersPage=Math.min(totalPages,ordersPage+1);
+    else ordersPage=Number(v);
+    renderOrdersTable();
+  }));
+}
+$('orderDetailClose')?.addEventListener('click',()=>$('orderDetailModal')?.close());
+
+function renderOrdersKpis(){
+  const kpis=$('ordersKpis');
+  if(!kpis) return;
+  const paid=effectiveSales(pedidos);
+  const open=pedidos.filter(p=>['confirmado','enviado'].includes(p.status)).length;
+  const cancel=pedidos.filter(p=>p.cancellation_requested&&String(p.cancellation_request_status||'pendente')==='pendente').length;
+  const rec=paid.reduce((s,p)=>s+(Number(p.total)||0),0);
+  kpis.innerHTML=[
+    ['Receita ativa',fmtR(rec)],
+    ['Pedidos em aberto',open+' pedidos'],
+    ['Cancelamentos',cancel+' pendentes'],
+  ].map(([label,value])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div></div>`).join('');
+}
+
+$$('.filter-btn[data-status]').forEach(btn=>btn.addEventListener('click',()=>{
+  $$('.filter-btn[data-status]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); orderFilter=btn.dataset.status; ordersPage=1; renderOrdersTable();
+}));
+
+const orderSearchInput=$('orderSearch');
+if(orderSearchInput){
+  orderSearchInput.addEventListener('input',()=>{
+    orderSearch=orderSearchInput.value;
+    ordersPage=1;
+    renderOrdersTable();
+  });
+}
+
+function renderOrderDetail(ped){
+  if(!ped) return;
+  const itens=orderItems(ped);
+  const total=itens.reduce((s,it)=>s+(it.precoUnitario*it.quantidade),0);
+  const endereco=[
+    ped.cliente?.endereco||ped.endereco||ped.rua||'',
+    ped.bairro||ped.cliente?.bairro||'',
+    [ped.cidade||ped.cliente?.cidade||'',ped.uf||ped.cliente?.uf||''].filter(Boolean).join('/'),
+    ped.cep||ped.cliente?.cep||''
+  ].filter(Boolean).join(' · ');
+  $('orderSide').innerHTML=`
+    <div class="card-head" style="align-items:flex-start;gap:8px">
+      <div>
+        <div style="font-weight:700;font-size:15px">#${esc(String(ped.pedido))}</div>
+        <div style="font-size:11px;color:#64748b">${fmtD(ped.recebidoEm)}</div>
+      </div>
+      <div style="margin-left:auto">${sPill(ped.status)}</div>
+    </div>
+    <div class="order-detail">
+      <div class="order-section-title">Alterar status</div>
+      <div class="order-total-box">
+        <div><span>Total</span><strong>${fmtR(ped.total||total)}</strong></div>
+        <div><span>Itens</span><strong>${itens.reduce((s,it)=>s+it.quantidade,0)} un.</strong></div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:16px">
+        ${['reservado','confirmado','enviado','entregue','cancelado'].map(s=>{
+          const atual=ped.status||'reservado';
+          const isAtual=atual===s;
+          // Bloqueia voltar para reservado se já confirmado ou além
+          const bloqueado = s==='reservado' && ['confirmado','enviado','entregue'].includes(atual);
+          return `<button class="filter-btn ${isAtual?'active':''} ${bloqueado?'disabled':''}" data-set="${esc(s)}" ${bloqueado?'disabled title="Não é possível retornar para Reservado após confirmação"':''}>${sLabel(s)}</button>`;
+        }).join('')}
+      </div>
+	      ${ped.cancellation_requested?`
+	        <div class="cancel-alert">
+	          <strong>Cliente solicitou cancelamento</strong>
+	          Status da solicitação: ${esc(ped.cancellation_request_status||'pendente')}<br>
+	          ${ped.cancellation_requestedAt?`Solicitado em: ${fmtD(ped.cancellation_requestedAt)}<br>`:''}
+	          Motivo: ${esc(ped.cancellation_reason||'Não informado')}<br>
+	          ${ped.refund_status?`Estorno InfinitePay: ${esc(ped.refund_status)}<br>`:''}
+	          Ao aprovar, marque o pedido como Cancelado. O estoque volta automaticamente e o estorno deve ser feito no app InfinitePay.
+	        </div>
+	      `:''}
+	      <div class="order-section-title">Cliente</div>
+      <div class="order-info-box">
+        <div style="font-weight:600">${esc(ped.cliente?.nome||ped.nome||'—')}</div>
+        ${ped.cliente?.telefone||ped.telefone?`<div style="color:#64748b">${esc(ped.cliente?.telefone||ped.telefone)}</div>`:''}
+        ${ped.cliente?.email||ped.email?`<div style="color:#64748b">${esc(ped.cliente?.email||ped.email)}</div>`:''}
+        ${endereco?`<div style="color:#64748b;margin-top:4px">${esc(endereco)}</div>`:''}
+      </div>
+      ${itens.length?`
+        <div class="order-section-title">Itens</div>
+        <div style="margin-bottom:14px">
+          ${itens.map(it=>`<div class="order-item-row">
+            <div style="font-weight:500">${esc(it.nome)}${it.cor?` · ${esc(it.cor)}`:''}${it.tamanho?` · ${esc(it.tamanho)}`:''}</div>
+            ${it.descricao?`<div style="color:#94a3b8;font-size:11px">${esc(it.descricao)}</div>`:''}
+            <div style="color:#64748b">Qtd: ${it.quantidade} · Unit.: ${fmtR(it.precoUnitario)} · Linha: ${fmtR(it.precoUnitario*it.quantidade)}</div>
+          </div>`).join('')}
+          <div style="text-align:right;font-weight:700;margin-top:8px">Itens: ${fmtR(total)}</div>
+          ${orderDiscount(ped)>0?`<div style="text-align:right;color:#0f766e;font-size:12px">Desconto${orderCoupon(ped)?` (${esc(orderCoupon(ped))})`:''}: -${fmtR(orderDiscount(ped))}</div>`:''}
+          ${Number(ped.taxa)>0?`<div style="text-align:right;color:#64748b;font-size:12px">Taxa/Frete: ${fmtR(ped.taxa)}</div>`:''}
+          ${Number(ped.total)>0?`<div style="text-align:right;font-weight:800;margin-top:4px">Total pedido: ${fmtR(ped.total)}</div>`:''}
+        </div>`:''}
+      ${ped.pagamento?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Pagamento: ${esc(ped.pagamento)}</div>`:''}
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">Origem: ${esc(origemLabel(ped.origem))}</div>
+      ${orderCoupon(ped)?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Cupom usado: ${esc(orderCoupon(ped))}</div>`:''}
+      ${ped.pagamento_status?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Status pagamento: ${esc(ped.pagamento_status)}</div>`:''}
+      ${ped.frete_modo?`<div style="font-size:12px;color:#64748b;margin-bottom:4px">Entrega: ${esc(ped.frete_modo)}</div>`:''}
+      ${ped.obs?`<div style="font-size:12px;color:#64748b;margin-bottom:12px">Obs: ${esc(ped.obs)}</div>`:''}
+      <div style="margin-top:12px">
+        <button class="btn btn--danger btn--sm" id="btnDelPed">Excluir pedido</button>
+      </div>
+    </div>`;
+
+  $$('#orderSide [data-set]').forEach(btn=>btn.addEventListener('click',async()=>{
+    const novoStatus = btn.dataset.set;
+    const atualStatus = String(ped.status||'reservado').toLowerCase();
+    if(novoStatus === atualStatus) return;
+
+    // Pedido cancelado é imutável
+    if(atualStatus === 'cancelado'){
+      adminPopup('⛔ Pedido cancelado','Este pedido já foi cancelado e não pode ter o status alterado. O estoque já foi restaurado.','error');
+      return;
+    }
+    // Confirmar cancelamento (com alerta de que retorna estoque)
+    if(novoStatus === 'cancelado'){
+      const ok = await adminConfirm('Cancelar pedido','Tem certeza? O estoque dos itens será devolvido automaticamente e o status não poderá ser alterado depois.','Cancelar pedido','Não cancelar');
+      if(!ok) return;
+    }
+    try{
+      const r=await fetch(`/api/admin/pedido/${encodeURIComponent(ped.pedido)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:novoStatus})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||d.ok===false) throw new Error(d.error||'Falha ao atualizar status');
+      const idx=pedidos.findIndex(p=>String(p.pedido)===String(ped.pedido));
+      if(idx!==-1){pedidos[idx]=d.item; ped.status=novoStatus;}
+      await loadProdutos();
+      await loadCombos();
+      toast(`Status alterado para ${sLabel(novoStatus)}`,'success');
+      renderOrdersTable();
+      renderOrderDetail(pedidos.find(p=>String(p.pedido)===String(activePedNum)));
+    }catch(e){adminPopup('Erro ao alterar status',e.message,'error');}
+  }));
+  $('btnDelPed').addEventListener('click',async()=>{
+    const atualStatus = String(ped.status||'reservado').toLowerCase();
+    if(['confirmado','enviado','entregue'].includes(atualStatus)){
+      adminPopup('🚫 Exclusão não permitida',`Pedidos com status "${sLabel(atualStatus)}" não podem ser excluídos.\nPara remover, primeiro cancele o pedido (o estoque será restaurado automaticamente).`,'error');
+      return;
+    }
+    const ok = await adminConfirm('Excluir pedido','Deseja excluir este pedido permanentemente? Esta ação não pode ser desfeita.','Excluir','Cancelar');
+    if(!ok) return;
+    const r=await fetch(`/api/admin/pedido/${encodeURIComponent(ped.pedido)}`,{method:'DELETE'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||d.ok===false){adminPopup('Erro ao excluir',d.error||'Falha ao excluir.','error');return;}
+    pedidos=pedidos.filter(p=>String(p.pedido)!==String(ped.pedido));
+    activePedNum=null; renderOrdersTable();
+    $('orderSide').innerHTML='<div class="form-empty">Selecione um pedido.</div>';
+    $('orderDetailModal')?.close();
+    toast('Pedido excluído','success');
+  });
+}
+
+function closeModal(){$('modalOv').style.display='none';$('modalBody').innerHTML='';newOrderItems=[]}
+
+function renderNewOrderForm(){
+  newOrderItems=[];
+  $('modalBody').innerHTML=`
+    <div id="npNotice" class="notice"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:10px">Cliente</div>
+        <div class="fg"><label class="fl">Nome *</label><input class="fc" id="np_nome" /></div>
+        <div class="frow">
+          <div class="fg"><label class="fl">Telefone</label><input class="fc" id="np_tel" /></div>
+          <div class="fg"><label class="fl">Email</label><input class="fc" id="np_email" type="email" /></div>
+        </div>
+        <div class="fg"><label class="fl">Endereço</label><input class="fc" id="np_end" /></div>
+        <div class="frow">
+          <div class="fg"><label class="fl">Cidade</label><input class="fc" id="np_cidade" /></div>
+          <div class="fg"><label class="fl">UF</label><input class="fc" id="np_uf" maxlength="2" style="text-transform:uppercase" /></div>
+        </div>
+        <div class="frow" style="margin-top:4px">
+          <div class="fg"><label class="fl">Pagamento</label>
+            <select class="fc" id="np_pg">
+              <option value="">—</option><option>PIX</option><option>Cartão de Crédito</option>
+              <option>Cartão de Débito</option><option>Dinheiro</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Status</label>
+            <select class="fc" id="np_st">
+              <option value="reservado" selected>Reservado — aguardando pagamento (não baixa estoque)</option>
+              <option value="confirmado">Confirmado — pagamento recebido (baixa estoque)</option>
+              <option value="enviado">Enviado</option>
+              <option value="entregue">Entregue</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg"><label class="fl">Origem / Canal</label>
+          <select class="fc" id="np_origem">
+            <option value="whatsapp" selected>WhatsApp</option>
+            <option value="instagram">Instagram</option>
+            <option value="loja_fisica">Loja física</option>
+            <option value="telefone">Telefone</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Observações</label><textarea class="fc" id="np_obs" style="min-height:50px"></textarea></div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:10px">Itens do pedido</div>
+        <div id="npItemsList" style="margin-bottom:12px;min-height:32px">
+          <div style="color:#94a3b8;font-size:13px">Nenhum item adicionado.</div>
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:14px;border:1px solid #e8edf2">
+          <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">Adicionar item</div>
+          <div class="fg"><label class="fl">Produto</label>
+            <select class="fc" id="np_prod"><option value="">— Selecione —</option></select>
+          </div>
+          <div class="frow">
+            <div class="fg"><label class="fl">Cor</label><select class="fc" id="np_cor"><option value="">—</option></select></div>
+            <div class="fg"><label class="fl">Tamanho</label><select class="fc" id="np_sz"><option value="">—</option></select></div>
+          </div>
+          <div class="frow">
+            <div class="fg"><label class="fl">Qtd</label><input type="number" class="fc" id="np_qty" min="1" value="1" /></div>
+            <div class="fg"><label class="fl">Preço unit. (R$)</label><input type="number" class="fc" id="np_price" step="0.01" min="0" /></div>
+          </div>
+          <button class="btn btn--secondary btn--sm" id="np_addItem" style="width:100%;margin-top:4px">+ Adicionar item</button>
+        </div>
+        <div style="margin-top:14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px">
+            <span style="color:#64748b">Subtotal</span><span id="np_subtotal" style="font-weight:500">R$ 0,00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px">
+            <label style="color:#64748b">Taxa / frete (R$)</label>
+            <input type="number" id="np_taxa" step="0.01" value="0" style="width:90px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;text-align:right;font-family:inherit" />
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px">
+            <label style="color:#64748b">Desconto manual (R$)</label>
+            <input type="number" id="np_desconto" step="0.01" min="0" value="0" style="width:90px;padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;text-align:right;font-family:inherit" />
+          </div>
+          <div class="fg" style="margin-bottom:8px">
+            <label class="fl">Cupom</label>
+            <select class="fc" id="np_cupom">
+              <option value="">— Sem cupom —</option>
+              ${cupons.filter(c=>c.active).map(c=>`<option value="${esc(c.code)}" data-percent="${Number(c.percent)||0}">${esc(c.code)} · ${Number(c.percent||0).toLocaleString('pt-BR')}%</option>`).join('')}
+            </select>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;color:#0f766e">
+            <span>Descontos aplicados</span><span id="np_discount_total" style="font-weight:600">R$ 0,00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;padding-top:10px;border-top:1px solid #f1f5f9">
+            <span>Total</span><span id="np_total">R$ 0,00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="form-actions" style="margin-top:20px">
+      <button class="btn btn--primary" id="btnSalvPed">Salvar pedido</button>
+      <button class="btn btn--ghost" onclick="closeModal()">Cancelar</button>
+    </div>`;
+
+  // Populate product select
+  const npProd=$('np_prod');
+  sellableItems().forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.tipoProduto==='combo'?`${p.nome} (combo)`:p.nome;npProd.appendChild(o)});
+
+  function fillCorSelect(p){
+    const npCor=$('np_cor'); npCor.innerHTML='';
+    if(!p||!p.cores?.length){npCor.innerHTML='<option value="0">Única</option>';return}
+    p.cores.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.nome||`Cor ${i+1}`;npCor.appendChild(o)});
+  }
+  function fillSzSelect(p,ci){
+    const c=p?.cores?.[ci];
+    const npSz=$('np_sz'); npSz.innerHTML='';
+    const e=(c?.estoque&&typeof c.estoque==='object'&&!Array.isArray(c.estoque))?c.estoque:{};
+    const base=c?.tamanhos?.length?c.tamanhos:(p?.tamanhos?.length?p.tamanhos:[]);
+    const sizes=Array.from(new Set([...base,...Object.keys(e)]));
+    sizes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=Number(e[s])>0?`${s} (${e[s]} em estoque)`:s;npSz.appendChild(o)});
+    if(!sizes.length){const o=document.createElement('option');o.value='UNICO';o.textContent='Único';npSz.appendChild(o)}
+  }
+  function updateTotals(){
+    const sub=newOrderItems.reduce((s,it)=>s+it.precoUnitario*it.quantidade,0);
+    const taxa=Number($('np_taxa')?.value)||0;
+    const manual=Math.max(0,Number($('np_desconto')?.value)||0);
+    const couponOption=$('np_cupom')?.selectedOptions?.[0];
+    const couponPercent=Number(couponOption?.dataset?.percent)||0;
+    const couponDiscount=sub*(couponPercent/100);
+    const discount=Math.min(sub,manual+couponDiscount);
+    $('np_subtotal').textContent=fmtR(sub);
+    $('np_discount_total').textContent=discount>0?`-${fmtR(discount)}`:fmtR(0);
+    $('np_total').textContent=fmtR(Math.max(0,sub-discount)+taxa);
+  }
+  function renderNpItems(){
+    $('npItemsList').innerHTML=newOrderItems.length===0
+      ?'<div style="color:#94a3b8;font-size:13px">Nenhum item adicionado.</div>'
+      :newOrderItems.map((it,i)=>`<div class="order-item-entry">
+          <div style="flex:1;font-size:13px">
+            <div style="font-weight:600">${esc(it.nome)}${it.cor?' · '+esc(it.cor):''}${it.tamanho?' · '+esc(it.tamanho):''}</div>
+            <div style="color:#64748b;font-size:12px">Qtd: ${it.quantidade} × ${fmtR(it.precoUnitario)} = ${fmtR(it.precoUnitario*it.quantidade)}</div>
+          </div>
+          <button class="btn btn--danger btn--sm" data-rmitem="${i}">✕</button>
+        </div>`).join('');
+    $$('[data-rmitem]').forEach(btn=>btn.addEventListener('click',()=>{
+      newOrderItems.splice(Number(btn.dataset.rmitem),1);renderNpItems();updateTotals();
+    }));
+    updateTotals();
+  }
+
+  npProd.addEventListener('change',()=>{
+    const p=sellableItems().find(p=>String(p.id)===npProd.value);
+    fillCorSelect(p); fillSzSelect(p,0);
+    $('np_price').value=p?(p.precoPromo||p.preco||''):'';
+  });
+  $('np_cor').addEventListener('change',()=>{
+    const p=sellableItems().find(p=>String(p.id)===$('np_prod').value);
+    if(p) fillSzSelect(p,Number($('np_cor').value)||0);
+  });
+  $('np_taxa').addEventListener('input',updateTotals);
+  $('np_desconto').addEventListener('input',updateTotals);
+  $('np_cupom').addEventListener('change',updateTotals);
+
+  $('np_addItem').addEventListener('click',()=>{
+    const prodId=$('np_prod').value;
+    if(!prodId){showNotice($('npNotice'),'Selecione um produto.','error');return}
+    const p=sellableItems().find(p=>String(p.id)===prodId);
+    const ci=Number($('np_cor').value)||0;
+    const cor=p?.cores?.[ci];
+    const sz=$('np_sz').value;
+    if(!sz){showNotice($('npNotice'),'Selecione um tamanho.','error');return}
+    const qty=Math.max(1,Number($('np_qty').value)||1);
+    const price=Number($('np_price').value)||(p?.precoPromo||p?.preco||0);
+    newOrderItems.push({productId:p?.tipoProduto==='combo'?String(prodId):Number(prodId),colorIndex:ci,nome:p?.nome||'',cor:p?.tipoProduto==='combo'?'':(cor?.nome||''),tamanho:sz,tamanhoSelecionado:sz,quantidade:qty,precoUnitario:price});
+    renderNpItems();
+    $('np_qty').value=1;
+  });
+
+  $('btnSalvPed').addEventListener('click',async()=>{
+    const nome=($('np_nome').value||'').trim();
+    if(!nome){showNotice($('npNotice'),'Informe o nome do cliente.','error');return}
+    const sub=newOrderItems.reduce((s,it)=>s+it.precoUnitario*it.quantidade,0);
+    const taxa=Number($('np_taxa')?.value)||0;
+    const descontoManual=Math.max(0,Number($('np_desconto')?.value)||0);
+    const cupom=normalizeCouponCode($('np_cupom')?.value);
+    const cupomItem=cupons.find(c=>normalizeCouponCode(c.code)===cupom);
+    const cupomPercentual=cupomItem?Number(cupomItem.percent)||0:0;
+    const descontoCupom=sub*(cupomPercentual/100);
+    const desconto=Math.min(sub,descontoManual+descontoCupom);
+    const body={
+      cliente:{nome,telefone:($('np_tel').value||'').trim(),email:($('np_email').value||'').trim(),
+                endereco:($('np_end').value||'').trim(),cidade:($('np_cidade').value||'').trim(),uf:($('np_uf').value||'').trim().toUpperCase()},
+      status:$('np_st').value, pagamento:$('np_pg').value, origem:$('np_origem').value,
+      obs:($('np_obs').value||'').trim(),
+      itens:newOrderItems,
+      itensEstoque:newOrderItems.map(it=>({productId:it.productId,colorIndex:it.colorIndex,tamanhoSelecionado:it.tamanhoSelecionado,quantidade:it.quantidade,nome:it.nome})),
+      subtotal:sub, taxa, desconto, descontoManual, cupom, cupomPercentual,
+      descontos:[
+        ...(descontoManual>0?[{type:'manual',label:'Desconto manual',amount:descontoManual}]:[]),
+        ...(cupom&&descontoCupom>0?[{type:'coupon',label:`Cupom ${cupom}`,code:cupom,percent:cupomPercentual,amount:descontoCupom}]:[])
+      ],
+      total:Math.max(0,sub-desconto)+taxa
+    };
+    try{
+      const r=await fetch('/api/admin/pedido',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const d=await r.json();
+      if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao salvar pedido');
+      await loadProdutos();
+      await loadCombos();
+      closeModal();
+      await loadPedidos();
+      activePedNum=d.pedido; renderOrdersTable();
+      const ped=pedidos.find(p=>String(p.pedido)===String(activePedNum));
+      if(ped) renderOrderDetail(ped);
+    }catch(e){showNotice($('npNotice'),'Erro: '+e.message,'error')}
+  });
+  renderNpItems();
+}
+
+$('btnNovoPedido').addEventListener('click',async()=>{
+  if(!cupons.length) await loadCupons();
+  $('modalOv').style.display='flex';
+  renderNewOrderForm();
+});
+const btnNovoPedidoHero=$('btnNovoPedidoHero');
+if(btnNovoPedidoHero) btnNovoPedidoHero.addEventListener('click',()=>$('btnNovoPedido').click());
+
+// ═══════════════════════════════════════════════════════════
+// RELATÓRIO
+// ═══════════════════════════════════════════════════════════
+async function loadRelatorio(){
+  try{
+    const r=await fetch('/api/pedidos');
+    if(r.status===401){redirect401();return}
+    if(!r.ok) return;
+    const allPeds=await r.json();
+    const peds=filterByReportDate(allPeds);
+    // Venda efetiva: a partir de confirmado. Enviado/entregue são etapas posteriores do mesmo pedido.
+    const vendas=effectiveSales(peds);
+    const totalRec=vendas.reduce((s,p)=>s+(Number(p.total)||0),0);
+    const totalItens=vendas.reduce((s,p)=>s+orderItems(p).reduce((si,it)=>si+it.quantidade,0),0);
+    const ticketMed=vendas.length?totalRec/vendas.length:0;
+    const taxaTotal=vendas.reduce((s,p)=>s+(Number(p.taxa)||0),0);
+
+    $('relKpis').innerHTML=[
+      ['Receita Total',fmtR(totalRec)],
+      ['Vendas desde confirmado',vendas.length+' pedidos'],
+      ['Itens Vendidos',totalItens+' un.'],
+      ['Ticket Médio',fmtR(ticketMed)],
+      ['Taxas / Frete',fmtR(taxaTotal)],
+    ].map(([l,v])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-val">${v}</div></div>`).join('');
+
+    // Status operacional: cada pedido aparece em apenas um status atual.
+    const byStatus={};
+    peds.forEach(p=>{const s=p.status||'reservado';byStatus[s]=(byStatus[s]||0)+1});
+    const statusColors={confirmado:'#6F8522',enviado:'#8EAA2F',entregue:'#16a34a',cancelado:'#64748b',reservado:'#d97706'};
+    const statusEntries=Object.entries(byStatus).sort((a,b)=>b[1]-a[1]);
+    const statusTotal=Math.max(statusEntries.reduce((s,[,n])=>s+n,0),1);
+    let acc=0;
+    const segments=statusEntries.map(([s,n])=>{
+      const start=acc/statusTotal*100; acc+=n; const end=acc/statusTotal*100;
+      return `${statusColors[s]||'#94a3b8'} ${start}% ${end}%`;
+    }).join(',');
+    $('relStatus').innerHTML=statusEntries.length?`
+      <div class="chart-donut-wrap">
+        <div class="chart-donut" style="--segments:${segments}">
+          <div class="chart-donut__center">${statusTotal}<span>pedidos</span></div>
+        </div>
+        <div class="chart-legend">
+          ${statusEntries.map(([s,n])=>`<div class="chart-legend__row"><span class="chart-dot" style="--c:${statusColors[s]||'#94a3b8'}"></span>${sPill(s)}<strong style="margin-left:auto">${n}</strong></div>`).join('')}
+        </div>
+      </div>`:'<div style="color:#94a3b8;font-size:13px">Sem pedidos.</div>';
+
+    // Top products (only paid)
+    const prodMap={};
+    vendas.forEach(p=>{
+      orderItems(p).forEach(it=>{
+        const k=it.nome||'Desconhecido';
+        if(!prodMap[k])prodMap[k]={qty:0,rev:0};
+        prodMap[k].qty+=it.quantidade;
+        prodMap[k].rev+=it.precoUnitario*it.quantidade;
+      });
+    });
+    const topProds=Object.entries(prodMap).sort((a,b)=>b[1].rev-a[1].rev).slice(0,8);
+    const maxProd=Math.max(...topProds.map(([,d])=>d.rev),1);
+    $('relProdutos').innerHTML=topProds.length?`<div class="chart-bars">${topProds.map(([nome,d],i)=>`
+      <div class="chart-bar">
+        <div class="chart-bar__label">${i+1}. ${esc(nome)} <span style="color:#64748b;font-weight:700">(${d.qty} un.)</span></div>
+        <div class="chart-bar__track"><div class="chart-bar__fill" style="--w:${Math.max(5,Math.round(d.rev/maxProd*100))}%"></div></div>
+        <div class="chart-bar__value">${fmtR(d.rev)}</div>
+      </div>`).join('')}</div>`:'<div style="color:#94a3b8;font-size:13px">Sem vendas registradas.</div>';
+
+    // Origem das vendas a partir de confirmado.
+    const byOrigem={};
+    vendas.forEach(p=>{const o=origemLabel(p.origem||'ecommerce');byOrigem[o]=(byOrigem[o]||0)+(Number(p.total)||0)});
+    const origemEntries=Object.entries(byOrigem).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxOrigem=Math.max(...origemEntries.map(([,v])=>v),1);
+    $('relOrigem').innerHTML=origemEntries.length?`<div class="chart-bars">${origemEntries.map(([o,val])=>`
+      <div class="chart-bar">
+        <div class="chart-bar__label">${esc(o)}</div>
+        <div class="chart-bar__track"><div class="chart-bar__fill" style="--w:${Math.max(5,Math.round(val/maxOrigem*100))}%"></div></div>
+        <div class="chart-bar__value">${fmtR(val)}</div>
+      </div>`).join('')}</div>`:'<div style="color:#94a3b8;font-size:13px">Sem origem registrada.</div>';
+
+    // Pipeline operacional: mostra a posição atual; a venda já conta desde confirmado.
+    const pipeline=[
+      ['Confirmado',byStatus.confirmado||0],
+      ['Enviado',byStatus.enviado||0],
+      ['Entregue',byStatus.entregue||0],
+      ['Cancelado',byStatus.cancelado||0],
+    ];
+    const maxPipe=Math.max(...pipeline.map(([,n])=>n),1);
+    $('relPipeline').innerHTML=`<div class="pipeline">${pipeline.map(([label,n])=>`
+      <div class="pipeline-step">
+        <div class="pipeline-step__label">${label}</div>
+        <div class="pipeline-step__value">${n}</div>
+        <div class="pipeline-step__bar"><span style="--w:${Math.max(4,Math.round(n/maxPipe*100))}%"></span></div>
+      </div>`).join('')}</div>
+      <div style="margin-top:14px;color:#64748b;font-size:12px">A venda conta quando chega em confirmado. Enviado e entregue são etapas posteriores do mesmo pedido.</div>`;
+
+    // Revenue by day — only paid orders
+    const byDay={};
+    const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-29);
+    vendas.forEach(p=>{
+      const d=new Date(p.recebidoEm||0);
+      if(d<cutoff)return;
+      const key=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+      byDay[key]=(byDay[key]||0)+(Number(p.total)||0);
+    });
+    const dayEntries=Object.entries(byDay).sort(([a],[b])=>{
+      const [da,ma]=a.split('/').map(Number), [db,mb]=b.split('/').map(Number);
+      return new Date(2026,ma-1,da)-new Date(2026,mb-1,db);
+    });
+    const maxVal=Math.max(...dayEntries.map(([,v])=>v),1);
+    $('relPeriodo').innerHTML=dayEntries.length?`
+      <div class="chart-columns">${dayEntries.map(([day,val])=>`<div class="chart-col" style="--h:${Math.max(6,Math.round(val/maxVal*100))}%" data-tip="${day} · ${fmtR(val)}"></div>`).join('')}</div>
+      <div style="display:flex;justify-content:space-between;color:#64748b;font-size:11px;margin-top:8px"><span>${esc(dayEntries[0][0])}</span><span>${esc(dayEntries[dayEntries.length-1][0])}</span></div>
+    `:'<div style="color:#94a3b8;font-size:13px">Sem dados nos últimos 30 dias.</div>';
+
+    // ── Vendas por cliente ──
+    const clientMap={};
+    vendas.forEach(p=>{
+      const email=(p.cliente?.email||p.email||'').toLowerCase().trim();
+      const nome=p.cliente?.nome||p.nome||'Sem nome';
+      const key=email||nome;
+      if(!clientMap[key]) clientMap[key]={nome,email,pedidos:0,itens:0,total:0,ultimoPedido:''};
+      clientMap[key].pedidos++;
+      clientMap[key].itens+=orderItems(p).reduce((s,it)=>s+it.quantidade,0);
+      clientMap[key].total+=Number(p.total)||0;
+      const dt=p.recebidoEm||p.confirmedAt||p.createdAt||'';
+      if(!clientMap[key].ultimoPedido||(dt&&dt>clientMap[key].ultimoPedido)) clientMap[key].ultimoPedido=dt;
+    });
+    window._relClientesData=Object.values(clientMap).sort((a,b)=>b.total-a.total);
+    renderRelClientesTable(window._relClientesData,$('relClienteFilter')?.value||'');
+
+  }catch(e){console.error('[relatorio]',e)}
+}
+
+function renderRelClientesTable(list,q){
+  const q2=(q||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const filtered=q2?list.filter(c=>{
+    const hay=[c.nome,c.email].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    return hay.includes(q2);
+  }):list;
+  const el=$('relClientesBody');
+  const countEl=$('relClientesCount');
+  if(countEl) countEl.textContent=`${filtered.length} cliente${filtered.length!==1?'s':''}`;
+  if(!el) return;
+  el.innerHTML=filtered.length?filtered.map(c=>`<tr>
+    <td><strong>${esc(c.nome)}</strong></td>
+    <td style="font-size:12px;color:#64748b">${c.email?esc(c.email):'—'}</td>
+    <td style="text-align:center;font-weight:700">${c.pedidos}</td>
+    <td style="text-align:center">${c.itens}</td>
+    <td style="font-weight:700;white-space:nowrap">${fmtR(c.total)}</td>
+    <td style="white-space:nowrap;color:#64748b">${fmtR(c.pedidos?c.total/c.pedidos:0)}</td>
+    <td style="font-size:12px;color:#64748b;white-space:nowrap">${c.ultimoPedido?fmtD(c.ultimoPedido):'—'}</td>
+  </tr>`).join('')
+  :`<tr><td colspan="7" style="text-align:center;padding:20px;color:#94a3b8">Nenhum cliente encontrado.</td></tr>`;
+}
+
+const btnRelApply=$('btnRelApply');
+if(btnRelApply){
+  btnRelApply.addEventListener('click',()=>{
+    relDateStart=$('relDateStart')?.value||'';
+    relDateEnd=$('relDateEnd')?.value||'';
+    loadRelatorio();
+  });
+}
+const btnRelClear=$('btnRelClear');
+if(btnRelClear){
+  btnRelClear.addEventListener('click',()=>{
+    relDateStart='';
+    relDateEnd='';
+    if($('relDateStart')) $('relDateStart').value='';
+    if($('relDateEnd')) $('relDateEnd').value='';
+    loadRelatorio();
+  });
+}
+
+$('relClienteFilter')?.addEventListener('input', e => {
+  renderRelClientesTable(window._relClientesData||[], e.target.value);
+});
+
+// ── Init ─────────────────────────────────────────────────────
+renderToneOptions();
+loadProdutos();
+loadCombos();
+loadAtacado();
+loadCupons();
+
+// ── CRM ──────────────────────────────────────────────────────
+let crmDays = 30;
+let crmSessions = [];
+let crmAtacadoLeads = [];
+let crmAtacadoError = '';
+
+const CRM_EVENT_LABELS = {
+  page_view: 'Visitou', product_view: 'Viu produto', add_to_cart: 'Adicionou ao carrinho',
+  checkout_start: 'Iniciou checkout', purchase: 'Comprou', instagram_link_click: 'Clicou no link do Instagram', heartbeat: '—'
+};
+const CRM_STATUS = (s) => {
+  if (s.purchased) return { label: 'Comprou', color: '#16a34a' };
+  if (s.checkout)  return { label: 'Checkout', color: '#6F8522' };
+  if (s.carted)    return { label: 'Carrinho', color: '#d97706' };
+  if (s.viewed)    return { label: 'Viu produto', color: '#8EAA2F' };
+  return             { label: 'Visitou', color: '#6b7280' };
+};
+function fmtTime(s){ if(!s)return '—'; if(s<60)return s+'s'; if(s<3600)return Math.floor(s/60)+'min'; return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'min'; }
+function fmtDt(iso){ if(!iso)return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function leadScore(s){
+  let score=10;
+  if(s.viewed) score+=15;
+  if(s.carted) score+=30;
+  if(s.checkout) score+=35;
+  if(s.clientId) score+=15;
+  if(Number(s.timeOnSite||0)>180) score+=10;
+  if(Number(s.eventCount||0)>5) score+=10;
+  if(s.purchased) score=100;
+  return Math.min(100,score);
+}
+function leadTier(score){
+  if(score>=80) return 'Alta';
+  if(score>=55) return 'Média';
+  return 'Baixa';
+}
+function crmMatchesSegment(s, segment){
+  if(!segment) return true;
+  if(segment==='hot') return leadScore(s)>=70&&!s.purchased;
+  if(segment==='checkout') return s.checkout&&!s.purchased;
+  if(segment==='carted') return s.carted&&!s.purchased;
+  if(segment==='identified') return Boolean(s.clientId);
+  if(segment==='purchased') return Boolean(s.purchased);
+  return true;
+}
+function applyCrmFilters(){
+  const q=(document.getElementById('crmSearch')?.value||'').toLowerCase();
+  const segment=document.getElementById('crmStatusFilter')?.value||'';
+  const filtered=crmSessions.filter(s=>{
+    const hay=[s.clienteNome,s.cidade,s.bairro,s.regiao,s.origem,s.utm_source,s.utm_medium,s.utm_campaign,s.clientId].filter(Boolean).join(' ').toLowerCase();
+    return (!q||hay.includes(q))&&crmMatchesSegment(s,segment);
+  });
+  const body=document.getElementById('crmTbody');
+  if(body) body.innerHTML=renderCrmRows(filtered);
+  updateCrmCount(filtered.length);
+  bindCrmRows();
+}
+function updateCrmCount(n){
+  const el=document.getElementById('crmCountLabel');
+  if(el) el.textContent=`${n} sessão${n!==1?'ões':''}`;
+}
+
+async function loadCRM(){
+  const panel = document.getElementById('tab-crm');
+  if(!panel) return;
+  panel.innerHTML = `<div style="color:#94a3b8;padding:32px;text-align:center">Carregando...</div>`;
+  try {
+    const [sesRes, funRes, atacadoRes] = await Promise.all([
+      fetch(`/api/crm/sessions?days=${crmDays}`),
+      fetch(`/api/crm/funnel?days=${crmDays}`),
+      fetch('/api/admin/atacado-leads')
+    ]);
+    const [sesData, funData, atacadoData] = await Promise.all([
+      sesRes.json(),
+      funRes.json(),
+      atacadoRes.json().catch(()=>({ ok:false, error:'Resposta inválida do servidor.' }))
+    ]);
+    if(!sesRes.ok || sesData.ok === false) throw new Error(sesData.error || 'Não foi possível carregar sessões.');
+    if(!funRes.ok || funData.ok === false) throw new Error(funData.error || 'Não foi possível carregar funil.');
+    crmSessions = sesData.sessions || [];
+    crmAtacadoLeads = atacadoRes.ok && atacadoData.ok !== false ? (atacadoData.leads || []) : [];
+    crmAtacadoError = atacadoRes.ok && atacadoData.ok !== false ? '' : (atacadoData.error || 'Não foi possível carregar clientes do atacado.');
+    renderCRM(crmSessions, funData);
+  } catch(e){ panel.innerHTML = `<p style="color:#f87171">Erro ao carregar CRM: ${e.message}</p>`; }
+}
+
+function renderCRM(sessions, funnel){
+  const f = funnel || {};
+  const conv = f.total > 0 ? ((f.purchased||0)/f.total*100).toFixed(1) : '0.0';
+  const abandon = f.carted > 0 ? (((f.carted-(f.purchased||0))/f.carted)*100).toFixed(1) : '0.0';
+  const identified = sessions.filter(s=>s.clientId).length;
+  const hotLeads = sessions.filter(s=>leadScore(s)>=70 && !s.purchased);
+  const panel = document.getElementById('tab-crm');
+  panel.innerHTML = `
+<div class="screen-hero">
+  <div>
+    <div class="screen-kicker">CRM e leads</div>
+    <h1 class="screen-title">Oportunidades de relacionamento</h1>
+    <p class="screen-copy">Priorize visitantes com intenção de compra, entenda origem de tráfego e acompanhe o funil para ações de remarketing.</p>
+  </div>
+</div>
+
+<div class="crm-shell">
+  <div class="crm-note card"><div class="card-body">LGPD: dados coletados com consentimento por cookie, IP anonimizado e uso interno para análise, segmentação e atendimento. Exclua sessões sob solicitação.</div></div>
+
+  <div class="crm-kpis">
+    ${[
+      ['Sessões',f.total||0,`${crmDays} dias`],
+      ['Identificados',identified,'com conta/cliente'],
+      ['Clientes atacado',crmAtacadoLeads.length,'cadastros do catálogo'],
+      ['Leads quentes',hotLeads.length,'alta intenção sem compra'],
+      ['Conversão',conv+'%','compras no período'],
+      ['Abandono',abandon+'%','carrinho sem compra'],
+    ].map(([l,v,h])=>`<div class="quick-stat"><div class="quick-stat__label">${l}</div><div class="quick-stat__value">${v}</div><div class="quick-stat__hint">${h}</div></div>`).join('')}
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Clientes do atacado</h2>
+      <span class="stock-head-sub">${crmAtacadoLeads.length} cadastro${crmAtacadoLeads.length!==1?'s':''} via catálogo</span>
+    </div>
+    <div class="card-body">
+      ${crmAtacadoError?`<div style="margin-bottom:12px;padding:10px 12px;border-radius:8px;background:#fff7ed;color:#c2410c;font-size:12px">A área administrativa continua disponível, mas os cadastros do atacado não puderam ser carregados: ${esc(crmAtacadoError)}</div>`:''}
+      <div style="overflow-x:auto">
+        <table class="crm-table">
+          <thead><tr><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Cidade</th><th>Cadastro</th><th>Status</th></tr></thead>
+          <tbody>${renderAtacadoLeadRows(crmAtacadoLeads)}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="crm-grid">
+    <div class="crm-main">
+      <div class="card">
+        <div class="card-head"><h2>Funil de conversão</h2><span class="stock-head-sub">da visita à compra</span></div>
+        <div class="card-body">
+          <div class="crm-funnel">
+            ${[
+              {label:'Visitantes',val:f.total,color:'#111827'},
+              {label:'Viram produto',val:f.viewed,color:'#6F8522'},
+              {label:'Carrinho',val:f.carted,color:'#d97706'},
+              {label:'Checkout',val:f.checkout,color:'#0891b2'},
+              {label:'Compraram',val:f.purchased,color:'#16a34a'},
+            ].map(step=>{
+              const pct = f.total > 0 ? Math.round((step.val||0)/f.total*100) : 0;
+              return `<div class="crm-step">
+                <span class="crm-step__label">${step.label}</span>
+                <div class="crm-step__bar"><div class="crm-step__fill" style="width:${Math.max(3,pct)}%;background:${step.color}"></div></div>
+                <span class="crm-step__count">${step.val||0} · ${pct}%</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Sessões e leads</h2><span class="stock-head-sub" id="crmCountLabel"></span></div>
+        <div class="card-body">
+          <div class="crm-filter">
+            <div class="fg"><label class="fl">Período</label><select class="fc" id="crmDaysFilter">
+              <option value="7" ${crmDays===7?'selected':''}>Últimos 7 dias</option>
+              <option value="30" ${crmDays===30?'selected':''}>Últimos 30 dias</option>
+              <option value="90" ${crmDays===90?'selected':''}>Últimos 90 dias</option>
+            </select></div>
+            <div class="fg"><label class="fl">Busca</label><input class="fc" type="text" id="crmSearch" placeholder="Cliente, cidade, origem ou campanha"></div>
+            <div class="fg"><label class="fl">Segmento</label><select class="fc" id="crmStatusFilter">
+              <option value="">Todos</option>
+              <option value="hot">Leads quentes</option>
+              <option value="checkout">Checkout sem compra</option>
+              <option value="carted">Carrinho abandonado</option>
+              <option value="identified">Identificados</option>
+              <option value="purchased">Compraram</option>
+            </select></div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="crm-table" id="crmTable">
+              <thead><tr><th>Lead</th><th>Intenção</th><th>Local</th><th>Origem</th><th>Status</th><th>Eventos</th><th>Tempo</th><th></th></tr></thead>
+              <tbody id="crmTbody">${renderCrmRows(sessions)}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="crm-side">
+      <div class="card">
+        <div class="card-head"><h2>Oportunidades quentes</h2></div>
+        <div class="card-body">${renderHotLeads(hotLeads)}</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Ações sugeridas</h2></div>
+        <div class="card-body">
+          <div class="pipeline">
+            <div class="pipeline-step"><div class="pipeline-step__label">Remarketing</div><div class="pipeline-step__value">${sessions.filter(s=>s.carted&&!s.purchased).length}</div><div class="pipeline-step__bar"><span style="--w:85%"></span></div></div>
+            <div class="pipeline-step"><div class="pipeline-step__label">Recontato</div><div class="pipeline-step__value">${sessions.filter(s=>s.clientId&&!s.purchased).length}</div><div class="pipeline-step__bar"><span style="--w:70%"></span></div></div>
+            <div class="pipeline-step"><div class="pipeline-step__label">Campanhas</div><div class="pipeline-step__value">${new Set(sessions.map(s=>s.utm_campaign||s.utm_source||s.origem).filter(Boolean)).size}</div><div class="pipeline-step__bar"><span style="--w:55%"></span></div></div>
+            <div class="pipeline-step"><div class="pipeline-step__label">Retenção</div><div class="pipeline-step__value">${sessions.filter(s=>s.purchased).length}</div><div class="pipeline-step__bar"><span style="--w:45%"></span></div></div>
+          </div>
+          <div style="margin-top:12px;color:#64748b;font-size:12px">Use leads quentes para campanhas de carrinho/checkout e clientes identificados para recontato ativo.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+  document.getElementById('crmDaysFilter')?.addEventListener('change', (e)=>{ crmDays=Number(e.target.value); loadCRM(); });
+  document.getElementById('crmSearch')?.addEventListener('input', applyCrmFilters);
+  document.getElementById('crmStatusFilter')?.addEventListener('change', applyCrmFilters);
+  updateCrmCount(sessions.length);
+  bindCrmRows();
+}
+
+function formatAtacadoWhatsApp(value){
+  const digits=String(value||'').replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');
+  if(digits.length===11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+  if(digits.length===10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return value||'—';
+}
+
+function renderAtacadoLeadRows(leads){
+  if(!leads.length) return `<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px">Nenhum cadastro realizado pelo catálogo de atacado.</td></tr>`;
+  return leads.map(lead=>{
+    const phoneDigits=String(lead.whatsapp||'').replace(/\D/g,'');
+    const waPhone=phoneDigits.startsWith('55')?phoneDigits:`55${phoneDigits}`;
+    const date=lead.verified_at||lead.created_at;
+    return `<tr>
+      <td><strong>${esc(lead.nome||'—')}</strong></td>
+      <td>${phoneDigits?`<a href="https://wa.me/${waPhone}" target="_blank" rel="noopener" style="color:#6F8522;font-weight:700;white-space:nowrap">${esc(formatAtacadoWhatsApp(lead.whatsapp))}</a>`:'—'}</td>
+      <td>${lead.email?`<a href="mailto:${esc(lead.email)}" style="color:#475569">${esc(lead.email)}</a>`:'—'}</td>
+      <td>${esc(lead.cidade||'—')}</td>
+      <td style="white-space:nowrap">${fmtDt(date)}</td>
+      <td><span class="crm-badge" style="color:${lead.verified?'#16a34a':'#d97706'}">${lead.verified?'Verificado':'Pendente'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCrmRows(sessions){
+  if(!sessions.length) return `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:24px">Nenhuma sessão registrada.</td></tr>`;
+  return sessions.map(s=>{
+    const st = CRM_STATUS(s);
+    const score=leadScore(s);
+    const eventIcons = [s.viewed?'Produto':'', s.carted?'Carrinho':'', s.checkout?'Checkout':'', s.purchased?'Compra':''].filter(Boolean).join(' · ');
+    const locLabel = [s.cidade, s.bairro].filter(Boolean).join(' · ') || '—';
+    const origemLabel = s.utm_campaign || s.utm_source || s.origem || '—';
+    return `<tr data-sid="${s.sessionId}">
+      <td>${s.clienteNome ? `<strong>${s.clienteNome}</strong><br><span style="font-size:11px;color:#64748b">Cliente #${s.clientId}</span>` : `<strong>Anônimo</strong><br><span style="font-size:11px;color:#64748b">${fmtDt(s.firstSeen)}</span>`}</td>
+      <td><span class="crm-score">${score}</span><span style="margin-left:8px;font-size:12px;color:#64748b">${leadTier(score)}</span></td>
+      <td style="font-size:12px">${locLabel}${s.regiao?`<br><span style="color:#64748b">${s.regiao}</span>`:''}</td>
+      <td style="font-size:12px;color:#64748b;white-space:nowrap">${esc(origemLabel)}<br><span>${esc(s.dispositivo||'—')} · ${esc(s.browser||'—')}</span></td>
+      <td><span class="crm-badge" style="color:${st.color}">${st.label}</span></td>
+      <td>${eventIcons||'—'} <span style="font-size:11px;color:#64748b">(${s.eventCount})</span></td>
+      <td style="white-space:nowrap">${fmtTime(s.timeOnSite)}</td>
+      <td><button class="btn" style="padding:3px 10px;font-size:11px" data-sid="${s.sessionId}">Ver</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderHotLeads(leads){
+  const rows=[...leads].sort((a,b)=>leadScore(b)-leadScore(a)).slice(0,8);
+  if(!rows.length) return '<div style="color:#64748b;font-size:13px">Sem leads quentes no período.</div>';
+  return `<div class="crm-leads">${rows.map(s=>`
+    <div class="crm-lead">
+      <div>
+        <div class="crm-lead__name">${esc(s.clienteNome||'Visitante anônimo')}</div>
+        <div class="crm-lead__meta">${esc([s.cidade,s.bairro].filter(Boolean).join(' · ')||'Local não identificado')} · ${CRM_STATUS(s).label} · ${fmtTime(s.timeOnSite)}</div>
+      </div>
+      <button class="btn btn--secondary btn--sm" data-sid="${esc(s.sessionId)}">Ver</button>
+    </div>`).join('')}</div>`;
+}
+
+function bindCrmRows(){
+  document.querySelectorAll('#crmTbody button[data-sid], .crm-leads button[data-sid]').forEach(btn=>{
+    btn.addEventListener('click', ()=> openCrmSession(btn.dataset.sid));
+  });
+}
+
+async function openCrmSession(sid){
+  const res = await fetch(`/api/crm/sessions/${sid}`);
+  const data = await res.json();
+  if(!data.ok) return;
+  const s = data.session;
+  const st = CRM_STATUS({ purchased: s.events.some(e=>e.type==='purchase'), carted: s.events.some(e=>e.type==='add_to_cart'), checkout: s.events.some(e=>e.type==='checkout_start'), viewed: s.events.some(e=>e.type==='product_view') });
+  const evHtml = s.events.filter(e=>e.type!=='heartbeat').map(e=>`
+    <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #eef2f7;font-size:12px">
+      <span style="color:#64748b;white-space:nowrap">${fmtDt(e.ts)}</span>
+      <span style="color:#334155">${CRM_EVENT_LABELS[e.type]||e.type}${e.productName?` — <strong>${e.productName}</strong>`:''} ${e.orderId?`— Pedido #${e.orderId}`:''}${e.total?` (${fmtR(e.total)})`:''}</span>
+    </div>`).join('') || '<p style="color:#64748b">Nenhum evento registrado.</p>';
+
+  const dlg = document.createElement('dialog');
+  dlg.style.cssText = 'background:#fff;color:#383838;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:620px;width:90%;max-height:82vh;overflow-y:auto;box-shadow:0 24px 64px rgba(56,56,56,.22)';
+  dlg.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <strong>Sessão — ${s.clienteNome||'Anônimo'}</strong>
+      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:16px">
+      <div><span style="color:#64748b">Cidade:</span> ${s.cidade||'—'}${s.bairro?' · '+s.bairro:''}</div>
+      <div><span style="color:#64748b">Estado:</span> ${s.regiao||'—'} · ${s.pais||'—'}</div>
+      ${s.logradouro?`<div style="grid-column:1/-1"><span style="color:#64748b">Logradouro:</span> <strong>${s.logradouro}</strong>${s.cep?', CEP '+s.cep:''} <span style="font-size:10px;background:#f0fdf4;color:#166534;border-radius:4px;padding:1px 5px">${(s.cep_source||'').replace('cart_input','CEP digitado').replace('client_address','endereço cadastrado').replace(/^gps_(\d+)m$/,'GPS ±$1m')||'IP'}</span></div>`
+      : `<div><span style="color:#64748b">CEP:</span> ${s.cep||'—'} <span style="font-size:10px;color:#94a3b8">${s.cep_source?'('+s.cep_source.replace('cart_input','digitado').replace('client_address','cadastro').replace(/^gps_(\d+)m$/,'GPS ±$1m')+')':''}</span></div>`}
+      <div><span style="color:#64748b">Status:</span> <span style="color:${st.color}">${st.label}</span></div>
+      ${s.lat&&s.lng?`<div style="grid-column:1/-1"><span style="color:#64748b">Coordenadas GPS:</span> <a href="https://maps.google.com/?q=${s.lat},${s.lng}" target="_blank" style="color:#6F8522">${Number(s.lat).toFixed(5)}, ${Number(s.lng).toFixed(5)} ↗</a></div>`:''}
+      <div><span style="color:#64748b">Dispositivo:</span> ${s.dispositivo||'—'} · ${s.browser||'—'}</div>
+      <div><span style="color:#64748b">Sistema:</span> ${s.so||'—'}</div>
+      <div><span style="color:#64748b">Origem:</span> ${s.utm_campaign||s.utm_source||s.origem||'direto'}</div>
+      <div><span style="color:#64748b">UTM:</span> ${[s.utm_source,s.utm_medium,s.utm_campaign].filter(Boolean).join(' / ')||'—'}</div>
+      <div><span style="color:#64748b">Primeira visita:</span> ${fmtDt(s.firstSeen)}</div>
+      <div><span style="color:#64748b">Última atividade:</span> ${fmtDt(s.lastSeen)}</div>
+      <div><span style="color:#64748b">Tempo no site:</span> ${fmtTime(s.timeOnSite)}</div>
+      <div><span style="color:#64748b">IP anonimizado:</span> ${s.ip||'—'}</div>
+    </div>
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin-bottom:8px">Linha do tempo</div>
+    ${evHtml}
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <button id="btnCrmDel" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Excluir (LGPD)</button>
+      <button onclick="this.closest('dialog').close()" style="background:#111827;border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px">Fechar</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  dlg.querySelector('#btnCrmDel').addEventListener('click', async()=>{
+    if(!confirm('Excluir esta sessão permanentemente?')) return;
+    await fetch(`/api/crm/sessions/${sid}`, {method:'DELETE'});
+    dlg.close(); loadCRM();
+  });
+  dlg.addEventListener('close', ()=> dlg.remove());
+}
+
+document.querySelectorAll('.tab-btn[data-tab="crm"]').forEach(btn=>{
+  btn.addEventListener('click', loadCRM);
+});
+
+// ── CLIENTES ─────────────────────────────────────────────────────────────────
+let _clientes = [];
+let _clientesFiltrados = [];
+
+function fmtPhone(t){ if(!t)return '—'; const d=t.replace(/\D/g,''); if(d.length===11)return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`; if(d.length===10)return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`; return t; }
+function fmtDate(v){ if(!v)return '—'; return new Date(v).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function fmtBRL2(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+
+async function loadClientes(){
+  const body=$('clientesBody');
+  if(body) body.innerHTML='<div class="form-empty">Carregando…</div>';
+  try{
+    const r=await fetch('/api/admin/clientes');
+    if(r.status===401){redirect401();return;}
+    const d=await r.json();
+    _clientes=Array.isArray(d.clientes)?d.clientes:[];
+    renderClientesKpis();
+    renderClientesList();
+  }catch(e){console.error(e); if(body)body.innerHTML='<div class="form-empty" style="color:#e8445a">Erro ao carregar clientes.</div>';}
+}
+
+function renderClientesKpis(){
+  const el=$('clientesKpis');
+  if(!el) return;
+  const total=_clientes.length;
+  const comPedidos=_clientes.filter(c=>c.hasOrders).length;
+  const comTelefone=_clientes.filter(c=>c.telefone).length;
+  const recentes=_clientes.filter(c=>{
+    const d=new Date(c.createdAt);
+    return !isNaN(d) && (Date.now()-d.getTime())<=30*24*60*60*1000;
+  }).length;
+  const cards=[
+    ['Total de clientes',total,'cadastrados'],
+    ['Com pedidos',comPedidos,'já compraram'],
+    ['Com WhatsApp',comTelefone,'telefone cadastrado'],
+    ['Novos (30 dias)',recentes,'cadastros recentes'],
+  ];
+  el.innerHTML=cards.map(([label,value,hint])=>`<div class="quick-stat"><div class="quick-stat__label">${label}</div><div class="quick-stat__value">${value}</div><div class="quick-stat__hint">${hint}</div></div>`).join('');
+}
+
+function renderClientesList(){
+  const q=($('clienteSearch')?.value||'').toLowerCase();
+  const sort=$('clienteSort')?.value||'newest';
+  let list=[..._clientes];
+  if(q) list=list.filter(c=>
+    (c.nome||'').toLowerCase().includes(q)||
+    (c.email||'').toLowerCase().includes(q)||
+    (c.telefone||'').includes(q)||
+    (c.cpf||'').replace(/\D/g,'').includes(q.replace(/\D/g,''))
+  );
+  if(sort==='oldest') list.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  else if(sort==='name') list.sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+  _clientesFiltrados=list;
+  const body=$('clientesBody');
+  if(!body) return;
+  if(!list.length){body.innerHTML='<div class="form-empty">Nenhum cliente encontrado.</div>';return;}
+  body.innerHTML=`
+    <div style="font-size:12px;color:#64748b;margin-bottom:10px">${list.length} cliente${list.length!==1?'s':''}</div>
+    <div style="overflow-x:auto">
+    <table class="orders-tbl">
+      <thead><tr>
+        <th>Nome</th>
+        <th>E-mail</th>
+        <th>Telefone / WhatsApp</th>
+        <th>CPF</th>
+        <th>Cadastro</th>
+        <th style="text-align:right">Ações</th>
+      </tr></thead>
+      <tbody>
+        ${list.map(c=>`<tr>
+          <td><strong>${esc(c.nome||'—')}</strong></td>
+          <td style="font-size:12px">${esc(c.email||'—')}</td>
+          <td style="font-family:monospace;font-size:12px">${c.telefone?fmtPhone(c.telefone):'<span style="color:#94a3b8">—</span>'}</td>
+          <td style="font-family:monospace;font-size:11px">${c.cpf?c.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):'—'}</td>
+          <td style="font-size:12px;color:#64748b">${fmtDate(c.createdAt)}</td>
+          <td style="text-align:right">
+            <div style="display:inline-flex;gap:6px">
+              <button class="btn btn--secondary btn--sm" data-cliente-id="${c.id}" type="button">Endereços</button>
+              ${c.telefone?`<button class="btn btn--primary btn--sm" data-wpp-id="${c.id}" data-wpp-nome="${esc(c.nome||'')}" type="button">📲 WhatsApp</button>`:''}
+              ${c.hasOrders
+                ? `<button class="btn btn--sm" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;cursor:not-allowed" title="Possui pedidos — não pode ser excluído" disabled>Excluir</button>`
+                : `<button class="btn btn--sm" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626" data-del-cliente="${c.id}" data-del-nome="${esc(c.nome||'')}" type="button">Excluir</button>`
+              }
+            </div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  $$('[data-cliente-id]').forEach(btn=>btn.addEventListener('click',()=>openClienteModal(Number(btn.dataset.clienteId))));
+  $$('[data-wpp-id]').forEach(btn=>btn.addEventListener('click',()=>openWppModal(Number(btn.dataset.wppId), btn.dataset.wppNome)));
+  $$('[data-del-cliente]').forEach(btn=>btn.addEventListener('click', async ()=>{
+    const id = Number(btn.dataset.delCliente);
+    const nome = btn.dataset.delNome || 'este cliente';
+    if (!confirm(`Excluir permanentemente o cadastro de "${nome}"?\n\nEsta ação não pode ser desfeita.`)) return;
+    btn.disabled = true; btn.textContent = '…';
+    const r = await fetch(`/api/admin/clientes/${id}`, { method: 'DELETE' });
+    const d = await r.json().catch(()=>({}));
+    if (d.ok) { toast('Cadastro excluído.'); await loadClientes(); }
+    else { toast(d.error || 'Erro ao excluir.', 'error'); btn.disabled = false; btn.textContent = 'Excluir'; }
+  }));
+}
+
+async function openClienteModal(id){
+  const r=await fetch(`/api/admin/clientes/${id}`);
+  const d=await r.json().catch(()=>({}));
+  if(!d.ok){toast(d.error||'Erro ao carregar cliente','error');return;}
+  const {client:c,addresses}=d;
+  const addrHtml=addresses.length?addresses.map(a=>`
+    <div style="padding:10px 12px;background:#f8faff;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;margin-bottom:8px">
+      <strong>${esc(a.logradouro)}, ${esc(a.numero)}${a.complemento?' – '+esc(a.complemento):''}</strong><br>
+      <span style="color:#64748b">${a.bairro?esc(a.bairro)+' · ':''}${esc(a.cidade)}/${esc(a.uf)} — CEP ${a.cep.replace(/(\d{5})(\d{3})/,'$1-$2')}</span>
+    </div>`).join(''):`<p style="color:#94a3b8;font-size:12px;padding:8px 0">Nenhum endereço cadastrado.</p>`;
+  const dlg=document.createElement('dialog');
+  dlg.style.cssText='background:#fff;color:#383838;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(56,56,56,.22)';
+  dlg.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:17px;font-weight:700">${esc(c.nome||'—')}</div>
+        <div style="font-size:12px;color:#64748b">Cliente #${c.id} — cadastro em ${fmtDate(c.createdAt)}</div>
+      </div>
+      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="background:#f8faff;border-radius:10px;padding:14px;margin-bottom:16px;display:grid;gap:8px;font-size:13px">
+      <div><span style="color:#64748b;min-width:80px;display:inline-block">E-mail</span> ${esc(c.email||'—')}</div>
+      <div><span style="color:#64748b;min-width:80px;display:inline-block">Telefone</span> <strong>${c.telefone?fmtPhone(c.telefone):'<span style="color:#94a3b8;font-weight:400">não informado</span>'}</strong></div>
+      <div><span style="color:#64748b;min-width:80px;display:inline-block">CPF</span> <span style="font-family:monospace">${c.cpf?c.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4'):'—'}</span></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:8px">Endereços de entrega</div>
+    ${addrHtml}
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      ${c.telefone?`<button class="btn btn--primary btn--sm" id="btnWppCliente">📲 Enviar WhatsApp</button>`:''}
+      <button onclick="this.closest('dialog').close()" style="background:#f1f5f9;border:none;color:#475569;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Fechar</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  dlg.querySelector('#btnWppCliente')?.addEventListener('click',()=>{ dlg.close(); openWppModal(c.id,c.nome); });
+  dlg.addEventListener('close',()=>dlg.remove());
+}
+
+const WPP_TEMPLATES=[
+  {label:'Boas-vindas',texto:(n)=>`Olá, ${n}! 👋 Seja bem-vindo(a) à Lemoov Fitness! Estamos felizes em ter você conosco. Acesse nossa loja e confira as novidades: https://lemoov.com.br`},
+  {label:'Lembrete de carrinho',texto:(n)=>`Oi, ${n}! 🛍️ Você deixou itens no seu carrinho na Lemoov. Que tal finalizar sua compra? Estamos com estoque limitado! 💚`},
+  {label:'Nova coleção',texto:(n)=>`Olá, ${n}! ✨ Chegou nossa nova coleção Fitness! Peças lindas esperando por você: https://lemoov.com.br 💚`},
+  {label:'Promoção',texto:(n)=>`Ei, ${n}! 🎉 Promoção especial na Lemoov! Aproveite descontos imperdíveis hoje. Acesse: https://lemoov.com.br`},
+  {label:'Pós-compra / avaliação',texto:(n)=>`Olá, ${n}! 💚 Esperamos que tenha adorado sua compra da Lemoov! Sua opinião é muito importante para nós. Quando tiver um momento, adoraríamos saber o que achou. 😊`},
+  {label:'Personalizado',texto:()=>''},
+];
+
+function openWppModal(id, nome){
+  const dlg=document.createElement('dialog');
+  dlg.style.cssText='background:#fff;color:#383838;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;box-shadow:0 24px 64px rgba(56,56,56,.22)';
+  dlg.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <strong>📲 WhatsApp para ${esc(nome||'cliente')}</strong>
+      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="margin-bottom:10px">
+      <label class="fl">Template</label>
+      <select class="fc" id="wppTemplate">
+        ${WPP_TEMPLATES.map((t,i)=>`<option value="${i}">${t.label}</option>`).join('')}
+      </select>
+    </div>
+    <div>
+      <label class="fl">Mensagem</label>
+      <textarea id="wppMsg" class="fc" rows="5" style="resize:vertical;font-size:13px"></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+      <button class="btn btn--ghost btn--sm" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button class="btn btn--primary btn--sm" id="btnEnviarWpp">Enviar</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  const sel=dlg.querySelector('#wppTemplate');
+  const txt=dlg.querySelector('#wppMsg');
+  const applyTpl=()=>{ const t=WPP_TEMPLATES[Number(sel.value)]; txt.value=t.texto(nome?.split(' ')[0]||''); };
+  applyTpl();
+  sel.addEventListener('change',applyTpl);
+  dlg.querySelector('#btnEnviarWpp').addEventListener('click',async()=>{
+    const msg=txt.value.trim();
+    if(!msg){toast('Escreva a mensagem','error');return;}
+    const btn=dlg.querySelector('#btnEnviarWpp'); btn.disabled=true; btn.textContent='Enviando…';
+    try{
+      const r=await fetch(`/api/admin/clientes/${id}/whatsapp`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mensagem:msg})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Erro ao enviar');
+      toast('Mensagem enviada via WhatsApp!','success'); dlg.close();
+    }catch(e){toast(e.message,'error'); btn.disabled=false; btn.textContent='Enviar';}
+  });
+  dlg.addEventListener('close',()=>dlg.remove());
+}
+
+function openWppMassa(){
+  const lista=_clientesFiltrados.filter(c=>c.telefone);
+  if(!lista.length){toast('Nenhum cliente com telefone no filtro atual','error');return;}
+  const dlg=document.createElement('dialog');
+  dlg.style.cssText='background:#fff;color:#383838;border:1px solid #e2e8f0;border-radius:14px;padding:24px;max-width:520px;width:92%;box-shadow:0 24px 64px rgba(56,56,56,.22)';
+  dlg.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <strong>📲 WhatsApp em massa — ${lista.length} cliente${lista.length!==1?'s':''}</strong>
+      <button onclick="this.closest('dialog').close()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="background:#fef9c3;border-radius:8px;padding:10px 12px;font-size:12px;color:#854d0e;margin-bottom:14px">⚠️ Mensagem será enviada para <strong>${lista.length} contatos</strong> com intervalo de 400ms entre cada. Certifique-se que sua conta Z-API está ativa.</div>
+    <div style="margin-bottom:10px">
+      <label class="fl">Template</label>
+      <select class="fc" id="wppMassaTpl">
+        ${WPP_TEMPLATES.map((t,i)=>`<option value="${i}">${t.label}</option>`).join('')}
+      </select>
+    </div>
+    <div>
+      <label class="fl">Mensagem <span style="color:#64748b;font-size:11px">(use {nome} para personalizar)</span></label>
+      <textarea id="wppMassaMsg" class="fc" rows="5" style="resize:vertical;font-size:13px"></textarea>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+      <button class="btn btn--ghost btn--sm" onclick="this.closest('dialog').close()">Cancelar</button>
+      <button class="btn btn--danger btn--sm" id="btnEnviarMassa">Enviar para ${lista.length}</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  const sel=dlg.querySelector('#wppMassaTpl');
+  const txt=dlg.querySelector('#wppMassaMsg');
+  const applyTpl=()=>{ const t=WPP_TEMPLATES[Number(sel.value)]; txt.value=t.texto('{nome}'); };
+  applyTpl(); sel.addEventListener('change',applyTpl);
+  dlg.querySelector('#btnEnviarMassa').addEventListener('click',async()=>{
+    const template=txt.value.trim();
+    if(!template){toast('Escreva a mensagem','error');return;}
+    if(!confirm(`Confirma envio para ${lista.length} clientes?`)) return;
+    const btn=dlg.querySelector('#btnEnviarMassa'); btn.disabled=true; btn.textContent='Enviando…';
+    try{
+      const ids=lista.map(c=>c.id);
+      const r=await fetch('/api/admin/clientes/whatsapp-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,mensagem:template.replace(/{nome}/g,'')})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.ok) throw new Error(d.error||'Erro');
+      toast(`✅ ${d.sent} enviados${d.errors?.length?' | '+d.errors.length+' falhas':''}`,d.errors?.length?'warn':'success');
+      dlg.close();
+    }catch(e){toast(e.message,'error'); btn.disabled=false; btn.textContent=`Enviar para ${lista.length}`;}
+  });
+  dlg.addEventListener('close',()=>dlg.remove());
+}
+
+// ── Popups personalizados admin ──────────────────────────────────────────────
+function adminPopup(titulo, mensagem, tipo='warn'){
+  const existing=document.getElementById('adminPopupDlg');
+  if(existing) existing.remove();
+  const icon={'error':'⛔','warn':'⚠️','success':'✅','info':'ℹ️'}[tipo]||'ℹ️';
+  const color={'error':'#dc2626','warn':'#d97706','success':'#16a34a','info':'#6F8522'}[tipo]||'#383838';
+  const dlg=document.createElement('dialog');
+  dlg.id='adminPopupDlg';
+  dlg.style.cssText='background:#fff;border:none;border-radius:16px;padding:0;max-width:420px;width:92%;box-shadow:0 24px 64px rgba(56,56,56,.28);overflow:hidden';
+  dlg.innerHTML=`
+    <div style="background:${color};padding:16px 20px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.4rem">${icon}</span>
+      <strong style="color:#fff;font-size:1rem">${esc(titulo)}</strong>
+    </div>
+    <div style="padding:20px;font-size:.9rem;color:#1e293b;white-space:pre-line">${esc(mensagem)}</div>
+    <div style="padding:0 20px 20px;text-align:right">
+      <button id="adminPopupOk" style="background:${color};color:#fff;border:none;border-radius:10px;padding:9px 24px;font:inherit;font-weight:700;cursor:pointer">OK</button>
+    </div>`;
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  dlg.querySelector('#adminPopupOk').addEventListener('click',()=>dlg.close());
+  dlg.addEventListener('close',()=>dlg.remove());
+}
+
+function adminConfirm(titulo, mensagem, btnConfirmar='Confirmar', btnCancelar='Cancelar'){
+  return new Promise(resolve=>{
+    const existing=document.getElementById('adminConfirmDlg');
+    if(existing) existing.remove();
+    const dlg=document.createElement('dialog');
+    dlg.id='adminConfirmDlg';
+    dlg.style.cssText='background:#fff;border:none;border-radius:16px;padding:0;max-width:420px;width:92%;box-shadow:0 24px 64px rgba(56,56,56,.28);overflow:hidden';
+    dlg.innerHTML=`
+      <div style="background:#383838;padding:16px 20px">
+        <strong style="color:#fff;font-size:1rem">⚠️ ${esc(titulo)}</strong>
+      </div>
+      <div style="padding:20px;font-size:.9rem;color:#1e293b;white-space:pre-line">${esc(mensagem)}</div>
+      <div style="padding:0 20px 20px;display:flex;justify-content:flex-end;gap:10px">
+        <button id="adminConfirmNo" style="background:#f1f5f9;color:#475569;border:none;border-radius:10px;padding:9px 18px;font:inherit;font-weight:600;cursor:pointer">${esc(btnCancelar)}</button>
+        <button id="adminConfirmYes" style="background:#dc2626;color:#fff;border:none;border-radius:10px;padding:9px 20px;font:inherit;font-weight:700;cursor:pointer">${esc(btnConfirmar)}</button>
+      </div>`;
+    document.body.appendChild(dlg);
+    dlg.showModal();
+    dlg.querySelector('#adminConfirmYes').addEventListener('click',()=>{dlg.close();resolve(true);});
+    dlg.querySelector('#adminConfirmNo').addEventListener('click',()=>{dlg.close();resolve(false);});
+    dlg.addEventListener('close',()=>{dlg.remove();resolve(false);});
+  });
+}
+// ────────────────────────────────────────────────────────────────────────────
+
+function bindClientesAdminUI(){
+  document.querySelectorAll('.tab-btn[data-tab="clientes"]').forEach(btn=>{
+    if(btn.dataset.clientesBound) return;
+    btn.dataset.clientesBound='1';
+    btn.addEventListener('click', ()=>{ loadClientes(); });
+  });
+  ['clienteSearch','clienteSort'].forEach(id=>{
+    const field=document.getElementById(id);
+    if(!field||field.dataset.clientesBound) return;
+    field.dataset.clientesBound='1';
+    field.addEventListener('input', renderClientesList);
+    field.addEventListener('change', renderClientesList);
+  });
+  const btnWppTodos=document.getElementById('btnWppTodos');
+  if(btnWppTodos&&!btnWppTodos.dataset.clientesBound){
+    btnWppTodos.dataset.clientesBound='1';
+    btnWppTodos.addEventListener('click', openWppMassa);
+  }
+  bindNcCep();
+  bindNovoCliente();
+}
+
+// CEP autofill no cadastro de cliente (admin)
+function bindNcCep(){
+  const cepEl = document.getElementById('nc_cep');
+  if(!cepEl) return;
+  if(cepEl.dataset.cepBound) return;
+  cepEl.dataset.cepBound='1';
+  let _last='';
+  cepEl.addEventListener('input', async function(){
+    let v=this.value.replace(/\D/g,'').slice(0,8);
+    if(v.length>5) v=v.slice(0,5)+'-'+v.slice(5);
+    this.value=v;
+    const plain=v.replace('-','');
+    if(plain.length===8&&plain!==_last){
+      _last=plain;
+      try{
+        const r=await fetch(`https://viacep.com.br/ws/${plain}/json/`);
+        const d=await r.json();
+        if(!d.erro){
+          const el=id=>document.getElementById(id);
+          if(el('nc_rua'))    { el('nc_rua').value=d.logradouro||''; }
+          if(el('nc_bairro')) { el('nc_bairro').value=d.bairro||''; }
+          if(el('nc_cidade')) { el('nc_cidade').value=d.localidade||''; }
+          if(el('nc_uf'))     { el('nc_uf').value=d.uf||''; }
+          document.getElementById('nc_numero')?.focus();
+        }
+      }catch(_){}
+    }
+  });
+}
+
+// Cadastrar novo cliente (admin)
+function bindNovoCliente(){
+  const saveButton=document.getElementById('btnNovoCliente');
+  if(!saveButton||saveButton.dataset.clientesBound) return;
+  saveButton.dataset.clientesBound='1';
+  saveButton.addEventListener('click', async ()=>{
+  const nome   = ($('nc_nome')?.value||'').trim();
+  const email  = ($('nc_email')?.value||'').trim();
+  const tel    = ($('nc_tel')?.value||'').trim();
+  const cpf    = ($('nc_cpf')?.value||'').replace(/\D/g,'');
+  const senha  = ($('nc_senha')?.value||'');
+  const cep    = ($('nc_cep')?.value||'').replace(/\D/g,'');
+  const rua    = ($('nc_rua')?.value||'').trim();
+  const numero = ($('nc_numero')?.value||'').trim();
+  const complemento = ($('nc_complemento')?.value||'').trim();
+  const bairro = ($('nc_bairro')?.value||'').trim();
+  const cidade = ($('nc_cidade')?.value||'').trim();
+  const uf     = ($('nc_uf')?.value||'').trim().toUpperCase();
+  const msg    = $('ncMsg');
+
+  if(!nome||!email||!tel){ if(msg){msg.textContent='Nome, e-mail e telefone são obrigatórios.';msg.style.color='#dc2626';} return; }
+  if(!cep||cep.length!==8||!rua||!numero||!bairro||!cidade||!uf){ if(msg){msg.textContent='Preencha CEP, rua, número, bairro, cidade e UF.';msg.style.color='#dc2626';} return; }
+  if(senha && senha.length<8){ if(msg){msg.textContent='Senha deve ter pelo menos 8 caracteres.';msg.style.color='#dc2626';} return; }
+
+  const btn=$('btnNovoCliente'); btn.disabled=true; btn.textContent='Salvando…';
+  try{
+    const payload={
+      nome, email,
+      cpf: cpf||undefined,
+      telefone: tel.replace(/\D/g,''),
+      senha: senha||('Lemoov@'+Math.floor(1000+Math.random()*9000)),
+      endereco:{ cep, logradouro:rua, numero, complemento, bairro, cidade, uf }
+    };
+    const r=await fetch('/api/client/register',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){ if(msg){msg.textContent=d.error||'Erro ao cadastrar.';msg.style.color='#dc2626';} return; }
+    if(msg){ msg.textContent=`✅ Cliente ${nome} cadastrado!`; msg.style.color='#16a34a'; }
+    ['nc_nome','nc_email','nc_tel','nc_cpf','nc_senha','nc_cep','nc_rua','nc_numero','nc_complemento','nc_bairro','nc_cidade','nc_uf'].forEach(id=>{
+      const el=document.getElementById(id); if(el){ el.value=''; el.readOnly=false; }
+    });
+    await loadClientes();
+  }catch(e){ if(msg){msg.textContent='Erro de conexão.';msg.style.color='#dc2626';} }
+  finally{ btn.disabled=false; btn.textContent='Salvar'; }
+  });
+}
