@@ -126,12 +126,25 @@ const IMAGE_DIR = path.join(__dirname, 'image');
 if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
 const VIDEO_DIR = path.join(__dirname, 'video');
 if (!fs.existsSync(VIDEO_DIR)) fs.mkdirSync(VIDEO_DIR, { recursive: true });
+
+function persistentStorageDir(publicPrefix) {
+  // Hostinger executa cada deploy em <dominio>/.builds/versions/<id>/nodejs.
+  // Arquivos enviados precisam ficar na raiz persistente do domínio, fora da
+  // versão descartável do build.
+  const buildsMarker = `${path.sep}.builds${path.sep}versions${path.sep}`;
+  const buildsIndex = __dirname.indexOf(buildsMarker);
+  const storageRoot = buildsIndex >= 0
+    ? __dirname.slice(0, buildsIndex)
+    : path.join(__dirname, '..');
+  return path.join(storageRoot, publicPrefix);
+}
+
 const UPLOAD_PUBLIC_PREFIX = (process.env.UPLOAD_PUBLIC_PREFIX || 'uploads').replace(/^\/+|\/+$/g, '');
-// Default: one level above __dirname (outside the nodejs/ deploy folder) so uploads
-// survive git-based redeploys on Hostinger. Set UPLOAD_DIR in .env to override.
+// Mantém os uploads fora da pasta versionada para sobreviver aos redeploys.
+// UPLOAD_DIR continua tendo precedência quando configurado no ambiente.
 const UPLOAD_DIR = process.env.UPLOAD_DIR
   ? path.resolve(process.env.UPLOAD_DIR)
-  : path.join(__dirname, '..', UPLOAD_PUBLIC_PREFIX);
+  : persistentStorageDir(UPLOAD_PUBLIC_PREFIX);
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 console.log(`[uploads] salvando em: ${UPLOAD_DIR}`);
 // Pasta de upload própria para as fotos do catálogo de atacado — mantida separada
@@ -139,7 +152,7 @@ console.log(`[uploads] salvando em: ${UPLOAD_DIR}`);
 const ATACADO_UPLOAD_PUBLIC_PREFIX = (process.env.ATACADO_UPLOAD_PUBLIC_PREFIX || 'uploads-atacado').replace(/^\/+|\/+$/g, '');
 const ATACADO_UPLOAD_DIR = process.env.ATACADO_UPLOAD_DIR
   ? path.resolve(process.env.ATACADO_UPLOAD_DIR)
-  : path.join(__dirname, '..', ATACADO_UPLOAD_PUBLIC_PREFIX);
+  : persistentStorageDir(ATACADO_UPLOAD_PUBLIC_PREFIX);
 if (!fs.existsSync(ATACADO_UPLOAD_DIR)) fs.mkdirSync(ATACADO_UPLOAD_DIR, { recursive: true });
 console.log(`[uploads-atacado] salvando em: ${ATACADO_UPLOAD_DIR}`);
 const INFINITEPAY_API_URL = process.env.INFINITEPAY_API_URL || 'https://api.checkout.infinitepay.io/links';
