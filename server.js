@@ -1315,10 +1315,10 @@ function verifyClientPwd(pwd, stored) {
 // ─── Rotas de cliente ──────────────────────────────────────────────────────
 
 app.get('/cliente-login', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'cliente-login.html'));
+  res.sendFile('cliente-login.html', { root: __dirname });
 });
 app.get('/cliente-login.html', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'cliente-login.html'));
+  res.sendFile('cliente-login.html', { root: __dirname });
 });
 
 app.get('/api/client/me', (req, res) => {
@@ -2170,7 +2170,7 @@ app.post('/api/pedidos', async (req, res) => {
 });
 
 app.get('/login', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'login.html'));
+  res.sendFile('login.html', { root: __dirname });
 });
 
 app.post('/api/login', async (req, res) => {
@@ -2774,11 +2774,11 @@ app.post('/api/descontos/validar', async (req, res) => {
 });
 
 app.get('/api/relatorio', authRequired, (req, res) => {
-  res.sendFile(path.join(__dirname, 'relatorio.html'));
+  res.sendFile('relatorio.html', { root: __dirname });
 });
 
 app.get('/relatorio.html', authRequired, (_req, res) => {
-  res.sendFile(path.join(__dirname, 'relatorio.html'));
+  res.sendFile('relatorio.html', { root: __dirname });
 });
 
 app.get('/api/produtos', async (req, res) => {
@@ -2803,11 +2803,11 @@ app.get('/api/produtos', async (req, res) => {
 });
 
 app.get('/api/produtos-admin', authRequired, (req, res) => {
-  res.sendFile(path.join(__dirname, 'produtos-admin.html'));
+  res.sendFile('produtos-admin.html', { root: __dirname });
 });
 
 app.get('/produtos-admin.html', authRequired, (_req, res) => {
-  res.sendFile(path.join(__dirname, 'produtos-admin.html'));
+  res.sendFile('produtos-admin.html', { root: __dirname });
 });
 
 app.get('/api/admin/produtos', authRequired, async (req, res) => {
