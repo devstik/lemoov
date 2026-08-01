@@ -7,6 +7,7 @@ const multer = require('multer');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
 const QRCodeLib = require('qrcode');
+const { initProductionSchema, registerProductionRoutes } = require('./production');
 
 // Polyfill fetch para Node < 18
 if (typeof fetch === 'undefined') {
@@ -318,6 +319,7 @@ async function initDatabase() {
         INDEX idx_crm_ts (ts)
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
+    await initProductionSchema(mysqlPool);
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto.scryptSync(ADMIN_PASS, salt, 64).toString('hex');
     await mysqlPool.execute('DELETE FROM lemoov_users WHERE username = ?', [ADMIN_USER]);
@@ -1289,6 +1291,7 @@ function authRequired(req, res, next) {
   if (token && sessions.has(token)) {
     const session = sessions.get(token);
     if (session && Date.now() - session.createdAt <= SESSION_TTL_MS) {
+      req.adminSession = session;
       return next();
     }
     sessions.delete(token);
@@ -1314,6 +1317,8 @@ function clientAuthRequired(req, res, next) {
   }
   return res.status(401).json({ ok: false, error: 'não autenticado' });
 }
+
+registerProductionRoutes({ app, pool: mysqlPool, authRequired });
 
 function hashClientPwd(pwd) {
   const salt = crypto.randomBytes(16).toString('hex');

@@ -62,6 +62,10 @@
       </svg>
       <span class="nav-label">QR Code</span>
     </button>
+    <button class="tab-btn" data-tab="producao" title="Produção">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21V9l6 3V9l6 3V3h6v18H3z"/><path d="M7 17h2M12 17h2M17 17h2"/></svg>
+      <span class="nav-label">Produção</span>
+    </button>
     <button class="tab-btn" data-tab="relatorio" title="Relatório">
       <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
       <span class="nav-label">Relatório</span>
@@ -629,6 +633,28 @@
   </div>
 </div>
 
+<!-- ── PRODUÇÃO ──────────────────────────────────── -->
+<div id="tab-producao" class="tab-panel">
+  <div class="screen-hero">
+    <div>
+      <h1 class="screen-title">Produção</h1>
+      <p class="screen-copy">Insumos, custos e estrutura do processo produtivo.</p>
+    </div>
+    <div class="hero-actions"><button class="btn btn--primary" id="prodNfeButton">Importar XML de NF-e</button></div>
+  </div>
+  <input type="file" id="prodNfeFile" accept=".xml,text/xml,application/xml" hidden>
+  <div class="production-tabs" id="productionTabs">
+    <button class="production-subtab active" data-production-view="overview">Visão geral</button>
+    <button class="production-subtab" data-production-view="materials">Insumos</button>
+    <button class="production-subtab" data-production-view="purchases">Compras / NF-e</button>
+    <button class="production-subtab" data-production-view="structure">Setores e operações</button>
+    <button class="production-subtab" data-production-view="compositions">Composições</button>
+    <button class="production-subtab" data-production-view="orders">Ordens de produção</button>
+  </div>
+  <div id="productionNotice" class="notice"></div>
+  <div id="productionContent"><div class="form-empty">Carregando módulo de produção…</div></div>
+</div>
+
 <!-- ── MODAL NOVO PEDIDO ─────────────────────────── -->
 <div id="modalOv" class="modal-ov" style="display:none" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
@@ -644,6 +670,7 @@
 <datalist id="colorToneOptions"></datalist>
 
 <script src="/produtos-admin.js"></script>
+<script src="/producao-admin.js"></script>
 
 <!-- ── CLIENTES ── -->
 <div id="tab-clientes" class="tab-panel">
