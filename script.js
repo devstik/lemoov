@@ -237,6 +237,14 @@ const IMAGE_BASE = window.LEMOOV_IMAGE_BASE || "";
 let filtroAtual = "Todos";
 let ordenacaoAtual = "destaque";
 let buscaAtual = "";
+/* Sidebar de filtros do catálogo (catalogo-produtos.html) */
+let filtroCoresAtivas = new Set();
+let filtroTamanhosAtivos = new Set();
+let filtroPrecoMin = null;
+let filtroPrecoMax = null;
+let filtroSoLancamentos = false;
+let filtroSoPromocoes = false;
+let filtroSoDisponiveis = false;
 const CART_STORAGE_KEY = "lemoov_cart_v1";
 const CART_TTL_MS = 30 * 60 * 1000;
 let cartUpdatedAt = 0;
@@ -2238,6 +2246,37 @@ function isLancamentoFilter(value){
   return normalized === "lancamentos" || normalized === "lancamento";
 }
 
+/* ===== Filtros da sidebar (catalogo-produtos.html) ===== */
+function productHasPromo(prod){
+  const cores = Array.isArray(prod.cores) && prod.cores.length ? prod.cores : [null];
+  return cores.some(c => computeColorPrice(prod, c).original != null);
+}
+function getProductDisplayPrice(prod){
+  const cor0 = Array.isArray(prod.cores) ? prod.cores[0] : null;
+  return computeColorPrice(prod, cor0).final;
+}
+function matchesSidebarFilters(prod){
+  if (filtroCoresAtivas.size) {
+    const cores = Array.isArray(prod.cores) ? prod.cores : [];
+    const temCor = cores.some(c => filtroCoresAtivas.has(normalizeColorKey(c?.nome)));
+    if (!temCor) return false;
+  }
+  if (filtroTamanhosAtivos.size) {
+    const cores = Array.isArray(prod.cores) ? prod.cores : [];
+    const temTamanho = cores.some(c => Array.isArray(c?.tamanhos) && c.tamanhos.some(t => filtroTamanhosAtivos.has(t)));
+    if (!temTamanho) return false;
+  }
+  if (filtroPrecoMin != null || filtroPrecoMax != null) {
+    const preco = getProductDisplayPrice(prod);
+    if (filtroPrecoMin != null && preco < filtroPrecoMin) return false;
+    if (filtroPrecoMax != null && preco > filtroPrecoMax) return false;
+  }
+  if (filtroSoLancamentos && !prod.lancamento) return false;
+  if (filtroSoPromocoes && !productHasPromo(prod)) return false;
+  if (filtroSoDisponiveis && isProductSoldOut(prod)) return false;
+  return true;
+}
+
 function normalizeSearchText(value) {
   return String(value || "")
     .normalize("NFD")
@@ -2364,6 +2403,181 @@ function buildSwatches(prod, onChange, selectedIndex = 0, mainImage = null, onCo
   return container;
 }
 
+/* ===== Sidebar de filtros (catalogo-produtos.html) ===== */
+function renderCatalogFilters(){
+  const sidebar = el("#catalogFilters");
+  if (!sidebar) return;
+
+  // Categorias (com contagem)
+  const catCounts = {};
+  produtos.forEach(p => { if (p.categoria) catCounts[p.categoria] = (catCounts[p.categoria] || 0) + 1; });
+  const categorias = Object.keys(catCounts).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const catWrap = el("#filterCategorias");
+  if (catWrap) {
+    const selecionadas = (filtroAtual && filtroAtual !== "Todos" && !isLancamentoFilter(filtroAtual))
+      ? new Set(filtroAtual.split("|").map(s => s.trim()))
+      : new Set();
+    catWrap.innerHTML = "";
+    const allLabel = document.createElement("label");
+    allLabel.innerHTML = `<input type="checkbox" data-cat-all ${selecionadas.size ? "" : "checked"}> Todos os produtos <span class="catalog-filters__count">${produtos.length}</span>`;
+    catWrap.appendChild(allLabel);
+    categorias.forEach(cat => {
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" data-cat="${cat}" ${selecionadas.has(cat) ? "checked" : ""}> ${cat} <span class="catalog-filters__count">${catCounts[cat]}</span>`;
+      catWrap.appendChild(label);
+    });
+    catWrap.querySelectorAll("input[type=checkbox]").forEach(input => {
+      input.addEventListener("change", () => {
+        const allInput = catWrap.querySelector("input[data-cat-all]");
+        if (input.hasAttribute("data-cat-all")) {
+          catWrap.querySelectorAll("input[data-cat]").forEach(i => { i.checked = false; });
+          filtroAtual = "Todos";
+        } else {
+          const marcadas = Array.from(catWrap.querySelectorAll("input[data-cat]:checked")).map(i => i.dataset.cat);
+          if (!marcadas.length) {
+            allInput.checked = true;
+            filtroAtual = "Todos";
+          } else {
+            allInput.checked = false;
+            filtroAtual = marcadas.join("|");
+          }
+        }
+        renderGrid();
+      });
+    });
+  }
+
+  // Cores
+  const coresMap = new Map();
+  produtos.forEach(p => (p.cores || []).forEach(c => {
+    const key = normalizeColorKey(c?.nome);
+    if (key && !coresMap.has(key)) coresMap.set(key, { label: c.nome, hex: getSwatchColor(c) });
+  }));
+  const coresWrap = el("#filterCores");
+  if (coresWrap) {
+    coresWrap.innerHTML = "";
+    coresMap.forEach((info, key) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "swatch";
+      btn.title = info.label;
+      btn.setAttribute("aria-label", info.label);
+      btn.dataset.selected = filtroCoresAtivas.has(key) ? "true" : "false";
+      btn.style.setProperty("--swatch-color", info.hex);
+      btn.innerHTML = `<span class="swatch__dot"></span>`;
+      btn.addEventListener("click", () => {
+        if (filtroCoresAtivas.has(key)) filtroCoresAtivas.delete(key); else filtroCoresAtivas.add(key);
+        btn.dataset.selected = filtroCoresAtivas.has(key) ? "true" : "false";
+        renderGrid();
+      });
+      coresWrap.appendChild(btn);
+    });
+  }
+
+  // Tamanhos
+  const tamanhosSet = new Set();
+  produtos.forEach(p => (p.cores || []).forEach(c => (c.tamanhos || []).forEach(t => tamanhosSet.add(t))));
+  const ORDEM_TAMANHOS = ["PP", "P", "M", "G", "GG", "XG", "Único", "U"];
+  const tamanhos = Array.from(tamanhosSet).sort((a, b) => {
+    const ia = ORDEM_TAMANHOS.indexOf(a), ib = ORDEM_TAMANHOS.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+  const tamWrap = el("#filterTamanhos");
+  if (tamWrap) {
+    tamWrap.innerHTML = "";
+    tamanhos.forEach(t => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "size";
+      btn.textContent = t;
+      btn.dataset.selected = filtroTamanhosAtivos.has(t) ? "true" : "false";
+      btn.addEventListener("click", () => {
+        if (filtroTamanhosAtivos.has(t)) filtroTamanhosAtivos.delete(t); else filtroTamanhosAtivos.add(t);
+        btn.dataset.selected = filtroTamanhosAtivos.has(t) ? "true" : "false";
+        renderGrid();
+      });
+      tamWrap.appendChild(btn);
+    });
+  }
+
+  // Faixa de preço
+  const precos = produtos.map(getProductDisplayPrice).filter(v => typeof v === "number" && v > 0);
+  const min = precos.length ? Math.floor(Math.min(...precos)) : 0;
+  const max = precos.length ? Math.ceil(Math.max(...precos)) : 0;
+  const inputMin = el("#filterPrecoMin");
+  const inputMax = el("#filterPrecoMax");
+  const labelMin = el("#filterPrecoMinLabel");
+  const labelMax = el("#filterPrecoMaxLabel");
+  if (inputMin && inputMax) {
+    [inputMin, inputMax].forEach(inp => { inp.min = min; inp.max = max; });
+    inputMin.value = filtroPrecoMin ?? min;
+    inputMax.value = filtroPrecoMax ?? max;
+    const fmt = (v) => `R$ ${Number(v).toFixed(2).replace(".", ",")}`;
+    if (labelMin) labelMin.textContent = fmt(inputMin.value);
+    if (labelMax) labelMax.textContent = fmt(inputMax.value);
+    inputMin.oninput = () => {
+      if (Number(inputMin.value) > Number(inputMax.value)) inputMin.value = inputMax.value;
+      filtroPrecoMin = Number(inputMin.value);
+      if (labelMin) labelMin.textContent = fmt(inputMin.value);
+      renderGrid();
+    };
+    inputMax.oninput = () => {
+      if (Number(inputMax.value) < Number(inputMin.value)) inputMax.value = inputMin.value;
+      filtroPrecoMax = Number(inputMax.value);
+      if (labelMax) labelMax.textContent = fmt(inputMax.value);
+      renderGrid();
+    };
+  }
+
+  // Filtros extras
+  const chkLanc = el("#filterLancamentos");
+  const chkPromo = el("#filterPromocoes");
+  const chkDisp = el("#filterDisponiveis");
+  if (chkLanc) { chkLanc.checked = filtroSoLancamentos; chkLanc.onchange = () => { filtroSoLancamentos = chkLanc.checked; renderGrid(); }; }
+  if (chkPromo) { chkPromo.checked = filtroSoPromocoes; chkPromo.onchange = () => { filtroSoPromocoes = chkPromo.checked; renderGrid(); }; }
+  if (chkDisp) { chkDisp.checked = filtroSoDisponiveis; chkDisp.onchange = () => { filtroSoDisponiveis = chkDisp.checked; renderGrid(); }; }
+}
+
+function initCatalogFiltersDrawer(){
+  const sidebar = el("#catalogFilters");
+  if (!sidebar) return;
+  const backdrop = el("#catalogFiltersBackdrop");
+  const trigger = el("#catalogFiltersTrigger");
+  const closeBtn = el("#catalogFiltersClose");
+  const clearBtn = el("#catalogFiltersClear");
+
+  function openDrawer(){
+    sidebar.dataset.open = "true";
+    if (backdrop) backdrop.dataset.open = "true";
+    document.body.style.overflow = "hidden";
+  }
+  function closeDrawer(){
+    sidebar.dataset.open = "false";
+    if (backdrop) backdrop.dataset.open = "false";
+    document.body.style.overflow = "";
+  }
+
+  if (trigger) trigger.addEventListener("click", openDrawer);
+  if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+  if (backdrop) backdrop.addEventListener("click", closeDrawer);
+
+  if (clearBtn) clearBtn.addEventListener("click", () => {
+    filtroAtual = "Todos";
+    filtroCoresAtivas = new Set();
+    filtroTamanhosAtivos = new Set();
+    filtroPrecoMin = null;
+    filtroPrecoMax = null;
+    filtroSoLancamentos = false;
+    filtroSoPromocoes = false;
+    filtroSoDisponiveis = false;
+    renderCatalogFilters();
+    renderGrid();
+  });
+}
+
 function renderGrid(){
   const grid = el("#grid");
   if(!grid) return;
@@ -2379,6 +2593,9 @@ function renderGrid(){
   }
   if (buscaAtual.trim()) {
     lista = lista.filter(p => matchesSearch(p, buscaAtual));
+  }
+  if (el("#catalogFilters")) {
+    lista = lista.filter(matchesSidebarFilters);
   }
   lista = ordenar(lista);
   const disponiveis = lista.filter(p => !isProductSoldOut(p));
@@ -4672,7 +4889,9 @@ async function initCatalog(){
   const urlFilter = new URLSearchParams(window.location.search).get("filter");
   if (urlFilter) filtroAtual = urlFilter.trim();
   renderFiltros();
+  initCatalogFiltersDrawer();
   const ok = await loadProdutos();
+  renderCatalogFilters();
   renderGrid();
   if (!ok) {
     const grid = el("#grid");

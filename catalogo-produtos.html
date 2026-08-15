@@ -359,6 +359,218 @@
     .catalog-landing .filters-cards {
       display: none;
     }
+
+    /* Sidebar de filtros (desktop) / drawer (mobile-tablet) */
+    .catalog-shell {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: start;
+      gap: 22px;
+    }
+    .catalog-filters__backdrop {
+      display: none;
+    }
+    .catalog-filters {
+      border: 1px solid rgba(56, 56, 56, 0.12);
+      border-radius: 18px;
+      background: #ffffff;
+      box-shadow: 0 10px 24px rgba(56, 56, 56, 0.07);
+      padding: 18px 18px 20px;
+    }
+    .catalog-filters__header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .catalog-filters__header h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      color: #383838;
+    }
+    .catalog-filters__close {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(235, 216, 199, 0.48);
+      color: #383838;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+    .catalog-filters__group {
+      padding: 14px 0;
+      border-top: 1px solid rgba(56, 56, 56, 0.09);
+    }
+    .catalog-filters__group:first-of-type {
+      padding-top: 0;
+      border-top: 0;
+    }
+    .catalog-filters__group h3 {
+      margin: 0 0 10px;
+      font-size: 0.86rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #383838;
+    }
+    .catalog-filters__list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .catalog-filters__list label,
+    .catalog-filters__check {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 0.84rem;
+      color: #4a4a4a;
+      cursor: pointer;
+    }
+    .catalog-filters__list label input,
+    .catalog-filters__check input {
+      accent-color: #A8C63A;
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+    }
+    .catalog-filters__count {
+      margin-left: auto;
+      color: rgba(56, 56, 56, 0.42);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .catalog-filters__swatches,
+    .catalog-filters__sizes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .catalog-filters__swatches .swatch,
+    .catalog-filters__sizes .size {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      font-size: 0.72rem;
+    }
+    .catalog-filters__price input[type="range"] {
+      width: 100%;
+      accent-color: #A8C63A;
+      display: block;
+    }
+    .catalog-filters__price input[type="range"] + input[type="range"] {
+      margin-top: 6px;
+    }
+    .catalog-filters__price-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: #6F8522;
+    }
+    .catalog-filters__check {
+      margin-bottom: 8px;
+    }
+    .catalog-filters__check:last-child {
+      margin-bottom: 0;
+    }
+    .catalog-filters__clear {
+      width: 100%;
+      margin-top: 16px;
+      padding: 11px;
+      border-radius: 12px;
+      border: 1px solid rgba(56, 56, 56, 0.18);
+      background: #fff;
+      color: #383838;
+      font-weight: 800;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+    .catalog-filters__clear:hover {
+      background: rgba(235, 216, 199, 0.35);
+    }
+    .catalog-filters__trigger {
+      display: none;
+    }
+    @media (min-width: 1024px) {
+      .catalog-shell {
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 26px;
+      }
+      .catalog-filters {
+        position: sticky;
+        top: 80px;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+      }
+    }
+    @media (max-width: 1023px) {
+      .catalog-search {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0 10px;
+      }
+      .catalog-search__field {
+        flex: 1 1 100%;
+      }
+      .catalog-search__meta {
+        flex: 1 1 auto;
+        margin: 8px 0 0;
+      }
+      .catalog-filters__trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 8px 13px;
+        border-radius: 999px;
+        border: 1px solid rgba(168, 198, 58, 0.32);
+        background: #fff;
+        color: #383838;
+        font: 800 0.72rem/1 Inter, system-ui, sans-serif;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .catalog-filters {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: min(84vw, 340px);
+        max-width: 340px;
+        border-radius: 0 18px 18px 0;
+        z-index: 601;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform 0.28s ease;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      }
+      .catalog-filters[data-open="true"] {
+        transform: translateX(0);
+      }
+      .catalog-filters__header {
+        display: flex;
+      }
+      .catalog-filters__backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 600;
+        background: rgba(56, 56, 56, 0.5);
+        backdrop-filter: blur(2px);
+      }
+      .catalog-filters__backdrop[data-open="true"] {
+        display: block;
+      }
+    }
     .catalog-filter-chips {
       position: sticky;
       top: 58px;
@@ -905,7 +1117,7 @@
     @media (max-width: 767px) {
       .catalog-bottom-nav {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         position: fixed;
         left: 0;
         right: 0;
@@ -1058,7 +1270,55 @@
     </div>
   </header>
 
-  <div class="container layout layout--single">
+  <div class="container layout catalog-shell">
+    <aside class="catalog-filters" id="catalogFilters" aria-label="Filtros de produtos" data-open="false">
+      <div class="catalog-filters__header">
+        <h2>Filtros</h2>
+        <button type="button" class="catalog-filters__close" id="catalogFiltersClose" aria-label="Fechar filtros">
+          <i class="fas fa-xmark" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <section class="catalog-filters__group">
+        <h3>Categorias</h3>
+        <div id="filterCategorias" class="catalog-filters__list"></div>
+      </section>
+
+      <section class="catalog-filters__group">
+        <h3>Cores</h3>
+        <div id="filterCores" class="catalog-filters__swatches"></div>
+      </section>
+
+      <section class="catalog-filters__group">
+        <h3>Tamanhos</h3>
+        <div id="filterTamanhos" class="catalog-filters__sizes"></div>
+      </section>
+
+      <section class="catalog-filters__group">
+        <h3>Faixa de preço</h3>
+        <div class="catalog-filters__price">
+          <input type="range" id="filterPrecoMin" step="1" aria-label="Preço mínimo">
+          <input type="range" id="filterPrecoMax" step="1" aria-label="Preço máximo">
+        </div>
+        <div class="catalog-filters__price-labels">
+          <span id="filterPrecoMinLabel"></span>
+          <span id="filterPrecoMaxLabel"></span>
+        </div>
+      </section>
+
+      <section class="catalog-filters__group">
+        <h3>Filtros extras</h3>
+        <label class="catalog-filters__check"><input type="checkbox" id="filterLancamentos"> Lançamentos</label>
+        <label class="catalog-filters__check"><input type="checkbox" id="filterPromocoes"> Promoções</label>
+        <label class="catalog-filters__check"><input type="checkbox" id="filterDisponiveis"> Disponíveis</label>
+      </section>
+
+      <button type="button" class="catalog-filters__clear" id="catalogFiltersClear">
+        <i class="fas fa-rotate-left" aria-hidden="true"></i> Limpar filtros
+      </button>
+    </aside>
+    <div class="catalog-filters__backdrop" id="catalogFiltersBackdrop"></div>
+
     <main class="content" style="position:relative;">
       <section class="catalog-search" aria-label="Pesquisar produtos">
         <div class="catalog-search__field">
@@ -1069,6 +1329,9 @@
           </button>
         </div>
         <span class="catalog-search__meta" id="catalogSearchMeta"></span>
+        <button type="button" class="catalog-filters__trigger" id="catalogFiltersTrigger">
+          <i class="fas fa-sliders" aria-hidden="true"></i> Filtros
+        </button>
       </section>
       <section id="grid" class="grid"></section>
     </main>
