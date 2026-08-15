@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'lemoov-v1';
+const CACHE_VERSION = 'lemoov-v3';
 const APP_SHELL = [
   '/catalogo-produtos.html',
   '/styles.css',

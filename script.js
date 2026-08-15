@@ -2558,7 +2558,10 @@ function initCatalogFiltersDrawer(){
   const sidebar = el("#catalogFilters");
   if (!sidebar) return;
   const backdrop = el("#catalogFiltersBackdrop");
-  const trigger = el("#catalogFiltersTrigger");
+  const triggers = [
+    el("#catalogFiltersTrigger"),
+    el("#catalogFiltersHeaderTrigger")
+  ].filter(Boolean);
   const closeBtn = el("#catalogFiltersClose");
   const clearBtn = el("#catalogFiltersClear");
 
@@ -2573,7 +2576,7 @@ function initCatalogFiltersDrawer(){
     document.body.style.overflow = "";
   }
 
-  if (trigger) trigger.addEventListener("click", openDrawer);
+  triggers.forEach(trigger => trigger.addEventListener("click", openDrawer));
   if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
   if (backdrop) backdrop.addEventListener("click", closeDrawer);
 
@@ -2593,7 +2596,7 @@ function initCatalogFiltersDrawer(){
   });
 }
 
-/* ===== Barra de ferramentas: abas rápidas, ordenar, grade/lista ===== */
+/* ===== Barra de ferramentas: abas rápidas e ordenação ===== */
 function syncCatalogQuickTabs(){
   document.querySelectorAll("#catalogQuickTabs .catalog-toolbar__tab").forEach(tab => {
     tab.dataset.active = tab.dataset.quick === catalogQuickTab ? "true" : "false";
@@ -2604,9 +2607,7 @@ function applyCatalogQuickTab(key){
   catalogQuickTab = key;
   filtroSoLancamentos = key === "lancamentos";
   filtroSoPromocoes = key === "promocoes";
-  // "Mais vendidos" não tem dado de vendas real no catálogo — usa a ordem
-  // curada padrão (mesma de "Destaque") como aproximação até existir essa métrica.
-  if (key === "mais-vendidos" || key === "todos") ordenacaoAtual = "destaque";
+  if (key === "todos") ordenacaoAtual = "destaque";
   const sortSelect = el("#catalogSort");
   if (sortSelect) sortSelect.value = ordenacaoAtual;
   syncCatalogQuickTabs();
@@ -2630,15 +2631,6 @@ function initCatalogToolbar(){
     });
   }
 
-  const viewBtns = document.querySelectorAll(".catalog-toolbar__view-btn");
-  const grid = el("#grid");
-  viewBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-      viewBtns.forEach(b => { b.dataset.active = "false"; });
-      btn.dataset.active = "true";
-      if (grid) grid.classList.toggle("grid--list", btn.dataset.view === "list");
-    });
-  });
 }
 
 function renderGrid(){
@@ -2734,7 +2726,7 @@ function renderGrid(){
           </div>
         </div>
       </a>
-      <button class="product-card__btn-add" data-add-quick>Adicionar ao carrinho</button>
+      <button class="product-card__btn-add" data-add-quick><i class="fas fa-cart-shopping" aria-hidden="true"></i><span class="add-label-full">Adicionar ao carrinho</span><span class="add-label-short">Adicionar</span></button>
     `;
 
     const colorsWrap = artigo.querySelector("[data-options-colors]");

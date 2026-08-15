@@ -1242,7 +1242,7 @@
       font-size: 0.92rem;
     }
 
-    /* Barra de ferramentas: abas rápidas + contagem + ordenar + grade/lista */
+    /* Barra de ferramentas: abas rápidas, contagem e ordenação */
     .catalog-toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -1299,103 +1299,9 @@
       background: #fff;
       cursor: pointer;
     }
-    .catalog-toolbar__view {
-      display: flex;
-      border: 1px solid rgba(56, 56, 56, 0.16);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .catalog-toolbar__view-btn {
-      border: 0;
-      background: #fff;
-      color: #383838;
-      padding: 8px 13px;
-      font: 700 0.78rem/1 Inter, system-ui, sans-serif;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .catalog-toolbar__view-btn[data-active="true"] {
-      background: rgba(168, 198, 58, 0.22);
-      color: #6F8522;
-    }
     @media (max-width: 640px) {
       .catalog-toolbar__sort span {
         display: none;
-      }
-      .catalog-toolbar__view-btn span,
-      .catalog-toolbar__view-btn { font-size: 0.72rem; padding: 8px 10px; }
-    }
-
-    /* Visualização em lista */
-    .catalog-landing .grid.grid--list {
-      grid-template-columns: 1fr !important;
-      gap: 12px;
-    }
-    .catalog-landing .grid--list .product-card {
-      display: flex;
-      flex-direction: row;
-      align-items: stretch;
-    }
-    .catalog-landing .grid--list .product-card__link {
-      display: flex;
-      flex-direction: row;
-      flex: 1;
-      min-width: 0;
-      text-decoration: none;
-    }
-    .catalog-landing .grid--list .product-card__media {
-      width: 140px;
-      min-width: 140px;
-      aspect-ratio: 1 / 1;
-      border-radius: 16px 0 0 16px;
-    }
-    .catalog-landing .grid--list .product-card__badge--launch {
-      top: 30px;
-      right: 7px;
-    }
-    .catalog-landing .grid--list .badge-off,
-    .catalog-landing .grid--list .badge-launch {
-      font-size: 0.5rem;
-      padding: 4px 5px;
-    }
-    .catalog-landing .grid--list .product-card__info {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .catalog-landing .grid--list .product-card__options {
-      grid-template-columns: none;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 18px;
-    }
-    .catalog-landing .grid--list .product-card__btn-add {
-      align-self: center;
-      width: auto;
-      margin: 0 18px;
-      border-radius: 10px;
-      padding: 0.8rem 1.4rem;
-    }
-    @media (max-width: 640px) {
-      .catalog-landing .grid--list .product-card {
-        flex-direction: column;
-      }
-      .catalog-landing .grid--list .product-card__link {
-        flex-direction: column;
-      }
-      .catalog-landing .grid--list .product-card__media {
-        width: 100%;
-        min-width: 0;
-        border-radius: 16px 16px 0 0;
-      }
-      .catalog-landing .grid--list .product-card__btn-add {
-        margin: 0;
-        width: 100%;
-        border-radius: 0 0 16px 16px;
       }
     }
 
@@ -1470,6 +1376,318 @@
       }
       body.catalog-landing .cookie-banner {
         bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+      }
+    }
+
+    /* Composição final inspirada no catálogo desktop de referência */
+    .site-banner {
+      display: none;
+    }
+    .catalog-landing .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 5px 18px rgba(56, 56, 56, 0.12);
+    }
+    .catalog-landing .header__wrap {
+      min-height: 76px;
+      display: grid;
+      grid-template-columns: 250px minmax(360px, 720px) auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: clamp(18px, 3vw, 48px);
+      padding-inline: 0;
+    }
+    .catalog-landing .logo {
+      position: static;
+      transform: none;
+      margin: 0;
+      text-align: left;
+    }
+    .catalog-landing .logo img {
+      width: auto;
+      height: 52px;
+    }
+    .catalog-landing .catalog-search--header {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+    }
+    .catalog-search--header .catalog-search__field {
+      min-height: 48px;
+      border-color: rgba(168, 198, 58, 0.36);
+      background: #fff;
+    }
+    .catalog-search--header .catalog-search__icon {
+      background: transparent;
+      font-size: 1rem;
+    }
+    .catalog-landing .nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      margin: 0;
+      white-space: nowrap;
+    }
+    .catalog-landing .header__cart {
+      background: transparent;
+      color: rgba(245, 251, 255, 0.9);
+      box-shadow: none;
+    }
+    .catalog-landing .container {
+      width: min(calc(100% - 40px), 1480px);
+    }
+    .catalog-breadcrumb {
+      padding-top: 20px;
+    }
+    .catalog-shell {
+      padding-top: 18px;
+    }
+    .catalog-heading {
+      margin: 0 0 18px;
+    }
+    .catalog-heading h2 {
+      font-size: clamp(1.55rem, 2vw, 2rem);
+    }
+    .catalog-search {
+      position: relative;
+      top: auto;
+      padding: 6px;
+      margin-bottom: 18px;
+      border-radius: 14px;
+      box-shadow: 0 8px 22px rgba(56, 56, 56, 0.06);
+    }
+    .catalog-mobile-tools {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      min-height: 20px;
+      margin-bottom: 8px;
+    }
+    .mobile-header-filter {
+      display: none;
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: #fff;
+      font-size: 1.35rem;
+      cursor: pointer;
+    }
+    .catalog-search__field {
+      min-height: 46px;
+    }
+    .catalog-toolbar {
+      margin: 0 0 18px;
+      padding: 0;
+    }
+    .catalog-toolbar__tab {
+      min-height: 38px;
+      padding: 0 20px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      transition: background .2s ease, color .2s ease, border-color .2s ease;
+    }
+    .catalog-toolbar__tab[data-active="true"] {
+      color: #fff;
+      background: linear-gradient(135deg, #8fb718, #6f9210);
+      box-shadow: 0 6px 14px rgba(111, 146, 16, 0.2);
+    }
+    .catalog-toolbar__sort select {
+      min-height: 38px;
+      padding-inline: 13px 34px;
+      border-radius: 10px;
+    }
+    .catalog-filters {
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 10px 28px rgba(56, 56, 56, 0.06);
+    }
+    .catalog-filters__group {
+      padding: 20px 0;
+    }
+    .catalog-filters__group h3 {
+      margin-bottom: 14px;
+      font-size: 0.95rem;
+    }
+    .catalog-filters__list {
+      gap: 12px;
+    }
+    .catalog-filters__list label,
+    .catalog-filters__check {
+      min-height: 27px;
+      font-size: 0.87rem;
+    }
+    .catalog-filters__clear {
+      min-height: 46px;
+      border-color: rgba(143, 183, 24, 0.42);
+      color: #5f7e0b;
+    }
+    .catalog-landing .product-card {
+      border-radius: 14px;
+      box-shadow: 0 7px 18px rgba(56, 56, 56, 0.06);
+    }
+    .catalog-landing .product-card__media {
+      border-radius: 14px 14px 0 0;
+    }
+    .catalog-landing .product-card__btn-add {
+      width: calc(100% - 16px);
+      margin: 0 8px 8px;
+      border-radius: 9px;
+      padding: 0.72rem 0.45rem;
+      border: 0;
+      background: linear-gradient(135deg, #91bd08, #6f9b00);
+      color: #fff;
+      box-shadow: 0 5px 12px rgba(111, 155, 0, 0.2);
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .catalog-landing .product-card__btn-add i {
+      margin-right: 6px;
+    }
+    .add-label-short {
+      display: none;
+    }
+    @media (min-width: 1024px) {
+      .catalog-shell {
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 32px;
+      }
+      .catalog-filters {
+        top: 96px;
+        max-height: calc(100vh - 116px);
+      }
+      .catalog-landing .grid.carousel-active,
+      .catalog-landing .grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+      }
+    }
+    @media (max-width: 1023px) {
+      .catalog-landing .container {
+        width: min(calc(100% - 28px), 900px);
+      }
+      .catalog-landing .header__wrap {
+        grid-template-columns: 190px minmax(260px, 1fr) auto;
+        gap: 12px;
+      }
+      .catalog-landing .logo img {
+        height: 44px;
+      }
+    }
+    @media (max-width: 767px) {
+      .catalog-landing .header__wrap {
+        min-height: 112px;
+        grid-template-columns: 44px minmax(0, 1fr) 44px;
+        grid-template-rows: 56px 48px;
+        gap: 4px 10px;
+      }
+      .mobile-header-filter {
+        display: grid;
+        place-items: center;
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .catalog-landing .logo {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: center;
+        text-align: center;
+      }
+      .catalog-landing .logo img {
+        height: 42px;
+      }
+      .catalog-landing .nav {
+        grid-column: 3;
+        grid-row: 1;
+        justify-self: end;
+      }
+      .catalog-landing .header__account {
+        display: none !important;
+      }
+      .catalog-landing .header__link.header__cart {
+        position: relative;
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+        padding: 0;
+        font-size: 1.25rem;
+      }
+      .catalog-landing .header__cart .badge {
+        position: absolute;
+        top: 0;
+        right: -2px;
+      }
+      .catalog-landing .header__cart span:not(.badge) {
+        display: none;
+      }
+      .catalog-search--header {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+      .catalog-search--header .catalog-search__field {
+        min-height: 42px;
+      }
+      .catalog-breadcrumb {
+        display: none;
+      }
+      .catalog-heading {
+        display: none;
+      }
+      .catalog-shell {
+        padding-top: 14px;
+      }
+      .catalog-shell .content {
+        display: flex;
+        flex-direction: column;
+      }
+      .catalog-toolbar {
+        order: 1;
+        margin-bottom: 10px;
+      }
+      .catalog-mobile-tools {
+        order: 2;
+        margin: 0 0 14px;
+      }
+      .catalog-landing .grid {
+        order: 3;
+      }
+      .catalog-toolbar__actions {
+        display: none;
+      }
+      .catalog-toolbar__tabs {
+        width: 100%;
+        flex-wrap: nowrap;
+        gap: 8px;
+      }
+      .catalog-toolbar__tab {
+        min-height: 36px;
+        padding: 0 14px;
+        font-size: 0.7rem;
+      }
+      .catalog-mobile-tools .catalog-search__meta {
+        margin: 0;
+        flex: 1;
+        font-size: 0.7rem;
+      }
+      .catalog-mobile-tools .catalog-filters__trigger {
+        margin: 0;
+        border-radius: 10px;
+      }
+      .catalog-bottom-nav {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .add-label-full {
+        display: none;
+      }
+      .add-label-short {
+        display: inline;
       }
     }
   </style>
@@ -1547,10 +1765,22 @@
 
   <header class="header">
     <div class="container header__wrap">
-      <h1 class="logo" style="margin:auto;">
+      <button type="button" class="mobile-header-filter" id="catalogFiltersHeaderTrigger" aria-label="Abrir filtros">
+        <i class="fas fa-ellipsis-vertical" aria-hidden="true"></i>
+      </button>
+      <h1 class="logo">
         <a href="index.html"><img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness" height="52" loading="eager"></a>
       </h1>
-      <nav class="nav" aria-label="Ações principais" style="position:absolute;right:16px;">
+      <section class="catalog-search catalog-search--header" aria-label="Pesquisar produtos">
+        <div class="catalog-search__field">
+          <span class="catalog-search__icon" aria-hidden="true"><i class="fas fa-magnifying-glass"></i></span>
+          <input id="catalogSearch" type="search" autocomplete="off" placeholder="Buscar peça, cor ou tamanho" aria-label="Buscar peça, cor ou tamanho" />
+          <button class="catalog-search__clear" id="catalogSearchClear" type="button" aria-label="Limpar busca">
+            <i class="fas fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+      </section>
+      <nav class="nav" aria-label="Ações principais">
         <a href="cliente-login.html" class="header__link header__account">
           <i class="fas fa-user" aria-hidden="true"></i>
           <span>Entrar</span>
@@ -1612,7 +1842,6 @@
         <h3>Filtros extras</h3>
         <label class="catalog-filters__check"><input type="checkbox" id="filterLancamentos"> Lançamentos</label>
         <label class="catalog-filters__check"><input type="checkbox" id="filterPromocoes"> Promoções</label>
-        <label class="catalog-filters__check"><input type="checkbox" id="filterDisponiveis"> Disponíveis</label>
       </section>
 
       <button type="button" class="catalog-filters__clear" id="catalogFiltersClear">
@@ -1624,17 +1853,9 @@
     <main class="content" style="position:relative;">
       <div class="catalog-heading">
         <h2>Catálogo de produtos</h2>
-        <p>Encontre as melhores peças para seu treino com conforto e estilo.</p>
       </div>
 
-      <section class="catalog-search" aria-label="Pesquisar produtos">
-        <div class="catalog-search__field">
-          <span class="catalog-search__icon" aria-hidden="true"><i class="fas fa-magnifying-glass"></i></span>
-          <input id="catalogSearch" type="search" autocomplete="off" placeholder="Buscar peça, cor ou tamanho" aria-label="Buscar peça, cor ou tamanho" />
-          <button class="catalog-search__clear" id="catalogSearchClear" type="button" aria-label="Limpar busca">
-            <i class="fas fa-xmark" aria-hidden="true"></i>
-          </button>
-        </div>
+      <section class="catalog-mobile-tools" aria-label="Ferramentas do catálogo">
         <span class="catalog-search__meta" id="catalogSearchMeta"></span>
         <button type="button" class="catalog-filters__trigger" id="catalogFiltersTrigger">
           <i class="fas fa-sliders" aria-hidden="true"></i> Filtros
@@ -1645,7 +1866,6 @@
         <div class="catalog-toolbar__tabs" id="catalogQuickTabs">
           <button type="button" class="catalog-toolbar__tab" data-quick="todos" data-active="true">Todos</button>
           <button type="button" class="catalog-toolbar__tab" data-quick="lancamentos">Lançamentos</button>
-          <button type="button" class="catalog-toolbar__tab" data-quick="mais-vendidos">Mais vendidos</button>
           <button type="button" class="catalog-toolbar__tab" data-quick="promocoes">Promoções</button>
         </div>
         <div class="catalog-toolbar__actions">
@@ -1660,14 +1880,6 @@
               <option value="nome-za">Nome Z-A</option>
             </select>
           </label>
-          <div class="catalog-toolbar__view" role="group" aria-label="Modo de visualização">
-            <button type="button" class="catalog-toolbar__view-btn" data-view="grid" data-active="true" aria-label="Ver em grade">
-              <i class="fas fa-grip" aria-hidden="true"></i> Grade
-            </button>
-            <button type="button" class="catalog-toolbar__view-btn" data-view="list" aria-label="Ver em lista">
-              <i class="fas fa-list" aria-hidden="true"></i> Lista
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1782,20 +1994,11 @@
   <nav class="catalog-bottom-nav" aria-label="Navegação principal">
     <a class="catalog-bottom-nav__item" href="index.html" aria-label="Início">
       <i class="fas fa-house" aria-hidden="true"></i>
-      <span>Início</span>
+      <span>Home</span>
     </a>
-    <button type="button" class="catalog-bottom-nav__item" id="bottomNavSearch" aria-label="Buscar">
-      <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
-      <span>Buscar</span>
-    </button>
-    <a class="catalog-bottom-nav__item" href="#grid" id="bottomNavCatalog" data-active="true" aria-label="Catálogo">
-      <i class="fas fa-shirt" aria-hidden="true"></i>
-      <span>Catálogo</span>
-    </a>
-    <button type="button" class="catalog-bottom-nav__item" id="bottomNavCart" aria-label="Carrinho">
-      <i class="fas fa-shopping-cart" aria-hidden="true"></i>
-      <span class="catalog-bottom-nav__badge" id="bottomNavCartBadge" data-count="0">0</span>
-      <span>Carrinho</span>
+    <button type="button" class="catalog-bottom-nav__item" id="bottomNavCategories" data-active="true" aria-label="Categorias">
+      <i class="fas fa-grip" aria-hidden="true"></i>
+      <span>Categorias</span>
     </button>
     <a class="catalog-bottom-nav__item" href="cliente-login.html" aria-label="Minha conta">
       <i class="fas fa-user" aria-hidden="true"></i>
@@ -1803,23 +2006,12 @@
     </a>
   </nav>
 
-  <script src="script.js?v=24"></script>
+  <script src="script.js?v=26"></script>
   <script>
     (function(){
-      const searchBtn = document.getElementById('bottomNavSearch');
-      const cartBtn = document.getElementById('bottomNavCart');
-      const searchInput = document.getElementById('catalogSearch');
-      if (searchBtn && searchInput) {
-        searchBtn.addEventListener('click', () => {
-          searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          searchInput.focus({ preventScroll: true });
-        });
-      }
-      if (cartBtn) {
-        cartBtn.addEventListener('click', () => {
-          if (typeof openCart === 'function') openCart();
-        });
-      }
+      const categoriesBtn = document.getElementById('bottomNavCategories');
+      const filterBtn = document.getElementById('catalogFiltersTrigger');
+      if (categoriesBtn && filterBtn) categoriesBtn.addEventListener('click', () => filterBtn.click());
     })();
 
     if (!isLocal && 'serviceWorker' in navigator) {
