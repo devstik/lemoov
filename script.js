@@ -4184,6 +4184,12 @@ function atualizarCart(){
 
   const cartCount = el("#cartCount");
   if (cartCount) cartCount.textContent = getCartCount();
+  const cartCountMobile = el("#bottomNavCartBadge");
+  if (cartCountMobile) {
+    const n = getCartCount();
+    cartCountMobile.textContent = n;
+    cartCountMobile.dataset.count = String(n);
+  }
   const list = el("#cartList");
   if (!list) return;
   ensureCartClientSummary();

@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Lemoov Fitness</title>
   <meta name="description" content="Catálogo rápido Lemoov para comprar direto do Instagram." />
   <meta property="og:title" content="Lemoov | Catálogo rápido" />
@@ -11,6 +11,14 @@
   <meta property="og:site_name" content="Lemoov Fitness" />
   <meta property="og:locale" content="pt_BR" />
   <meta property="og:image" content="image/capa/WhatsApp Image 2026-06-14 at 22.06.18.jpeg" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#383838" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Lemoov" />
+  <link rel="apple-touch-icon" href="image/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="image/icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css?v=18" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -889,6 +897,80 @@
         grid-template-columns: repeat(auto-fill, minmax(205px, 1fr));
       }
     }
+
+    /* Bottom tab bar — mobile "app-like" navigation */
+    .catalog-bottom-nav {
+      display: none;
+    }
+    @media (max-width: 767px) {
+      .catalog-bottom-nav {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 500;
+        background: rgba(251, 248, 244, 0.96);
+        border-top: 1px solid rgba(56, 56, 56, 0.12);
+        box-shadow: 0 -8px 24px rgba(56, 56, 56, 0.1);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .catalog-bottom-nav__item {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding: 8px 4px 7px;
+        min-height: 54px;
+        color: rgba(56, 56, 56, 0.56);
+        font: 700 0.62rem/1 Inter, system-ui, sans-serif;
+        letter-spacing: 0.02em;
+        text-decoration: none;
+        cursor: pointer;
+        position: relative;
+      }
+      .catalog-bottom-nav__item i {
+        font-size: 1.1rem;
+      }
+      .catalog-bottom-nav__item[data-active="true"] {
+        color: #6F8522;
+      }
+      .catalog-bottom-nav__badge {
+        position: absolute;
+        top: 2px;
+        right: calc(50% - 20px);
+        min-width: 15px;
+        height: 15px;
+        padding: 0 3px;
+        border-radius: 999px;
+        background: #A8C63A;
+        color: #383838;
+        font: 800 0.58rem/15px Inter, system-ui, sans-serif;
+        text-align: center;
+      }
+      .catalog-bottom-nav__badge:empty,
+      .catalog-bottom-nav__badge[data-count="0"] {
+        display: none;
+      }
+      /* Bottom nav replaces the floating quick-menu on mobile */
+      .fab-radial-root,
+      .fab-radial__overlay {
+        display: none !important;
+      }
+      body.catalog-landing {
+        padding-bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+      }
+      body.catalog-landing .cookie-banner {
+        bottom: calc(54px + env(safe-area-inset-bottom, 0px));
+      }
+    }
   </style>
 </head>
 <body class="catalog-landing">
@@ -1095,6 +1177,55 @@
     </div>
   </div>
 
+  <!-- Navegação inferior fixa (mobile) -->
+  <nav class="catalog-bottom-nav" aria-label="Navegação principal">
+    <a class="catalog-bottom-nav__item" href="index.html" aria-label="Início">
+      <i class="fas fa-house" aria-hidden="true"></i>
+      <span>Início</span>
+    </a>
+    <button type="button" class="catalog-bottom-nav__item" id="bottomNavSearch" aria-label="Buscar">
+      <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+      <span>Buscar</span>
+    </button>
+    <a class="catalog-bottom-nav__item" href="#grid" id="bottomNavCatalog" data-active="true" aria-label="Catálogo">
+      <i class="fas fa-shirt" aria-hidden="true"></i>
+      <span>Catálogo</span>
+    </a>
+    <button type="button" class="catalog-bottom-nav__item" id="bottomNavCart" aria-label="Carrinho">
+      <i class="fas fa-shopping-cart" aria-hidden="true"></i>
+      <span class="catalog-bottom-nav__badge" id="bottomNavCartBadge" data-count="0">0</span>
+      <span>Carrinho</span>
+    </button>
+    <a class="catalog-bottom-nav__item" href="cliente-login.html" aria-label="Minha conta">
+      <i class="fas fa-user" aria-hidden="true"></i>
+      <span>Conta</span>
+    </a>
+  </nav>
+
   <script src="script.js?v=24"></script>
+  <script>
+    (function(){
+      const searchBtn = document.getElementById('bottomNavSearch');
+      const cartBtn = document.getElementById('bottomNavCart');
+      const searchInput = document.getElementById('catalogSearch');
+      if (searchBtn && searchInput) {
+        searchBtn.addEventListener('click', () => {
+          searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          searchInput.focus({ preventScroll: true });
+        });
+      }
+      if (cartBtn) {
+        cartBtn.addEventListener('click', () => {
+          if (typeof openCart === 'function') openCart();
+        });
+      }
+    })();
+
+    if (!isLocal && 'serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>

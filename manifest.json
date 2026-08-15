@@ -1,0 +1,38 @@
+{
+  "name": "Lemoov Fitness",
+  "short_name": "Lemoov",
+  "description": "Catálogo Lemoov Fitness — moda fitness premium.",
+  "start_url": "/catalogo-produtos.html?pwa=1",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#383838",
+  "theme_color": "#383838",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/image/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/image/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/image/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/image/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
