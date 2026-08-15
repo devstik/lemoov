@@ -7,6 +7,7 @@ const multer = require('multer');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
 const QRCodeLib = require('qrcode');
+const heicConvert = require('heic-convert');
 const { initProductionSchema, registerProductionRoutes } = require('./production');
 
 // Polyfill fetch para Node < 18
@@ -1234,10 +1235,14 @@ const upload = multer({
     }
   }),
   fileFilter: (_req, file, cb) => {
-    const ok = /image\/(jpeg|png)/.test(file.mimetype);
+    // HEIC/HEIF (padrão de fotos do iPhone) costuma chegar com mimetype
+    // genérico (application/octet-stream) dependendo do navegador — por
+    // isso também aceitamos pela extensão do arquivo original.
+    const ok = /image\/(jpeg|png|webp|heic|heif)/i.test(file.mimetype)
+      || /\.(heic|heif)$/i.test(file.originalname);
     cb(ok ? null : new Error('Tipo inválido'), ok);
   },
-  limits: { fileSize: 6 * 1024 * 1024 }
+  limits: { fileSize: 12 * 1024 * 1024 }
 });
 const uploadAtacado = multer({
   storage: multer.diskStorage({
@@ -1249,11 +1254,29 @@ const uploadAtacado = multer({
     }
   }),
   fileFilter: (_req, file, cb) => {
-    const ok = /image\/(jpeg|png)/.test(file.mimetype);
+    // HEIC/HEIF (padrão de fotos do iPhone) costuma chegar com mimetype
+    // genérico (application/octet-stream) dependendo do navegador — por
+    // isso também aceitamos pela extensão do arquivo original.
+    const ok = /image\/(jpeg|png|webp|heic|heif)/i.test(file.mimetype)
+      || /\.(heic|heif)$/i.test(file.originalname);
     cb(ok ? null : new Error('Tipo inválido'), ok);
   },
-  limits: { fileSize: 6 * 1024 * 1024 }
+  limits: { fileSize: 12 * 1024 * 1024 }
 });
+// Converte fotos HEIC/HEIF (padrão do iPhone) para JPEG logo após o upload —
+// a maioria dos navegadores (fora Safari/macOS) não exibe HEIC em <img>,
+// então sem essa conversão a foto fica salva mas não aparece pro cliente.
+async function convertHeicIfNeeded(dir, filename) {
+  if (!/\.(heic|heif)$/i.test(filename)) return filename;
+  const inputPath = path.join(dir, filename);
+  const inputBuffer = fs.readFileSync(inputPath);
+  const outputBuffer = await heicConvert({ buffer: inputBuffer, format: 'JPEG', quality: 0.9 });
+  const jpegFilename = filename.replace(/\.(heic|heif)$/i, '.jpg');
+  fs.writeFileSync(path.join(dir, jpegFilename), outputBuffer);
+  fs.unlinkSync(inputPath);
+  return jpegFilename;
+}
+
 const uploadVideo = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, VIDEO_DIR),
@@ -2950,10 +2973,16 @@ app.post('/api/admin/produtos', authRequired, async (req, res) => {
   }
 });
 
-app.post('/api/admin/upload', authRequired, upload.single('file'), (req, res) => {
+app.post('/api/admin/upload', authRequired, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false });
-  const relPath = path.join(UPLOAD_PUBLIC_PREFIX, req.file.filename).replace(/\\/g, '/');
-  res.json({ ok: true, path: relPath });
+  try {
+    const filename = await convertHeicIfNeeded(UPLOAD_DIR, req.file.filename);
+    const relPath = path.join(UPLOAD_PUBLIC_PREFIX, filename).replace(/\\/g, '/');
+    res.json({ ok: true, path: relPath });
+  } catch (e) {
+    console.error('[upload] falha ao converter HEIC:', e.message);
+    res.status(400).json({ ok: false, error: 'Não foi possível processar essa foto. Tente exportar como JPG e enviar novamente.' });
+  }
 });
 
 app.post('/api/admin/upload-video', authRequired, uploadVideo.single('file'), (req, res) => {
@@ -3278,10 +3307,16 @@ app.patch('/api/admin/atacado/ordem', authRequired, async (req, res) => {
   }
 });
 
-app.post('/api/admin/upload-atacado', authRequired, uploadAtacado.single('file'), (req, res) => {
+app.post('/api/admin/upload-atacado', authRequired, uploadAtacado.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false });
-  const relPath = path.join(ATACADO_UPLOAD_PUBLIC_PREFIX, req.file.filename).replace(/\\/g, '/');
-  res.json({ ok: true, path: relPath });
+  try {
+    const filename = await convertHeicIfNeeded(ATACADO_UPLOAD_DIR, req.file.filename);
+    const relPath = path.join(ATACADO_UPLOAD_PUBLIC_PREFIX, filename).replace(/\\/g, '/');
+    res.json({ ok: true, path: relPath });
+  } catch (e) {
+    console.error('[upload-atacado] falha ao converter HEIC:', e.message);
+    res.status(400).json({ ok: false, error: 'Não foi possível processar essa foto. Tente exportar como JPG e enviar novamente.' });
+  }
 });
 
 app.post('/api/admin/entrada-estoque', authRequired, async (req, res) => {
