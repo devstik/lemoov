@@ -131,14 +131,18 @@ if (!fs.existsSync(VIDEO_DIR)) fs.mkdirSync(VIDEO_DIR, { recursive: true });
 
 function persistentStorageDir(publicPrefix) {
   // Hostinger executa cada deploy em <dominio>/.builds/versions/<id>/nodejs.
-  // Arquivos enviados precisam ficar na raiz persistente do domínio, fora da
-  // versão descartável do build.
+  // A própria pasta nodejs/public_html também pode ser substituída no deploy;
+  // por isso os uploads ficam em uma pasta irmã, na raiz persistente do domínio.
   const buildsMarker = `${path.sep}.builds${path.sep}versions${path.sep}`;
   const buildsIndex = __dirname.indexOf(buildsMarker);
-  const storageRoot = buildsIndex >= 0
+  const buildRoot = buildsIndex >= 0
     ? __dirname.slice(0, buildsIndex)
     : path.join(__dirname, '..');
-  return path.join(storageRoot, publicPrefix);
+  const buildRootName = path.basename(buildRoot).toLowerCase();
+  const domainRoot = ['nodejs', 'public_html'].includes(buildRootName)
+    ? path.dirname(buildRoot)
+    : buildRoot;
+  return path.join(domainRoot, '.lemoov-storage', publicPrefix);
 }
 
 const UPLOAD_PUBLIC_PREFIX = (process.env.UPLOAD_PUBLIC_PREFIX || 'uploads').replace(/^\/+|\/+$/g, '');
