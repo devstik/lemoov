@@ -129,12 +129,18 @@ if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
 const VIDEO_DIR = path.join(__dirname, 'video');
 if (!fs.existsSync(VIDEO_DIR)) fs.mkdirSync(VIDEO_DIR, { recursive: true });
 
-function persistentStorageDir(publicPrefix) {
-  // Hostinger executa cada deploy em <dominio>/.builds/versions/<id>/nodejs.
+function persistentDomainRoot() {
+  // A Hostinger usa hbuilds/versions em produção (e algumas versões da
+  // plataforma já usaram .builds/versions). Tudo após esse marcador é efêmero.
   // A própria pasta nodejs/public_html também pode ser substituída no deploy;
   // por isso os uploads ficam em uma pasta irmã, na raiz persistente do domínio.
-  const buildsMarker = `${path.sep}.builds${path.sep}versions${path.sep}`;
-  const buildsIndex = __dirname.indexOf(buildsMarker);
+  const buildMarkers = [
+    `${path.sep}hbuilds${path.sep}versions${path.sep}`,
+    `${path.sep}.builds${path.sep}versions${path.sep}`
+  ];
+  const buildsIndex = buildMarkers
+    .map((marker) => __dirname.indexOf(marker))
+    .find((index) => index >= 0) ?? -1;
   const buildRoot = buildsIndex >= 0
     ? __dirname.slice(0, buildsIndex)
     : path.join(__dirname, '..');
@@ -142,7 +148,11 @@ function persistentStorageDir(publicPrefix) {
   const domainRoot = ['nodejs', 'public_html'].includes(buildRootName)
     ? path.dirname(buildRoot)
     : buildRoot;
-  return path.join(domainRoot, 'lemoov-storage', publicPrefix);
+  return domainRoot;
+}
+
+function persistentStorageDir(publicPrefix) {
+  return path.join(persistentDomainRoot(), 'lemoov-storage', publicPrefix);
 }
 
 const UPLOAD_PUBLIC_PREFIX = (process.env.UPLOAD_PUBLIC_PREFIX || 'uploads').replace(/^\/+|\/+$/g, '');
@@ -1321,14 +1331,19 @@ function legacyUploadDirectories(publicPrefix) {
     path.join(__dirname, '..', publicPrefix),
     path.join(__dirname, '..', '..', publicPrefix)
   ]);
-  const buildsMarker = `${path.sep}.builds${path.sep}versions${path.sep}`;
-  const buildsIndex = __dirname.indexOf(buildsMarker);
+  const buildMarkers = [
+    `${path.sep}hbuilds${path.sep}versions${path.sep}`,
+    `${path.sep}.builds${path.sep}versions${path.sep}`
+  ];
+  const matchedMarker = buildMarkers.find((marker) => __dirname.includes(marker));
+  const buildsIndex = matchedMarker ? __dirname.indexOf(matchedMarker) : -1;
   if (buildsIndex < 0) return [...dirs];
 
   const oldStorageRoot = __dirname.slice(0, buildsIndex);
   dirs.add(path.join(oldStorageRoot, publicPrefix));
   dirs.add(path.join(path.dirname(oldStorageRoot), publicPrefix));
-  const versionsDir = path.join(oldStorageRoot, '.builds', 'versions');
+  const buildsDirName = matchedMarker.includes('hbuilds') ? 'hbuilds' : '.builds';
+  const versionsDir = path.join(oldStorageRoot, buildsDirName, 'versions');
   try {
     for (const version of fs.readdirSync(versionsDir)) {
       const versionDir = path.join(versionsDir, version);
@@ -1337,6 +1352,37 @@ function legacyUploadDirectories(publicPrefix) {
     }
   } catch (_e) {}
   return [...dirs];
+}
+
+let legacyUploadIndex = null;
+function buildLegacyUploadIndex() {
+  if (legacyUploadIndex) return legacyUploadIndex;
+  const index = new Map();
+  const ignored = new Set(['node_modules', '.git', 'lemoov-storage']);
+  let visited = 0;
+
+  function walk(dir, depth) {
+    if (depth > 9 || visited > 100000) return;
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (_e) {
+      return;
+    }
+    for (const entry of entries) {
+      if (visited++ > 100000) break;
+      if (entry.isDirectory()) {
+        if (!ignored.has(entry.name)) walk(path.join(dir, entry.name), depth + 1);
+      } else if (/\.(jpe?g|png|webp|heic|heif)$/i.test(entry.name) && !index.has(entry.name)) {
+        index.set(entry.name, path.join(dir, entry.name));
+      }
+    }
+  }
+
+  walk(persistentDomainRoot(), 0);
+  legacyUploadIndex = index;
+  console.log(`[uploads] índice de recuperação: ${index.size} imagens encontradas`);
+  return index;
 }
 
 function findAndRecoverUpload(filename, targetDir, publicPrefix) {
@@ -1352,6 +1398,20 @@ function findAndRecoverUpload(filename, targetDir, publicPrefix) {
       return target;
     } catch (_e) {
       return candidate;
+    }
+  }
+
+  // A estrutura interna dos deploys gerenciados varia conforme a versão da
+  // plataforma. Como último recurso, localiza o arquivo pelo nome em toda a
+  // área do domínio, sem depender de um caminho presumido.
+  const indexedCandidate = buildLegacyUploadIndex().get(filename);
+  if (indexedCandidate && fs.existsSync(indexedCandidate)) {
+    try {
+      fs.copyFileSync(indexedCandidate, target);
+      console.log(`[uploads] foto localizada e recuperada: ${filename}`);
+      return target;
+    } catch (_e) {
+      return indexedCandidate;
     }
   }
   return null;
@@ -2906,7 +2966,10 @@ app.get('/api/media/:filename', (req, res) => {
   const filename = path.basename(req.params.filename || '');
   if (!filename || filename !== req.params.filename) return res.sendStatus(400);
   const file = findAndRecoverUpload(filename, UPLOAD_DIR, UPLOAD_PUBLIC_PREFIX);
-  if (!file) return res.sendStatus(404);
+  if (!file) {
+    res.set('X-Lemoov-Media-Scan', String(legacyUploadIndex?.size || 0));
+    return res.sendStatus(404);
+  }
   res.sendFile(file, (err) => {
     if (err && !res.headersSent) res.sendStatus(err.statusCode || 404);
   });
@@ -2916,7 +2979,10 @@ app.get('/api/media-atacado/:filename', (req, res) => {
   const filename = path.basename(req.params.filename || '');
   if (!filename || filename !== req.params.filename) return res.sendStatus(400);
   const file = findAndRecoverUpload(filename, ATACADO_UPLOAD_DIR, ATACADO_UPLOAD_PUBLIC_PREFIX);
-  if (!file) return res.sendStatus(404);
+  if (!file) {
+    res.set('X-Lemoov-Media-Scan', String(legacyUploadIndex?.size || 0));
+    return res.sendStatus(404);
+  }
   res.sendFile(file, (err) => {
     if (err && !res.headersSent) res.sendStatus(err.statusCode || 404);
   });
