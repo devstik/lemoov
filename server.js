@@ -1311,6 +1311,45 @@ function productWithPublicAssetPaths(product) {
   };
 }
 
+function legacyUploadDirectories(publicPrefix) {
+  const dirs = new Set([
+    path.join(__dirname, publicPrefix),
+    path.join(__dirname, '..', publicPrefix),
+    path.join(__dirname, '..', '..', publicPrefix)
+  ]);
+  const buildsMarker = `${path.sep}.builds${path.sep}versions${path.sep}`;
+  const buildsIndex = __dirname.indexOf(buildsMarker);
+  if (buildsIndex < 0) return [...dirs];
+
+  const versionsDir = path.join(__dirname.slice(0, buildsIndex), '.builds', 'versions');
+  try {
+    for (const version of fs.readdirSync(versionsDir)) {
+      const versionDir = path.join(versionsDir, version);
+      dirs.add(path.join(versionDir, publicPrefix));
+      dirs.add(path.join(versionDir, 'nodejs', publicPrefix));
+    }
+  } catch (_e) {}
+  return [...dirs];
+}
+
+function findAndRecoverUpload(filename, targetDir, publicPrefix) {
+  const target = path.join(targetDir, filename);
+  if (fs.existsSync(target)) return target;
+
+  for (const dir of legacyUploadDirectories(publicPrefix)) {
+    const candidate = path.join(dir, filename);
+    if (!fs.existsSync(candidate)) continue;
+    try {
+      fs.copyFileSync(candidate, target);
+      console.log(`[uploads] foto recuperada de deploy anterior: ${filename}`);
+      return target;
+    } catch (_e) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
 const uploadVideo = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, VIDEO_DIR),
@@ -2859,7 +2898,9 @@ app.get('/relatorio.html', authRequired, (_req, res) => {
 app.get('/api/media/:filename', (req, res) => {
   const filename = path.basename(req.params.filename || '');
   if (!filename || filename !== req.params.filename) return res.sendStatus(400);
-  res.sendFile(filename, { root: UPLOAD_DIR }, (err) => {
+  const file = findAndRecoverUpload(filename, UPLOAD_DIR, UPLOAD_PUBLIC_PREFIX);
+  if (!file) return res.sendStatus(404);
+  res.sendFile(file, (err) => {
     if (err && !res.headersSent) res.sendStatus(err.statusCode || 404);
   });
 });
@@ -2867,7 +2908,9 @@ app.get('/api/media/:filename', (req, res) => {
 app.get('/api/media-atacado/:filename', (req, res) => {
   const filename = path.basename(req.params.filename || '');
   if (!filename || filename !== req.params.filename) return res.sendStatus(400);
-  res.sendFile(filename, { root: ATACADO_UPLOAD_DIR }, (err) => {
+  const file = findAndRecoverUpload(filename, ATACADO_UPLOAD_DIR, ATACADO_UPLOAD_PUBLIC_PREFIX);
+  if (!file) return res.sendStatus(404);
+  res.sendFile(file, (err) => {
     if (err && !res.headersSent) res.sendStatus(err.statusCode || 404);
   });
 });

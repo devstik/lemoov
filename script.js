@@ -4957,6 +4957,7 @@ async function initCatalog(){
   if (urlFilter) filtroAtual = urlFilter.trim();
   renderFiltros();
   initCatalogFiltersDrawer();
+  initCatalogToolbar();
   const ok = await loadProdutos();
   renderCatalogFilters();
   renderGrid();
