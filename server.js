@@ -142,7 +142,7 @@ function persistentStorageDir(publicPrefix) {
   const domainRoot = ['nodejs', 'public_html'].includes(buildRootName)
     ? path.dirname(buildRoot)
     : buildRoot;
-  return path.join(domainRoot, '.lemoov-storage', publicPrefix);
+  return path.join(domainRoot, 'lemoov-storage', publicPrefix);
 }
 
 const UPLOAD_PUBLIC_PREFIX = (process.env.UPLOAD_PUBLIC_PREFIX || 'uploads').replace(/^\/+|\/+$/g, '');
@@ -1325,7 +1325,10 @@ function legacyUploadDirectories(publicPrefix) {
   const buildsIndex = __dirname.indexOf(buildsMarker);
   if (buildsIndex < 0) return [...dirs];
 
-  const versionsDir = path.join(__dirname.slice(0, buildsIndex), '.builds', 'versions');
+  const oldStorageRoot = __dirname.slice(0, buildsIndex);
+  dirs.add(path.join(oldStorageRoot, publicPrefix));
+  dirs.add(path.join(path.dirname(oldStorageRoot), publicPrefix));
+  const versionsDir = path.join(oldStorageRoot, '.builds', 'versions');
   try {
     for (const version of fs.readdirSync(versionsDir)) {
       const versionDir = path.join(versionsDir, version);
