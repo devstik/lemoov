@@ -245,6 +245,7 @@ let filtroPrecoMax = null;
 let filtroSoLancamentos = false;
 let filtroSoPromocoes = false;
 let filtroSoDisponiveis = false;
+let catalogQuickTab = "todos";
 const CART_STORAGE_KEY = "lemoov_cart_v1";
 const CART_TTL_MS = 30 * 60 * 1000;
 let cartUpdatedAt = 0;
@@ -2511,6 +2512,15 @@ function renderCatalogFilters(){
   const inputMax = el("#filterPrecoMax");
   const labelMin = el("#filterPrecoMinLabel");
   const labelMax = el("#filterPrecoMaxLabel");
+  const fill = el("#filterPrecoFill");
+  const updatePriceFill = () => {
+    if (!fill) return;
+    const range = (max - min) || 1;
+    const leftPct = ((Number(inputMin.value) - min) / range) * 100;
+    const rightPct = 100 - ((Number(inputMax.value) - min) / range) * 100;
+    fill.style.left = `${leftPct}%`;
+    fill.style.right = `${rightPct}%`;
+  };
   if (inputMin && inputMax) {
     [inputMin, inputMax].forEach(inp => { inp.min = min; inp.max = max; });
     inputMin.value = filtroPrecoMin ?? min;
@@ -2518,16 +2528,19 @@ function renderCatalogFilters(){
     const fmt = (v) => `R$ ${Number(v).toFixed(2).replace(".", ",")}`;
     if (labelMin) labelMin.textContent = fmt(inputMin.value);
     if (labelMax) labelMax.textContent = fmt(inputMax.value);
+    updatePriceFill();
     inputMin.oninput = () => {
       if (Number(inputMin.value) > Number(inputMax.value)) inputMin.value = inputMax.value;
       filtroPrecoMin = Number(inputMin.value);
       if (labelMin) labelMin.textContent = fmt(inputMin.value);
+      updatePriceFill();
       renderGrid();
     };
     inputMax.oninput = () => {
       if (Number(inputMax.value) < Number(inputMin.value)) inputMax.value = inputMin.value;
       filtroPrecoMax = Number(inputMax.value);
       if (labelMax) labelMax.textContent = fmt(inputMax.value);
+      updatePriceFill();
       renderGrid();
     };
   }
@@ -2573,8 +2586,58 @@ function initCatalogFiltersDrawer(){
     filtroSoLancamentos = false;
     filtroSoPromocoes = false;
     filtroSoDisponiveis = false;
+    catalogQuickTab = "todos";
+    syncCatalogQuickTabs();
     renderCatalogFilters();
     renderGrid();
+  });
+}
+
+/* ===== Barra de ferramentas: abas rápidas, ordenar, grade/lista ===== */
+function syncCatalogQuickTabs(){
+  document.querySelectorAll("#catalogQuickTabs .catalog-toolbar__tab").forEach(tab => {
+    tab.dataset.active = tab.dataset.quick === catalogQuickTab ? "true" : "false";
+  });
+}
+
+function applyCatalogQuickTab(key){
+  catalogQuickTab = key;
+  filtroSoLancamentos = key === "lancamentos";
+  filtroSoPromocoes = key === "promocoes";
+  // "Mais vendidos" não tem dado de vendas real no catálogo — usa a ordem
+  // curada padrão (mesma de "Destaque") como aproximação até existir essa métrica.
+  if (key === "mais-vendidos" || key === "todos") ordenacaoAtual = "destaque";
+  const sortSelect = el("#catalogSort");
+  if (sortSelect) sortSelect.value = ordenacaoAtual;
+  syncCatalogQuickTabs();
+  renderCatalogFilters();
+  renderGrid();
+}
+
+function initCatalogToolbar(){
+  const tabsWrap = el("#catalogQuickTabs");
+  if (!tabsWrap) return;
+  tabsWrap.querySelectorAll(".catalog-toolbar__tab").forEach(tab => {
+    tab.addEventListener("click", () => applyCatalogQuickTab(tab.dataset.quick));
+  });
+
+  const sortSelect = el("#catalogSort");
+  if (sortSelect) {
+    sortSelect.value = ordenacaoAtual;
+    sortSelect.addEventListener("change", () => {
+      ordenacaoAtual = sortSelect.value;
+      renderGrid();
+    });
+  }
+
+  const viewBtns = document.querySelectorAll(".catalog-toolbar__view-btn");
+  const grid = el("#grid");
+  viewBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      viewBtns.forEach(b => { b.dataset.active = "false"; });
+      btn.dataset.active = "true";
+      if (grid) grid.classList.toggle("grid--list", btn.dataset.view === "list");
+    });
   });
 }
 
@@ -2605,6 +2668,10 @@ function renderGrid(){
 
   const countEl = document.querySelector("#productCount");
   if (countEl) countEl.textContent = "";
+  const toolbarCount = el("#catalogResultCount");
+  if (toolbarCount) {
+    toolbarCount.textContent = `${lista.length} produto${lista.length === 1 ? "" : "s"} encontrado${lista.length === 1 ? "" : "s"}`;
+  }
 
   grid.innerHTML = "";
 

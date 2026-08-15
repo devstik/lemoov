@@ -1277,6 +1277,40 @@ async function convertHeicIfNeeded(dir, filename) {
   return jpegFilename;
 }
 
+// Na Hostinger, caminhos na raiz (como /uploads/foto.jpg) podem ser
+// interceptados pelo servidor/CDN antes de chegarem ao Express. As rotas /api
+// chegam à aplicação, então convertemos apenas a representação pública dos
+// caminhos, sem alterar os dados já salvos no banco.
+function uploadedAssetApiPath(value) {
+  if (typeof value !== 'string') return value;
+  const clean = value.replace(/^\/+/, '');
+  if (clean.startsWith(`${UPLOAD_PUBLIC_PREFIX}/`)) {
+    return `/api/media/${encodeURIComponent(clean.slice(UPLOAD_PUBLIC_PREFIX.length + 1))}`;
+  }
+  if (clean.startsWith(`${ATACADO_UPLOAD_PUBLIC_PREFIX}/`)) {
+    return `/api/media-atacado/${encodeURIComponent(clean.slice(ATACADO_UPLOAD_PUBLIC_PREFIX.length + 1))}`;
+  }
+  return value;
+}
+
+function productWithPublicAssetPaths(product) {
+  const mapColor = (color) => ({
+    ...color,
+    imagem: uploadedAssetApiPath(color?.imagem),
+    imagens: Array.isArray(color?.imagens)
+      ? color.imagens.map(uploadedAssetApiPath)
+      : color?.imagens
+  });
+  return {
+    ...product,
+    imagem: uploadedAssetApiPath(product?.imagem),
+    imagens: Array.isArray(product?.imagens)
+      ? product.imagens.map(uploadedAssetApiPath)
+      : product?.imagens,
+    cores: Array.isArray(product?.cores) ? product.cores.map(mapColor) : product?.cores
+  };
+}
+
 const uploadVideo = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, VIDEO_DIR),
@@ -2822,6 +2856,22 @@ app.get('/relatorio.html', authRequired, (_req, res) => {
   res.sendFile('relatorio.html', { root: __dirname });
 });
 
+app.get('/api/media/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename || '');
+  if (!filename || filename !== req.params.filename) return res.sendStatus(400);
+  res.sendFile(filename, { root: UPLOAD_DIR }, (err) => {
+    if (err && !res.headersSent) res.sendStatus(err.statusCode || 404);
+  });
+});
+
+app.get('/api/media-atacado/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename || '');
+  if (!filename || filename !== req.params.filename) return res.sendStatus(400);
+  res.sendFile(filename, { root: ATACADO_UPLOAD_DIR }, (err) => {
+    if (err && !res.headersSent) res.sendStatus(err.statusCode || 404);
+  });
+});
+
 app.get('/api/produtos', async (req, res) => {
   try {
     const all = await readProdutosStore();
@@ -2831,10 +2881,11 @@ app.get('/api/produtos', async (req, res) => {
       .map(p => ({
         ...p,
         cores: Array.isArray(p.cores) ? p.cores.filter(c => c.ativo !== false) : p.cores
-      }));
+      }))
+      .map(productWithPublicAssetPaths);
     const publicCombos = combos
       .filter(c => c.ativo !== false)
-      .map(c => comboToPublicProduct(c, all));
+      .map(c => productWithPublicAssetPaths(comboToPublicProduct(c, all)));
     const publicos = [...publicProducts, ...publicCombos]
       .sort((a, b) => (Number(a.ordem) || 9999) - (Number(b.ordem) || 9999));
     res.json(publicos);
@@ -2854,7 +2905,7 @@ app.get('/produtos-admin.html', authRequired, (_req, res) => {
 app.get('/api/admin/produtos', authRequired, async (req, res) => {
   try {
     const produtos = await readProdutosStore();
-    res.json(produtos);
+    res.json(produtos.map(productWithPublicAssetPaths));
   } catch (_e) {
     res.status(500).json({ ok: false });
   }
@@ -2977,7 +3028,7 @@ app.post('/api/admin/upload', authRequired, upload.single('file'), async (req, r
   if (!req.file) return res.status(400).json({ ok: false });
   try {
     const filename = await convertHeicIfNeeded(UPLOAD_DIR, req.file.filename);
-    const relPath = path.join(UPLOAD_PUBLIC_PREFIX, filename).replace(/\\/g, '/');
+    const relPath = `/api/media/${encodeURIComponent(filename)}`;
     res.json({ ok: true, path: relPath });
   } catch (e) {
     console.error('[upload] falha ao converter HEIC:', e.message);
@@ -3070,6 +3121,7 @@ app.get('/api/atacado', async (req, res) => {
         ...p,
         cores: Array.isArray(p.cores) ? p.cores.filter(c => c.ativo !== false) : p.cores
       }))
+      .map(productWithPublicAssetPaths)
       .sort((a, b) => (Number(a.ordem) || 9999) - (Number(b.ordem) || 9999));
     res.json(publicos);
   } catch (_e) {
@@ -3240,7 +3292,7 @@ app.post('/api/atacado/access/verify-code', async (req, res) => {
 app.get('/api/admin/atacado', authRequired, async (_req, res) => {
   try {
     const produtos = await readAtacadoStore();
-    res.json(produtos);
+    res.json(produtos.map(productWithPublicAssetPaths));
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -3311,7 +3363,7 @@ app.post('/api/admin/upload-atacado', authRequired, uploadAtacado.single('file')
   if (!req.file) return res.status(400).json({ ok: false });
   try {
     const filename = await convertHeicIfNeeded(ATACADO_UPLOAD_DIR, req.file.filename);
-    const relPath = path.join(ATACADO_UPLOAD_PUBLIC_PREFIX, filename).replace(/\\/g, '/');
+    const relPath = `/api/media-atacado/${encodeURIComponent(filename)}`;
     res.json({ ok: true, path: relPath });
   } catch (e) {
     console.error('[upload-atacado] falha ao converter HEIC:', e.message);

@@ -454,13 +454,72 @@
       min-width: 32px;
       font-size: 0.72rem;
     }
-    .catalog-filters__price input[type="range"] {
-      width: 100%;
-      accent-color: #A8C63A;
-      display: block;
-    }
-    .catalog-filters__price input[type="range"] + input[type="range"] {
+    .catalog-filters__price {
+      position: relative;
+      height: 26px;
       margin-top: 6px;
+    }
+    .catalog-filters__price-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(56, 56, 56, 0.14);
+    }
+    .catalog-filters__price-fill {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 4px;
+      border-radius: 999px;
+      background: linear-gradient(120deg, #A8C63A, #6F8522);
+    }
+    .catalog-filters__price input[type="range"] {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 100%;
+      margin: 0;
+      height: 4px;
+      background: transparent;
+      pointer-events: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .catalog-filters__price input[type="range"]::-webkit-slider-runnable-track {
+      height: 4px;
+      background: transparent;
+    }
+    .catalog-filters__price input[type="range"]::-moz-range-track {
+      height: 4px;
+      background: transparent;
+      border: 0;
+    }
+    .catalog-filters__price input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      pointer-events: auto;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #A8C63A;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(56, 56, 56, 0.4);
+      cursor: pointer;
+      margin-top: 0;
+    }
+    .catalog-filters__price input[type="range"]::-moz-range-thumb {
+      pointer-events: auto;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #A8C63A;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 4px rgba(56, 56, 56, 0.4);
+      cursor: pointer;
     }
     .catalog-filters__price-labels {
       display: flex;
@@ -1110,6 +1169,227 @@
       }
     }
 
+    /* Header: Entrar + Carrinho (texto) */
+    .catalog-landing .header__link.header__account,
+    .catalog-landing .header__link.header__cart {
+      width: auto;
+      min-width: 0;
+      padding: 0 14px;
+      gap: 8px;
+      font-size: 0.78rem;
+    }
+    .catalog-landing .header__cart {
+      background: linear-gradient(120deg, #A8C63A, #6F8522);
+      color: #383838;
+      font-weight: 800;
+    }
+    .catalog-landing .header__cart .badge {
+      position: static;
+      margin-left: 2px;
+    }
+    @media (max-width: 767px) {
+      .catalog-landing .header__account span,
+      .catalog-landing .header__cart span:not(.badge) {
+        display: none;
+      }
+      .catalog-landing .header__link.header__account,
+      .catalog-landing .header__link.header__cart {
+        width: 38px;
+        min-width: 38px;
+        padding: 0;
+        justify-content: center;
+      }
+    }
+
+    /* Breadcrumb */
+    .catalog-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 0 0;
+      font-size: 0.78rem;
+      color: rgba(56, 56, 56, 0.56);
+    }
+    .catalog-breadcrumb a {
+      color: rgba(56, 56, 56, 0.56);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .catalog-breadcrumb a:hover {
+      color: #6F8522;
+    }
+    .catalog-breadcrumb i {
+      font-size: 0.6rem;
+      color: rgba(56, 56, 56, 0.34);
+    }
+    .catalog-breadcrumb span:last-child {
+      color: #383838;
+      font-weight: 700;
+    }
+
+    /* Título da página */
+    .catalog-heading {
+      margin: 4px 0 16px;
+    }
+    .catalog-heading h2 {
+      margin: 0 0 4px;
+      font-size: 1.5rem;
+      color: #383838;
+    }
+    .catalog-heading p {
+      margin: 0;
+      color: rgba(56, 56, 56, 0.62);
+      font-size: 0.92rem;
+    }
+
+    /* Barra de ferramentas: abas rápidas + contagem + ordenar + grade/lista */
+    .catalog-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 16px;
+      margin: 4px 0 16px;
+    }
+    .catalog-toolbar__tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .catalog-toolbar__tab {
+      border: 1px solid rgba(56, 56, 56, 0.16);
+      background: #fff;
+      color: #383838;
+      border-radius: 999px;
+      padding: 8px 15px;
+      font: 700 0.76rem/1 Inter, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    .catalog-toolbar__tab[data-active="true"] {
+      background: linear-gradient(120deg, #A8C63A, #6F8522);
+      color: #383838;
+      border-color: transparent;
+    }
+    .catalog-toolbar__actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+    }
+    .catalog-toolbar__count {
+      font-size: 0.8rem;
+      color: rgba(56, 56, 56, 0.58);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .catalog-toolbar__sort {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.8rem;
+      color: #383838;
+      font-weight: 700;
+    }
+    .catalog-toolbar__sort select {
+      border: 1px solid rgba(56, 56, 56, 0.18);
+      border-radius: 10px;
+      padding: 7px 10px;
+      font: 700 0.8rem/1 Inter, system-ui, sans-serif;
+      color: #383838;
+      background: #fff;
+      cursor: pointer;
+    }
+    .catalog-toolbar__view {
+      display: flex;
+      border: 1px solid rgba(56, 56, 56, 0.16);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .catalog-toolbar__view-btn {
+      border: 0;
+      background: #fff;
+      color: #383838;
+      padding: 8px 13px;
+      font: 700 0.78rem/1 Inter, system-ui, sans-serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .catalog-toolbar__view-btn[data-active="true"] {
+      background: rgba(168, 198, 58, 0.22);
+      color: #6F8522;
+    }
+    @media (max-width: 640px) {
+      .catalog-toolbar__sort span {
+        display: none;
+      }
+      .catalog-toolbar__view-btn span,
+      .catalog-toolbar__view-btn { font-size: 0.72rem; padding: 8px 10px; }
+    }
+
+    /* Visualização em lista */
+    .catalog-landing .grid.grid--list {
+      grid-template-columns: 1fr !important;
+      gap: 12px;
+    }
+    .catalog-landing .grid--list .product-card {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+    }
+    .catalog-landing .grid--list .product-card__link {
+      display: flex;
+      flex-direction: row;
+      flex: 1;
+      min-width: 0;
+      text-decoration: none;
+    }
+    .catalog-landing .grid--list .product-card__media {
+      width: 140px;
+      min-width: 140px;
+      aspect-ratio: 1 / 1;
+      border-radius: 16px 0 0 16px;
+    }
+    .catalog-landing .grid--list .product-card__info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .catalog-landing .grid--list .product-card__options {
+      grid-template-columns: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+    }
+    .catalog-landing .grid--list .product-card__btn-add {
+      align-self: center;
+      width: auto;
+      margin: 0 18px;
+      border-radius: 10px;
+      padding: 0.8rem 1.4rem;
+    }
+    @media (max-width: 640px) {
+      .catalog-landing .grid--list .product-card {
+        flex-direction: column;
+      }
+      .catalog-landing .grid--list .product-card__link {
+        flex-direction: column;
+      }
+      .catalog-landing .grid--list .product-card__media {
+        width: 100%;
+        min-width: 0;
+        border-radius: 16px 16px 0 0;
+      }
+      .catalog-landing .grid--list .product-card__btn-add {
+        margin: 0;
+        width: 100%;
+        border-radius: 0 0 16px 16px;
+      }
+    }
+
     /* Bottom tab bar — mobile "app-like" navigation */
     .catalog-bottom-nav {
       display: none;
@@ -1262,13 +1542,24 @@
         <a href="index.html"><img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness" height="52" loading="eager"></a>
       </h1>
       <nav class="nav" aria-label="Ações principais" style="position:absolute;right:16px;">
-        <button id="openCart" class="btn-icon" aria-label="Abrir carrinho">
-          <i id="cartIcon" class="fas fa-shopping-cart"></i>
+        <a href="cliente-login.html" class="header__link header__account">
+          <i class="fas fa-user" aria-hidden="true"></i>
+          <span>Entrar</span>
+        </a>
+        <button id="openCart" class="header__link header__cart" aria-label="Abrir carrinho">
+          <i id="cartIcon" class="fas fa-shopping-cart" aria-hidden="true"></i>
+          <span>Carrinho</span>
           <span id="cartCount" class="badge">0</span>
         </button>
       </nav>
     </div>
   </header>
+
+  <div class="container catalog-breadcrumb">
+    <a href="index.html">Início</a>
+    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+    <span>Catálogo de produtos</span>
+  </div>
 
   <div class="container layout catalog-shell">
     <aside class="catalog-filters" id="catalogFilters" aria-label="Filtros de produtos" data-open="false">
@@ -1297,6 +1588,8 @@
       <section class="catalog-filters__group">
         <h3>Faixa de preço</h3>
         <div class="catalog-filters__price">
+          <div class="catalog-filters__price-track"></div>
+          <div class="catalog-filters__price-fill" id="filterPrecoFill"></div>
           <input type="range" id="filterPrecoMin" step="1" aria-label="Preço mínimo">
           <input type="range" id="filterPrecoMax" step="1" aria-label="Preço máximo">
         </div>
@@ -1320,6 +1613,11 @@
     <div class="catalog-filters__backdrop" id="catalogFiltersBackdrop"></div>
 
     <main class="content" style="position:relative;">
+      <div class="catalog-heading">
+        <h2>Catálogo de produtos</h2>
+        <p>Encontre as melhores peças para seu treino com conforto e estilo.</p>
+      </div>
+
       <section class="catalog-search" aria-label="Pesquisar produtos">
         <div class="catalog-search__field">
           <span class="catalog-search__icon" aria-hidden="true"><i class="fas fa-magnifying-glass"></i></span>
@@ -1333,6 +1631,37 @@
           <i class="fas fa-sliders" aria-hidden="true"></i> Filtros
         </button>
       </section>
+
+      <div class="catalog-toolbar">
+        <div class="catalog-toolbar__tabs" id="catalogQuickTabs">
+          <button type="button" class="catalog-toolbar__tab" data-quick="todos" data-active="true">Todos</button>
+          <button type="button" class="catalog-toolbar__tab" data-quick="lancamentos">Lançamentos</button>
+          <button type="button" class="catalog-toolbar__tab" data-quick="mais-vendidos">Mais vendidos</button>
+          <button type="button" class="catalog-toolbar__tab" data-quick="promocoes">Promoções</button>
+        </div>
+        <div class="catalog-toolbar__actions">
+          <span class="catalog-toolbar__count" id="catalogResultCount"></span>
+          <label class="catalog-toolbar__sort">
+            <span>Ordenar por</span>
+            <select id="catalogSort">
+              <option value="destaque">Destaque</option>
+              <option value="preco-asc">Menor preço</option>
+              <option value="preco-desc">Maior preço</option>
+              <option value="nome-az">Nome A-Z</option>
+              <option value="nome-za">Nome Z-A</option>
+            </select>
+          </label>
+          <div class="catalog-toolbar__view" role="group" aria-label="Modo de visualização">
+            <button type="button" class="catalog-toolbar__view-btn" data-view="grid" data-active="true" aria-label="Ver em grade">
+              <i class="fas fa-grip" aria-hidden="true"></i> Grade
+            </button>
+            <button type="button" class="catalog-toolbar__view-btn" data-view="list" aria-label="Ver em lista">
+              <i class="fas fa-list" aria-hidden="true"></i> Lista
+            </button>
+          </div>
+        </div>
+      </div>
+
       <section id="grid" class="grid"></section>
     </main>
   </div>
