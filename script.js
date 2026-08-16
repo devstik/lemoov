@@ -4195,6 +4195,48 @@ function renderAccountPanel({ client, addresses, orders }) {
       <div class="account__actions"><button type="button" class="account__logout" id="btnClientLogout">Sair da conta</button></div>
     </div>
     <div class="account__panel" data-account-panel="enderecos">
+      <button type="button" class="addr-add-btn" id="btnAccountAddAddr">
+        <span>+</span> Adicionar endereço
+      </button>
+      <form class="account__form" id="accountAddAddrForm" style="display:none;margin:12px 0 16px;">
+        <div class="account__form-row">
+          <label for="accountAddrCep">CEP *</label>
+          <input class="account__input" id="accountAddrCep" name="cep" inputmode="numeric" maxlength="9" placeholder="00000-000" required>
+        </div>
+        <div class="account__form-row">
+          <label for="accountAddrRua">Logradouro *</label>
+          <input class="account__input" id="accountAddrRua" name="logradouro" placeholder="Rua, avenida..." required>
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:8px">
+          <div class="account__form-row">
+            <label for="accountAddrNumero">Número *</label>
+            <input class="account__input" id="accountAddrNumero" name="numero" placeholder="123 ou S/N" required>
+          </div>
+          <div class="account__form-row">
+            <label for="accountAddrComplemento">Complemento</label>
+            <input class="account__input" id="accountAddrComplemento" name="complemento" placeholder="Apto, bloco...">
+          </div>
+        </div>
+        <div class="account__form-row">
+          <label for="accountAddrBairro">Bairro</label>
+          <input class="account__input" id="accountAddrBairro" name="bairro">
+        </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:8px">
+          <div class="account__form-row">
+            <label for="accountAddrCidade">Cidade *</label>
+            <input class="account__input" id="accountAddrCidade" name="cidade" required>
+          </div>
+          <div class="account__form-row">
+            <label for="accountAddrUf">UF *</label>
+            <input class="account__input" id="accountAddrUf" name="uf" maxlength="2" required style="text-transform:uppercase">
+          </div>
+        </div>
+        <div class="account__status" id="accountAddAddrStatus"></div>
+        <div class="account__form-actions">
+          <button type="button" class="account__cancel" id="btnCancelAccountAddAddr">Cancelar</button>
+          <button type="submit" class="account__save">Salvar endereço</button>
+        </div>
+      </form>
       <div class="account__list">${addressHtml}</div>
     </div>
     <div class="account__panel" data-account-panel="pedidos">
@@ -4240,6 +4282,82 @@ function bindAccountModal(dlg) {
     btn.addEventListener("click", () => setEditMode(true));
   });
   dlg.querySelector("#btnCancelProfileEdit")?.addEventListener("click", () => setEditMode(false));
+
+  const addAddrForm = dlg.querySelector("#accountAddAddrForm");
+  const addAddrButton = dlg.querySelector("#btnAccountAddAddr");
+  const setAddAddrVisible = (visible) => {
+    if (!addAddrForm || !addAddrButton) return;
+    addAddrForm.style.display = visible ? "grid" : "none";
+    addAddrButton.style.display = visible ? "none" : "flex";
+    if (visible) dlg.querySelector("#accountAddrCep")?.focus();
+  };
+  addAddrButton?.addEventListener("click", () => setAddAddrVisible(true));
+  dlg.querySelector("#btnCancelAccountAddAddr")?.addEventListener("click", () => {
+    addAddrForm?.reset();
+    setAddAddrVisible(false);
+  });
+  const accountAddrCep = dlg.querySelector("#accountAddrCep");
+  if (accountAddrCep) {
+    accountAddrCep.addEventListener("input", async function () {
+      const cep = normalizeCEP(this.value).slice(0, 8);
+      this.value = formatCEPForInput(cep);
+      if (cep.length !== 8 || this.dataset.lastCep === cep) return;
+      this.dataset.lastCep = cep;
+      const addr = await getAddressByCEP(cep).catch(() => null);
+      if (!addr || !addAddrForm) return;
+      addAddrForm.querySelector('[name="logradouro"]').value = addr.rua || addr.logradouro || "";
+      addAddrForm.querySelector('[name="bairro"]').value = addr.bairro || "";
+      addAddrForm.querySelector('[name="cidade"]').value = addr.cidade || "";
+      addAddrForm.querySelector('[name="uf"]').value = addr.uf || "";
+      addAddrForm.querySelector('[name="numero"]')?.focus();
+    });
+  }
+  if (addAddrForm) {
+    addAddrForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const statusEl = addAddrForm.querySelector("#accountAddAddrStatus");
+      const saveBtn = addAddrForm.querySelector('[type="submit"]');
+      const payload = {
+        cep: normalizeCEP(addAddrForm.querySelector('[name="cep"]')?.value || ""),
+        logradouro: addAddrForm.querySelector('[name="logradouro"]')?.value.trim() || "",
+        numero: addAddrForm.querySelector('[name="numero"]')?.value.trim() || "",
+        complemento: addAddrForm.querySelector('[name="complemento"]')?.value.trim() || "",
+        bairro: addAddrForm.querySelector('[name="bairro"]')?.value.trim() || "",
+        cidade: addAddrForm.querySelector('[name="cidade"]')?.value.trim() || "",
+        uf: addAddrForm.querySelector('[name="uf"]')?.value.trim().toUpperCase() || ""
+      };
+      if (payload.cep.length !== 8 || !payload.logradouro || !payload.numero || !payload.cidade || !payload.uf) {
+        if (statusEl) statusEl.textContent = "Preencha CEP, logradouro, número, cidade e UF.";
+        return;
+      }
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = "Salvando..."; }
+      if (statusEl) statusEl.textContent = "";
+      try {
+        const res = await fetch('/api/client/addresses', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          if (statusEl) statusEl.textContent = data.error || "Não foi possível salvar o endereço.";
+          return;
+        }
+        setDeliveryAddress({ ...payload, id: data.id });
+        showAppMessage("Endereço adicionado com sucesso.");
+        const [addresses, orders] = await Promise.all([fetchClientAddresses(), fetchClientOrders()]);
+        const body = dlg.querySelector(".account__body");
+        if (body) body.innerHTML = renderAccountPanel({ client: currentClientSession, addresses, orders });
+        bindAccountModal(dlg);
+        dlg.querySelectorAll(".account__tab").forEach((tab) => tab.setAttribute("aria-selected", tab.dataset.accountTab === "enderecos" ? "true" : "false"));
+        dlg.querySelectorAll(".account__panel").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.accountPanel === "enderecos"));
+      } catch (_) {
+        if (statusEl) statusEl.textContent = "Erro de conexão. Tente novamente.";
+      } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Salvar endereço"; }
+      }
+    });
+  }
   const phoneInput = dlg.querySelector("#accountTelefone");
   if (phoneInput && !phoneInput._lemoovMask) {
     phoneInput._lemoovMask = true;
@@ -5511,8 +5629,22 @@ async function setPickupMode(enabled, { recalculateDelivery = false } = {}) {
   atualizarCart();
 }
 
+function normalizeDeliveryAddress(addr) {
+  if (!addr || typeof addr !== "object") return null;
+  return {
+    ...addr,
+    cep: String(addr.cep ?? addr.postal_code ?? addr.postalCode ?? "").trim(),
+    logradouro: String(addr.logradouro ?? addr.rua ?? addr.street ?? "").trim(),
+    numero: String(addr.numero ?? addr.number ?? addr.enderecoNumero ?? addr.numero_endereco ?? "").trim(),
+    complemento: String(addr.complemento ?? addr.complement ?? "").trim(),
+    bairro: String(addr.bairro ?? addr.neighborhood ?? "").trim(),
+    cidade: String(addr.cidade ?? addr.city ?? "").trim(),
+    uf: String(addr.uf ?? addr.state ?? "").trim()
+  };
+}
+
 function setDeliveryAddress(addr) {
-  selectedDeliveryAddress = addr || null;
+  selectedDeliveryAddress = normalizeDeliveryAddress(addr);
   if (selectedDeliveryAddress) {
     retiradaNaLoja = false;
     freteAtual = 0;

@@ -19,7 +19,7 @@
   <meta name="apple-mobile-web-app-title" content="Lemoov" />
   <link rel="apple-touch-icon" href="image/icons/apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="image/icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=18" />
+  <link rel="stylesheet" href="styles.css?v=19" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -453,6 +453,21 @@
       height: 32px;
       min-width: 32px;
       font-size: 0.72rem;
+    }
+    .catalog-filters__swatches .swatch {
+      flex: 0 0 32px;
+      min-height: 32px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      box-sizing: border-box;
+    }
+    .catalog-filters__swatches .swatch__dot {
+      flex: 0 0 22px;
+      width: 22px;
+      height: 22px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      box-sizing: border-box;
     }
     .catalog-filters__price {
       position: relative;
@@ -2516,7 +2531,7 @@
     </a>
   </nav>
 
-  <script src="script.js?v=32"></script>
+  <script src="script.js?v=34"></script>
   <script>
     (function(){
       const categoriesBtn = document.getElementById('bottomNavCategories');
