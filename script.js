@@ -6369,18 +6369,32 @@ function openVideoPopup(src, title) {
   player.onerror = null;
   player.onplaying = null;
   player.onwaiting = null;
-  player.src = absSrc;
-  player.onerror = () => {
+  let retried = false;
+  const showVideoError = () => {
     player.onerror = null;
     player.style.display = "none";
     if (spinner) spinner.style.display = "none";
     if (errEl) errEl.style.display = "block";
+  };
+  const loadVideo = (url) => {
+    player.src = url;
+    player.load();
+  };
+  player.onerror = () => {
+    if (!retried) {
+      retried = true;
+      const separator = absSrc.includes('?') ? '&' : '?';
+      setTimeout(() => loadVideo(`${absSrc}${separator}retry=${Date.now()}`), 450);
+      return;
+    }
+    showVideoError();
   };
   player.onplaying = () => { if (spinner) spinner.style.display = "none"; };
   player.onwaiting = () => { if (spinner) spinner.style.display = "flex"; };
   if (titleEl) titleEl.textContent = title || "Vídeo do produto";
   popup.classList.add("open");
   document.body.style.overflow = "hidden";
+  loadVideo(absSrc);
   function close() {
     popup.classList.remove("open");
     player.onerror = null;

@@ -262,7 +262,7 @@ function renderProdForm(p){
         <label class="fl">Vídeo do produto</label>
         <div class="video-upload-box">
           <label class="video-upload-label" for="f_video_file">&#9654; Enviar vídeo</label>
-          <input type="file" id="f_video_file" accept="video/mp4,video/webm,.mp4,.webm,.mov">
+          <input type="file" id="f_video_file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov">
           <select id="f_video_select" class="fc" style="flex:1;min-width:0;font-size:12px;padding:5px 8px;height:32px;">
             <option value="">— ou selecionar existente —</option>
           </select>
@@ -341,13 +341,14 @@ function renderProdForm(p){
   fVideoRemove.addEventListener('click',()=>{ fVideoFile.value=''; fVideoSelect.value=''; setVideo(''); });
   fVideoFile.addEventListener('change',async()=>{
     const file=fVideoFile.files[0]; if(!file) return;
-    fVideoName.textContent='Enviando…';
+    if(!/\.(mp4|webm|mov)$/i.test(file.name)) { toast('Use vídeo MP4, MOV ou WebM.','error'); fVideoFile.value=''; return; }
+    fVideoName.textContent='Enviando e convertendo…';
     try{
       const fd=new FormData(); fd.append('file',file);
       const r=await fetch('/api/admin/upload-video',{method:'POST',body:fd});
       if(r.status===401){redirect401();return;}
-      if(!r.ok) throw new Error('Falha no upload');
-      const d=await r.json();
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(d.error||'Falha no upload');
       setVideo(d.path);
     }catch(e){ toast(e.message,'error'); fVideoName.textContent=fVideoPath.value?fVideoPath.value.split('/').pop():'Nenhum vídeo'; }
   });
@@ -1056,7 +1057,7 @@ function renderAtacadoForm(p){
         <label class="fl">Vídeo do produto</label>
         <div class="video-upload-box">
           <label class="video-upload-label" for="a_video_file">&#9654; Enviar vídeo</label>
-          <input type="file" id="a_video_file" accept="video/mp4,video/webm,.mp4,.webm,.mov">
+          <input type="file" id="a_video_file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov">
           <select id="a_video_select" class="fc" style="flex:1;min-width:0;font-size:12px;padding:5px 8px;height:32px;">
             <option value="">— ou selecionar existente —</option>
           </select>
@@ -1119,13 +1120,14 @@ function renderAtacadoForm(p){
   aVideoRemove.addEventListener('click',()=>{ aVideoFile.value=''; aVideoSelect.value=''; setAVideo(''); });
   aVideoFile.addEventListener('change',async()=>{
     const file=aVideoFile.files[0]; if(!file) return;
-    aVideoName.textContent='Enviando…'; aVideoName.style.display='';
+    if(!/\.(mp4|webm|mov)$/i.test(file.name)) { toast('Use vídeo MP4, MOV ou WebM.','error'); aVideoFile.value=''; return; }
+    aVideoName.textContent='Enviando e convertendo…'; aVideoName.style.display='';
     try{
       const fd=new FormData(); fd.append('file',file);
       const r=await fetch('/api/admin/upload-video',{method:'POST',body:fd});
       if(r.status===401){redirect401();return;}
-      if(!r.ok) throw new Error('Falha no upload');
-      const d=await r.json();
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(d.error||'Falha no upload');
       setAVideo(d.path);
     }catch(e){ toast(e.message,'error'); aVideoName.textContent=aVideoPath.value?aVideoPath.value.split('/').pop():'Nenhum vídeo'; }
   });

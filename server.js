@@ -2,12 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const dns = require('dns');
+const { spawn } = require('child_process');
 const express = require('express');
 const multer = require('multer');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
 const QRCodeLib = require('qrcode');
 const heicConvert = require('heic-convert');
+const ffmpegPath = require('ffmpeg-static');
 const { initProductionSchema, registerProductionRoutes } = require('./production');
 
 // Polyfill fetch para Node < 18
@@ -126,8 +128,6 @@ const VERIFY_CODE_TTL_MS = 15 * 60 * 1000;
 
 const IMAGE_DIR = path.join(__dirname, 'image');
 if (!fs.existsSync(IMAGE_DIR)) fs.mkdirSync(IMAGE_DIR, { recursive: true });
-const VIDEO_DIR = path.join(__dirname, 'video');
-if (!fs.existsSync(VIDEO_DIR)) fs.mkdirSync(VIDEO_DIR, { recursive: true });
 
 function persistentDomainRoot() {
   // A Hostinger usa hbuilds/versions em produção (e algumas versões da
@@ -154,6 +154,14 @@ function persistentDomainRoot() {
 function persistentStorageDir(publicPrefix) {
   return path.join(persistentDomainRoot(), 'lemoov-storage', publicPrefix);
 }
+
+const VIDEO_PUBLIC_PREFIX = (process.env.VIDEO_PUBLIC_PREFIX || 'video').replace(/^\/+|\/+$/g, '');
+// Mantém os vídeos fora de hbuilds/versions, que é substituída a cada deploy.
+const VIDEO_DIR = process.env.VIDEO_DIR
+  ? path.resolve(process.env.VIDEO_DIR)
+  : persistentStorageDir(VIDEO_PUBLIC_PREFIX);
+if (!fs.existsSync(VIDEO_DIR)) fs.mkdirSync(VIDEO_DIR, { recursive: true });
+console.log(`[videos] salvando em: ${VIDEO_DIR}`);
 
 const UPLOAD_PUBLIC_PREFIX = (process.env.UPLOAD_PUBLIC_PREFIX || 'uploads').replace(/^\/+|\/+$/g, '');
 // Mantém os uploads fora da pasta versionada para sobreviver aos redeploys.
@@ -1307,6 +1315,16 @@ function uploadedAssetApiPath(value) {
   return value;
 }
 
+function uploadedVideoApiPath(value) {
+  if (typeof value !== 'string' || !value.trim()) return value;
+  const clean = value.replace(/^\/+/, '');
+  if (clean.startsWith('api/media-video/')) return `/${clean}`;
+  if (clean.startsWith(`${VIDEO_PUBLIC_PREFIX}/`)) {
+    return `/api/media-video/${encodeURIComponent(clean.slice(VIDEO_PUBLIC_PREFIX.length + 1))}`;
+  }
+  return value;
+}
+
 function productWithPublicAssetPaths(product) {
   const mapColor = (color) => ({
     ...color,
@@ -1317,6 +1335,7 @@ function productWithPublicAssetPaths(product) {
   });
   return {
     ...product,
+    video: uploadedVideoApiPath(product?.video),
     imagem: uploadedAssetApiPath(product?.imagem),
     imagens: Array.isArray(product?.imagens)
       ? product.imagens.map(uploadedAssetApiPath)
@@ -1373,7 +1392,7 @@ function buildLegacyUploadIndex() {
       if (visited++ > 100000) break;
       if (entry.isDirectory()) {
         if (!ignored.has(entry.name)) walk(path.join(dir, entry.name), depth + 1);
-      } else if (/\.(jpe?g|png|webp|heic|heif)$/i.test(entry.name) && !index.has(entry.name)) {
+      } else if (/\.(jpe?g|png|webp|heic|heif|mp4|webm|mov)$/i.test(entry.name) && !index.has(entry.name)) {
         index.set(entry.name, path.join(dir, entry.name));
       }
     }
@@ -1428,10 +1447,54 @@ const uploadVideo = multer({
   }),
   fileFilter: (_req, file, cb) => {
     const ok = /video\/(mp4|webm|quicktime)/.test(file.mimetype) || /\.(mp4|webm|mov)$/i.test(file.originalname);
-    cb(ok ? null : new Error('Tipo inválido — use MP4 ou WebM'), ok);
+    cb(ok ? null : new Error('Formato incompatível. Envie MP4, MOV ou WebM.'), ok);
   },
   limits: { fileSize: 50 * 1024 * 1024 }
 });
+
+function convertVideoForWeb(inputPath, originalFilename) {
+  const ext = path.extname(originalFilename).toLowerCase();
+  // WebM já é amplamente aceito. MP4 também é convertido porque pode conter
+  // HEVC/H.265 (comum no iPhone), apesar de usar a extensão .mp4.
+  if (ext === '.webm') return Promise.resolve(path.basename(inputPath));
+  if (!ffmpegPath) return Promise.reject(new Error('Conversor de vídeo indisponível no servidor.'));
+
+  const inputName = path.basename(inputPath, path.extname(inputPath));
+  const outputFilename = `${inputName}_web.mp4`;
+  const outputPath = path.join(VIDEO_DIR, outputFilename);
+  const args = [
+    '-y', '-i', inputPath,
+    '-map_metadata', '-1',
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
+    '-pix_fmt', 'yuv420p',
+    '-c:a', 'aac', '-b:a', '128k', '-ac', '2',
+    '-movflags', '+faststart',
+    outputPath
+  ];
+
+  return new Promise((resolve, reject) => {
+    const process = spawn(ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    let stderr = '';
+    const timeout = setTimeout(() => process.kill('SIGKILL'), 4 * 60 * 1000);
+    process.stderr.on('data', (chunk) => {
+      if (stderr.length < 12000) stderr += chunk.toString();
+    });
+    process.once('error', (error) => {
+      clearTimeout(timeout);
+      try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch (_e) {}
+      reject(error);
+    });
+    process.once('close', (code, signal) => {
+      clearTimeout(timeout);
+      if (code === 0 && fs.existsSync(outputPath) && fs.statSync(outputPath).size > 0) {
+        try { fs.unlinkSync(inputPath); } catch (_e) {}
+        return resolve(outputFilename);
+      }
+      try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch (_e) {}
+      reject(new Error(signal === 'SIGKILL' ? 'A conversão excedeu o tempo permitido.' : `Falha ao converter o vídeo (${code}). ${stderr.slice(-500)}`));
+    });
+  });
+}
 
 function parseCookies(req) {
   const header = req.headers.cookie || '';
@@ -2988,6 +3051,26 @@ app.get('/api/media-atacado/:filename', (req, res) => {
   });
 });
 
+app.get('/api/media-video/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename || '');
+  if (!filename || filename !== req.params.filename || !/\.(mp4|webm|mov)$/i.test(filename)) {
+    return res.sendStatus(400);
+  }
+  const file = findAndRecoverUpload(filename, VIDEO_DIR, VIDEO_PUBLIC_PREFIX);
+  if (!file) {
+    res.set('X-Lemoov-Media-Scan', String(legacyUploadIndex?.size || 0));
+    return res.sendStatus(404);
+  }
+  res.set({
+    'Cache-Control': 'public, max-age=86400',
+    'Accept-Ranges': 'bytes',
+    'X-Content-Type-Options': 'nosniff'
+  });
+  res.sendFile(file, (err) => {
+    if (err && !res.headersSent) res.sendStatus(err.statusCode || 404);
+  });
+});
+
 app.get('/api/produtos', async (req, res) => {
   try {
     const all = await readProdutosStore();
@@ -3152,10 +3235,20 @@ app.post('/api/admin/upload', authRequired, upload.single('file'), async (req, r
   }
 });
 
-app.post('/api/admin/upload-video', authRequired, uploadVideo.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ ok: false });
-  const relPath = ('video/' + req.file.filename).replace(/\\/g, '/');
-  res.json({ ok: true, path: relPath });
+app.post('/api/admin/upload-video', authRequired, (req, res) => {
+  uploadVideo.single('file')(req, res, async (err) => {
+    if (err) return res.status(400).json({ ok: false, error: err.message || 'Não foi possível processar o vídeo.' });
+    if (!req.file) return res.status(400).json({ ok: false, error: 'Selecione um vídeo MP4, MOV ou WebM.' });
+    try {
+      const filename = await convertVideoForWeb(req.file.path, req.file.originalname);
+      const relPath = `/api/media-video/${encodeURIComponent(filename)}`;
+      res.json({ ok: true, path: relPath, converted: filename !== req.file.filename });
+    } catch (conversionError) {
+      console.error('[video] falha na conversão:', conversionError.message);
+      try { if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); } catch (_e) {}
+      res.status(400).json({ ok: false, error: 'Não foi possível converter o vídeo. Tente um arquivo menor ou exporte como MP4.' });
+    }
+  });
 });
 
 app.get('/api/admin/videos', authRequired, (req, res) => {
@@ -3163,7 +3256,7 @@ app.get('/api/admin/videos', authRequired, (req, res) => {
     const files = fs.readdirSync(VIDEO_DIR)
       .filter(f => /\.(mp4|webm|mov)$/i.test(f))
       .sort()
-      .map(f => ({ name: f, path: 'video/' + f }));
+      .map(f => ({ name: f, path: `/api/media-video/${encodeURIComponent(f)}` }));
     res.json({ ok: true, files });
   } catch (e) {
     res.json({ ok: true, files: [] });
