@@ -446,6 +446,11 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      align-items: flex-start;
+      align-content: flex-start;
+    }
+    .catalog-filters__swatches {
+      grid-auto-rows: 32px;
     }
     .catalog-filters__swatches .swatch,
     .catalog-filters__sizes .size {
@@ -2531,7 +2536,7 @@
     </a>
   </nav>
 
-  <script src="script.js?v=35"></script>
+  <script src="script.js?v=36"></script>
   <script>
     (function(){
       const categoriesBtn = document.getElementById('bottomNavCategories');

@@ -2472,6 +2472,9 @@ function renderCatalogFilters(){
   if (coresWrap) {
     coresWrap.innerHTML = "";
     coresMap.forEach((info, key) => {
+      const chip = document.createElement("span");
+      chip.className = "catalog-color-chip";
+      chip.style.cssText = "position:relative;display:block;flex:0 0 32px;width:32px;height:32px;min-width:32px;min-height:32px;max-width:32px;max-height:32px;overflow:hidden;border-radius:50%;box-sizing:border-box;";
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "swatch";
@@ -2489,6 +2492,10 @@ function renderCatalogFilters(){
       btn.style.setProperty("border-radius", "50%", "important");
       btn.style.setProperty("padding", "0", "important");
       btn.style.setProperty("box-sizing", "border-box", "important");
+      btn.style.setProperty("position", "absolute", "important");
+      btn.style.setProperty("inset", "0", "important");
+      btn.style.setProperty("margin", "0", "important");
+      btn.style.setProperty("line-height", "0", "important");
       btn.innerHTML = `<span class="swatch__dot"></span>`;
       const dot = btn.firstElementChild;
       if (dot) {
@@ -2504,7 +2511,8 @@ function renderCatalogFilters(){
         btn.dataset.selected = filtroCoresAtivas.has(key) ? "true" : "false";
         renderGrid();
       });
-      coresWrap.appendChild(btn);
+      chip.appendChild(btn);
+      coresWrap.appendChild(chip);
     });
   }
 
