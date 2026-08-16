@@ -318,6 +318,7 @@ let tamanhoAtual = null;
 let ultimoNumeroPedido = null;
 let orderSeqFallback = { date: "", seq: 0 };
 let modalLastFocus = null;
+let deferredInstallPrompt = null;
 
 const el = (sel) => document.querySelector(sel);
 const formatBRL = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -766,7 +767,49 @@ document.addEventListener("DOMContentLoaded", ()=>{
   initCookieBanner();
   bindAccountLinks();
   hydrateClientSession();
+  initPwaInstallButton();
 });
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  document.getElementById("installAppButton")?.removeAttribute("hidden");
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  const button = document.getElementById("installAppButton");
+  if (button) button.hidden = true;
+  showAppMessage("Aplicativo Lemoov instalado com sucesso.");
+});
+
+function initPwaInstallButton() {
+  const button = document.getElementById("installAppButton");
+  if (!button) return;
+  const standalone = window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  if (standalone) {
+    button.hidden = true;
+    return;
+  }
+  button.addEventListener("click", async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice.catch(() => null);
+      deferredInstallPrompt = null;
+      return;
+    }
+    const ua = navigator.userAgent || "";
+    const isIOS = /iPad|iPhone|iPod/i.test(ua);
+    const isInstagram = /Instagram/i.test(ua);
+    if (isInstagram) {
+      showAppMessage("Para instalar: toque em ⋯ no Instagram, escolha ‘Abrir no navegador’ e depois use ‘Adicionar à tela inicial’.");
+    } else if (isIOS) {
+      showAppMessage("No Safari, toque em Compartilhar e depois em ‘Adicionar à Tela de Início’.");
+    } else {
+      showAppMessage("Abra o menu do navegador e escolha ‘Instalar app’ ou ‘Adicionar à tela inicial’.");
+    }
+  });
+}
 
 /* ===== Descrição helpers ===== */
 function hasDescContent(desc){

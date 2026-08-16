@@ -1391,7 +1391,7 @@
     @media (max-width: 767px) {
       .catalog-bottom-nav {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         position: fixed;
         left: 0;
         right: 0;
@@ -2097,7 +2097,7 @@
         box-shadow: 0 7px 18px rgba(111,155,0,.24);
       }
       body.catalog-landing dialog.checkout-modal #btnEnviarPedido i { margin-right: 6px; }
-      body.catalog-landing :is(button, .header__link, .catalog-bottom-nav__item) {
+      body.catalog-landing :is(button:not(.swatch), .header__link, .catalog-bottom-nav__item) {
         min-height: 44px;
       }
       .catalog-landing .header__wrap {
@@ -2199,7 +2199,7 @@
         border-radius: 10px;
       }
       .catalog-bottom-nav {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
       }
       .add-label-full {
         display: none;
@@ -2530,13 +2530,17 @@
       <i class="fas fa-grip" aria-hidden="true"></i>
       <span>Categorias</span>
     </button>
+    <button type="button" class="catalog-bottom-nav__item" id="installAppButton" aria-label="Instalar aplicativo">
+      <i class="fas fa-download" aria-hidden="true"></i>
+      <span>Instalar</span>
+    </button>
     <a class="catalog-bottom-nav__item" href="cliente-login.html" aria-label="Minha conta">
       <i class="fas fa-user" aria-hidden="true"></i>
       <span>Conta</span>
     </a>
   </nav>
 
-  <script src="script.js?v=36"></script>
+  <script src="script.js?v=37"></script>
   <script>
     (function(){
       const categoriesBtn = document.getElementById('bottomNavCategories');
