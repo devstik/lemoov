@@ -4,8 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Minha Conta | Lemoov</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#383838">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="image/icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -41,6 +48,38 @@
       justify-content: center;
       padding: 28px 16px 52px;
     }
+
+    .account-app-header {
+      position: fixed;
+      inset: 0 0 auto;
+      z-index: 20;
+      height: 72px;
+      display: grid;
+      grid-template-columns: 48px 1fr 48px;
+      align-items: center;
+      padding: 0 max(16px, calc((100vw - 1180px) / 2));
+      background: linear-gradient(115deg, #171917 0%, #303727 60%, #78951b 100%);
+      box-shadow: 0 7px 22px rgba(0,0,0,.2);
+    }
+    .account-app-header__logo {
+      justify-self: center;
+    }
+    .account-app-header__logo img {
+      width: auto;
+      height: 46px;
+      display: block;
+    }
+    .account-app-header__action {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 1.1rem;
+    }
+    .account-bottom-nav { display: none; }
 
     /* ── Brand (oculta — vai para o header do card) ── */
     .brand { display: none; }
@@ -353,12 +392,63 @@
 
     /* ── Mobile ── */
     @media (max-width: 480px) {
+      body {
+        justify-content: flex-start;
+        padding: 88px 12px 82px;
+        background: #fbf8f4;
+      }
+      .account-app-header {
+        height: 68px;
+        padding: 0 14px;
+      }
+      .account-app-header__logo img { height: 42px; }
+      .card {
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(56,56,56,.1);
+      }
+      .card-header {
+        padding: 18px 20px 15px;
+      }
+      .card-header-logo { display: none; }
+      .card-header-sub { color: rgba(255,255,255,.8); }
+      .account-bottom-nav {
+        position: fixed;
+        inset: auto 0 0;
+        z-index: 30;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        border-top: 1px solid rgba(56,56,56,.1);
+        background: rgba(255,255,255,.97);
+        box-shadow: 0 -7px 22px rgba(56,56,56,.08);
+      }
+      .account-bottom-nav a {
+        min-height: 58px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: rgba(56,56,56,.62);
+        text-decoration: none;
+        font-size: .64rem;
+        font-weight: 700;
+      }
+      .account-bottom-nav a i { font-size: 1.08rem; }
+      .account-bottom-nav a[data-active="true"] { color: #78951b; }
       .panel { padding: 24px 18px 20px; }
       .col-2, .col-3-1, .col-1-2 { grid-template-columns: 1fr; }
+      .back-link { display: none; }
     }
   </style>
 </head>
 <body>
+
+  <header class="account-app-header">
+    <a class="account-app-header__action" href="catalogo-produtos.html" aria-label="Voltar ao catálogo"><i class="fas fa-arrow-left"></i></a>
+    <a class="account-app-header__logo" href="index.html"><img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness"></a>
+    <a class="account-app-header__action" href="catalogo-produtos.html?cart=1" aria-label="Ir ao carrinho"><i class="fas fa-cart-shopping"></i></a>
+  </header>
 
   <div class="brand">
     <div class="brand-logo">Lem<em>oov</em></div>
@@ -564,6 +654,12 @@
   <div class="back-link">
     <a href="/">← Voltar ao site</a>
   </div>
+
+  <nav class="account-bottom-nav" aria-label="Navegação principal">
+    <a href="index.html"><i class="fas fa-house"></i><span>Home</span></a>
+    <a href="catalogo-produtos.html"><i class="fas fa-grip"></i><span>Categorias</span></a>
+    <a href="cliente-login.html" data-active="true"><i class="fas fa-user"></i><span>Conta</span></a>
+  </nav>
 
 <script>
   // ─── Tab ───────────────────────────────────────────────────
@@ -974,6 +1070,10 @@
       }
     } catch (_) {}
   })();
+
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}));
+  }
 </script>
 </body>
 </html>

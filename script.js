@@ -247,7 +247,7 @@ let filtroSoPromocoes = false;
 let filtroSoDisponiveis = false;
 let catalogQuickTab = "todos";
 const CART_STORAGE_KEY = "lemoov_cart_v1";
-const CART_TTL_MS = 30 * 60 * 1000;
+const CART_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 let cartUpdatedAt = 0;
 let cartExpiryTimer = null;
 let paymentOriginPath = "";
@@ -3374,20 +3374,23 @@ function ensureCartCouponUI() {
     return;
   }
   if (existing) { existing.style.display = ""; return; }
-  const box = document.createElement("div");
+  const box = document.createElement("details");
   box.id = "cartCouponBox";
   box.className = "cart-coupon";
   box.innerHTML = `
-    <label class="cart-coupon__label" for="cartCouponInput">Cupom de desconto</label>
-    <div class="cart-coupon__row">
-      <input id="cartCouponInput" class="cart-coupon__input" placeholder="Digite seu cupom" autocomplete="off" />
-      <button type="button" class="cart-coupon__btn" id="btnApplyCartCoupon">Aplicar</button>
+    <summary class="cart-coupon__label"><i class="fas fa-ticket" aria-hidden="true"></i> Adicionar cupom <i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+    <div class="cart-coupon__content">
+      <div class="cart-coupon__row">
+        <input id="cartCouponInput" class="cart-coupon__input" placeholder="Digite seu cupom" autocomplete="off" aria-label="Cupom de desconto" />
+        <button type="button" class="cart-coupon__btn" id="btnApplyCartCoupon">Aplicar</button>
+      </div>
+      <div class="cart-coupon__msg" id="cartCouponMsg" data-status="info"></div>
     </div>
-    <div class="cart-coupon__msg" id="cartCouponMsg" data-status="info"></div>
   `;
   const totalRow = footer.querySelector("#cartTotal")?.closest(".cart__total") || null;
   footer.insertBefore(box, totalRow);
   box.querySelector("#cartCouponInput").value = cartCouponCode || checkoutDiscountState.cupom || "";
+  box.open = Boolean(cartCouponCode || checkoutDiscountState.cupom);
   box.querySelector("#btnApplyCartCoupon").addEventListener("click", applyCartCoupon);
   box.querySelector("#cartCouponInput").addEventListener("keydown", (ev) => {
     if (ev.key === "Enter") {
@@ -3956,7 +3959,7 @@ function ensureCheckoutButton(){
     const btn = document.createElement("button");
     btn.id = "btnCheckout";
     btn.className = "btn btn--primary";
-    btn.textContent = "Ir para pagamento";
+    btn.innerHTML = '<i class="fas fa-lock" aria-hidden="true"></i> Continuar para pagamento';
     btn.addEventListener("click", initiateCheckout);
     footer.insertBefore(btn, footer.firstChild);
   }
@@ -3967,7 +3970,7 @@ function updateCheckoutButtonState(){
   const btn = el("#btnCheckout");
   if (!btn) return;
   btn.disabled = carrinho.length === 0;
-  btn.textContent = "Ir para pagamento";
+  btn.innerHTML = '<i class="fas fa-lock" aria-hidden="true"></i> Continuar para pagamento';
 }
 
 function ensureCartClientSummary() {
@@ -4092,16 +4095,27 @@ function renderAccountPanel({ client, addresses, orders }) {
 	      <li>${Number(item.quantity || 1)}x ${escapeHTML(item.item_name || "Item")} ${item.price ? `· ${formatBRL(Number(item.price))}` : ""}</li>
 	    `).join("")}</ul>` : "";
 	    const status = String(order.status || "").toLowerCase();
+	    const statusKey = normalizeSearchText(status).replace(/\s+/g, "-") || "pendente";
+	    const statusLabel = ({
+	      pendente: "Recebido",
+	      recebido: "Recebido",
+	      preparando: "Em preparação",
+	      "em-preparacao": "Em preparação",
+	      enviado: "Enviado",
+	      entregue: "Entregue",
+	      cancelado: "Cancelado"
+	    })[statusKey] || order.status || "Recebido";
 	    const cancelPending = order.cancellation_requested && String(order.cancellation_request_status || "pendente") !== "recusado";
 	    const canRequestCancel = order.pedido && !cancelPending && status !== "cancelado" && status !== "entregue";
 	    return `
 	      <div class="account__order">
 	        <div class="account__order-head">
 	          <span>Pedido ${escapeHTML(order.pedido || "—")}</span>
-	          <span>${formatBRL(Number(order.total || 0))}</span>
+	          <strong>${formatBRL(Number(order.total || 0))}</strong>
         </div>
+        <div class="account__order-status" data-status="${escapeHTML(statusKey)}">${escapeHTML(statusLabel)}</div>
         <div class="account__order-meta">
-          Status: ${escapeHTML(order.status || "—")} · Data: ${formatAccountDate(order.createdAt)}
+          Data: ${formatAccountDate(order.createdAt)}
           ${order.frete_modo ? `<br>Frete: ${escapeHTML(getDeliveryModeLabel(order.frete_modo))}` : ""}
 	        </div>
 	        ${itemsHtml}
@@ -4113,7 +4127,7 @@ function renderAccountPanel({ client, addresses, orders }) {
 	        ` : ""}
 	      </div>
 	    `;
-	  }).join("") : `<div class="account__empty">Você ainda não tem pedidos confirmados.</div>`;
+	  }).join("") : `<div class="account__empty"><i class="fas fa-bag-shopping" aria-hidden="true"></i><strong>Nenhum pedido ainda</strong><span>Seus pedidos confirmados aparecerão aqui.</span><a href="#grid" data-account-shop>Ver produtos</a></div>`;
 
   return `
     <div class="account__panel is-active" data-account-panel="dados">
@@ -4173,6 +4187,11 @@ function renderAccountPanel({ client, addresses, orders }) {
 }
 
 function bindAccountModal(dlg) {
+  dlg.querySelector("[data-account-shop]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (dlg.open) dlg.close();
+    document.querySelector("#grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   dlg.querySelector("#btnCloseAccount")?.addEventListener("click", () => dlg.close());
   dlg.querySelectorAll(".account__tab").forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -4312,6 +4331,7 @@ function bindAccountModal(dlg) {
           if (statusEl) statusEl.textContent = data.error || "Erro ao salvar.";
           return;
         }
+        showAppMessage("Endereço atualizado com sucesso.");
         const [addresses, orders] = await Promise.all([fetchClientAddresses(), fetchClientOrders()]);
         const body = dlg.querySelector(".account__body");
         if (body) body.innerHTML = renderAccountPanel({ client: currentClientSession, addresses, orders });
@@ -4352,6 +4372,7 @@ function bindAccountModal(dlg) {
           if (status) status.textContent = data.error || "Não foi possível salvar.";
           return;
         }
+        showAppMessage("Dados atualizados com sucesso.");
         setCurrentClientSession(data.client);
         ensureCartClientSummary();
         const [addresses, orders] = await Promise.all([fetchClientAddresses(), fetchClientOrders()]);
@@ -4393,9 +4414,9 @@ async function openAccountModal() {
       <button type="button" class="account__close" id="btnCloseAccount" aria-label="Fechar">×</button>
     </div>
     <div class="account__tabs" role="tablist">
-      <button type="button" class="account__tab" data-account-tab="dados" aria-selected="true">Dados</button>
-      <button type="button" class="account__tab" data-account-tab="enderecos" aria-selected="false">Endereços</button>
-      <button type="button" class="account__tab" data-account-tab="pedidos" aria-selected="false">Pedidos</button>
+      <button type="button" class="account__tab" data-account-tab="dados" aria-selected="true"><i class="fas fa-user" aria-hidden="true"></i> Dados</button>
+      <button type="button" class="account__tab" data-account-tab="enderecos" aria-selected="false"><i class="fas fa-location-dot" aria-hidden="true"></i> Endereços</button>
+      <button type="button" class="account__tab" data-account-tab="pedidos" aria-selected="false"><i class="fas fa-bag-shopping" aria-hidden="true"></i> Pedidos</button>
     </div>
     <div class="account__body"><div class="account__empty">Carregando dados da conta...</div></div>
   `;
@@ -4973,6 +4994,10 @@ if (!restorePaymentOriginIfNeeded()) {
       atualizarCart();
       openCart();
       setTimeout(() => initiateCheckout(), 250);
+    } else if (_qs.get('cart') === '1') {
+      history.replaceState(null, '', location.pathname);
+      atualizarCart();
+      openCart();
     } else if (_qs.get('p')) {
       // link direto do Instagram Shopping / Meta Catalog
       const prodId = _qs.get('p');
@@ -5801,6 +5826,7 @@ function openCheckoutModal(){
             Seus dados pessoais e de pagamento são coletados com segurança pela InfinitePay.
           </p>
         </div>
+        <div class="checkout__progress" aria-label="Etapas da finalização"><span>1 Carrinho</span><i></i><span data-current="true">2 Entrega</span><i></i><span>3 Pagamento</span></div>
         <button type="button" class="btn btn--ghost" id="btnCloseCheckout">Fechar</button>
       </div>
       <form id="checkoutForm" novalidate>

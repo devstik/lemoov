@@ -1,6 +1,7 @@
-const CACHE_VERSION = 'lemoov-v3';
+const CACHE_VERSION = 'lemoov-v5';
 const APP_SHELL = [
   '/catalogo-produtos.html',
+  '/cliente-login.html',
   '/styles.css',
   '/script.js',
   '/manifest.json',
@@ -30,6 +31,17 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  if (url.pathname === '/api/produtos') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok) caches.open(CACHE_VERSION).then((cache) => cache.put(request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
   if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {

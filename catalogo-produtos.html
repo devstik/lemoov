@@ -1554,6 +1554,205 @@
     .add-label-short {
       display: none;
     }
+    .cart__progress {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 18px;
+      background: #fff;
+      border-bottom: 1px solid rgba(56, 56, 56, 0.08);
+    }
+    .cart__progress span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: rgba(56, 56, 56, 0.5);
+      font-size: 0.66rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .cart__progress span b {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #eef0eb;
+      font-size: 0.62rem;
+    }
+    .cart__progress span[data-current="true"] {
+      color: #6f9210;
+    }
+    .cart__progress span[data-current="true"] b {
+      color: #fff;
+      background: #8fb718;
+    }
+    .cart__progress > i {
+      height: 1px;
+      flex: 1;
+      min-width: 8px;
+      background: rgba(56, 56, 56, 0.12);
+    }
+    body.catalog-landing #cart #btnCheckout {
+      border-radius: 11px !important;
+      background: linear-gradient(135deg, #91bd08, #6f9b00) !important;
+      color: #fff !important;
+      box-shadow: 0 7px 18px rgba(111, 155, 0, 0.24) !important;
+    }
+    body.catalog-landing #cart #btnCheckout i {
+      margin-right: 7px;
+    }
+    body.catalog-landing #cart .cart-coupon {
+      display: block;
+      padding: 0;
+      overflow: hidden;
+    }
+    body.catalog-landing #cart .cart-coupon__label {
+      min-height: 44px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #383838;
+      cursor: pointer;
+      list-style: none;
+    }
+    body.catalog-landing #cart .cart-coupon__label::-webkit-details-marker { display: none; }
+    body.catalog-landing #cart .cart-coupon__label .fa-chevron-down {
+      margin-left: auto;
+      transition: transform .2s ease;
+    }
+    body.catalog-landing #cart .cart-coupon[open] .cart-coupon__label .fa-chevron-down {
+      transform: rotate(180deg);
+    }
+    body.catalog-landing #cart .cart-coupon__content {
+      padding: 0 10px 10px;
+    }
+    body.catalog-landing dialog.account-modal .account__header {
+      color: #fff;
+      border: 0;
+      background: linear-gradient(125deg, #383838 0%, #4b542e 62%, #78951b 100%);
+    }
+    body.catalog-landing dialog.account-modal .account__title {
+      color: #fff;
+      font-size: 1.08rem;
+    }
+    body.catalog-landing dialog.account-modal .account__subtitle {
+      color: rgba(255, 255, 255, 0.7);
+    }
+    body.catalog-landing dialog.account-modal .account__close {
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.1);
+    }
+    body.catalog-landing dialog.account-modal .account__tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border-radius: 10px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    body.catalog-landing dialog.account-modal .account__tab[aria-selected="true"] {
+      color: #fff;
+      background: linear-gradient(135deg, #91bd08, #6f9b00);
+    }
+    body.catalog-landing dialog.account-modal .account__profile,
+    body.catalog-landing dialog.account-modal .account__card,
+    body.catalog-landing dialog.account-modal .account__order {
+      border-color: rgba(56, 56, 56, 0.1);
+      background: #fff;
+      box-shadow: 0 5px 16px rgba(56, 56, 56, 0.05);
+    }
+    body.catalog-landing dialog.account-modal .account__order {
+      position: relative;
+      padding-top: 42px;
+    }
+    body.catalog-landing dialog.account-modal .account__order-status {
+      position: absolute;
+      top: 11px;
+      left: 13px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #586e13;
+      background: rgba(168, 198, 58, 0.18);
+      font-size: 0.66rem;
+      font-weight: 800;
+    }
+    body.catalog-landing dialog.account-modal .account__order-status[data-status="enviado"] { color: #155e75; background: #cffafe; }
+    body.catalog-landing dialog.account-modal .account__order-status[data-status="entregue"] { color: #166534; background: #dcfce7; }
+    body.catalog-landing dialog.account-modal .account__order-status[data-status="cancelado"] { color: #991b1b; background: #fee2e2; }
+    body.catalog-landing dialog.account-modal .account__empty {
+      min-height: 210px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+    }
+    body.catalog-landing dialog.account-modal .account__empty > i {
+      font-size: 1.8rem;
+      color: #8fb718;
+    }
+    body.catalog-landing dialog.account-modal .account__empty > strong { color: #383838; }
+    body.catalog-landing dialog.account-modal .account__empty > span { font-size: .8rem; }
+    body.catalog-landing dialog.account-modal .account__empty > a {
+      margin-top: 5px;
+      padding: 9px 14px;
+      border-radius: 9px;
+      color: #fff;
+      background: #78951b;
+      font-size: .76rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    body.catalog-landing dialog.checkout-modal .checkout__progress {
+      min-width: 280px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: .68rem;
+      font-weight: 800;
+      color: rgba(56,56,56,.48);
+    }
+    body.catalog-landing dialog.checkout-modal .checkout__progress span[data-current="true"] { color: #78951b; }
+    body.catalog-landing dialog.checkout-modal .checkout__progress i { flex: 1; height: 1px; background: rgba(56,56,56,.14); }
+    body.catalog-landing :is(button, a, input, select):focus-visible {
+      outline: 3px solid rgba(168, 198, 58, 0.48);
+      outline-offset: 2px;
+    }
+    .pwa-update-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 76px;
+      z-index: 12000;
+      width: min(calc(100% - 28px), 390px);
+      padding: 12px 14px;
+      border-radius: 14px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+      background: #383838;
+      box-shadow: 0 14px 36px rgba(0,0,0,.28);
+      transform: translateX(-50%);
+      font-size: .78rem;
+      font-weight: 700;
+    }
+    .pwa-update-toast[data-visible="true"] { display: flex; }
+    .pwa-update-toast button {
+      margin-left: auto;
+      min-height: 38px;
+      padding: 0 13px;
+      border: 0;
+      border-radius: 9px;
+      color: #fff;
+      background: #8fb718;
+      font-weight: 800;
+      cursor: pointer;
+    }
     @media (min-width: 1024px) {
       .catalog-shell {
         grid-template-columns: 280px minmax(0, 1fr);
@@ -1582,6 +1781,82 @@
       }
     }
     @media (max-width: 767px) {
+      body.catalog-landing #cart {
+        inset: auto 0 0 !important;
+        width: 100vw !important;
+        height: min(92dvh, 820px) !important;
+        max-height: 92dvh !important;
+        border: 0 !important;
+        border-radius: 24px 24px 0 0 !important;
+        transform: translateY(105%) !important;
+        transition: transform .28s cubic-bezier(.22, 1, .36, 1), opacity .2s ease !important;
+      }
+      body.catalog-landing #cart.show {
+        transform: translateY(0) !important;
+      }
+      body.catalog-landing #cart .cart__header {
+        padding: 17px 18px 13px;
+        border-radius: 24px 24px 0 0;
+      }
+      body.catalog-landing #cart .cart__header::before {
+        content: "";
+        position: absolute;
+        top: 7px;
+        left: 50%;
+        width: 42px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.4);
+        transform: translateX(-50%);
+      }
+      body.catalog-landing #cart .cart__header h3 {
+        color: #fff;
+      }
+      body.catalog-landing #cart .cart__header h3::after {
+        display: none;
+      }
+      body.catalog-landing #cart .cart__footer {
+        padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+        background: #fbf8f4;
+      }
+      .cart__progress {
+        justify-content: center;
+      }
+      body.catalog-landing dialog.account-modal {
+        position: fixed;
+        inset: auto 0 0 !important;
+        width: 100vw !important;
+        max-width: none !important;
+        height: min(90dvh, 780px);
+        max-height: 90dvh !important;
+        margin: 0;
+        border-radius: 24px 24px 0 0 !important;
+      }
+      body.catalog-landing dialog.account-modal .account__header {
+        padding: 22px 18px 16px;
+        border-radius: 24px 24px 0 0;
+      }
+      body.catalog-landing dialog.account-modal .account__tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+        padding: 12px 12px 0;
+      }
+      body.catalog-landing dialog.account-modal .account__tab {
+        padding: 9px 5px;
+        font-size: 0.68rem;
+      }
+      body.catalog-landing dialog.account-modal .account__body {
+        height: calc(90dvh - 132px);
+        padding: 14px;
+        background: #fbf8f4;
+      }
+      body.catalog-landing dialog.checkout-modal .checkout__progress {
+        display: none;
+      }
+      body.catalog-landing :is(button, .header__link, .catalog-bottom-nav__item) {
+        min-height: 44px;
+      }
       .catalog-landing .header__wrap {
         min-height: 112px;
         grid-template-columns: 44px minmax(0, 1fr) 44px;
@@ -1922,8 +2197,15 @@
   <!-- Drawer Carrinho (modal central) -->
   <aside id="cart" class="cart" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="cartTitle" tabindex="-1">
     <div class="cart__header">
-      <h3 id="cartTitle">Seu Carrinho</h3>
+      <h3 id="cartTitle">Seu carrinho</h3>
       <button class="cart__close" id="closeCart" aria-label="Fechar">✕</button>
+    </div>
+    <div class="cart__progress" aria-label="Etapas da compra">
+      <span data-current="true"><b>1</b> Carrinho</span>
+      <i></i>
+      <span><b>2</b> Entrega</span>
+      <i></i>
+      <span><b>3</b> Pagamento</span>
     </div>
     <ul id="cartList" class="cart__list"></ul>
     <div class="cart__footer">
@@ -1942,6 +2224,11 @@
       <button class="cookie-banner__btn-reject" id="btnRejectCookies">Recusar</button>
       <button class="cookie-banner__btn-accept" id="btnAcceptCookies">Aceitar cookies</button>
     </div>
+  </div>
+
+  <div class="pwa-update-toast" id="pwaUpdateToast" role="status" aria-live="polite">
+    <span>Uma nova versão está pronta.</span>
+    <button type="button" id="pwaUpdateButton">Atualizar</button>
   </div>
 
   <!-- FAB Radial Menu -->
@@ -2006,7 +2293,7 @@
     </a>
   </nav>
 
-  <script src="script.js?v=26"></script>
+  <script src="script.js?v=28"></script>
   <script>
     (function(){
       const categoriesBtn = document.getElementById('bottomNavCategories');
@@ -2016,7 +2303,19 @@
 
     if (!isLocal && 'serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+        const hadController = Boolean(navigator.serviceWorker.controller);
+        const toast = document.getElementById('pwaUpdateToast');
+        const updateButton = document.getElementById('pwaUpdateButton');
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!hadController || refreshing) return;
+          if (toast) toast.dataset.visible = 'true';
+        });
+        if (updateButton) updateButton.addEventListener('click', () => {
+          refreshing = true;
+          location.reload();
+        });
+        navigator.serviceWorker.register('/service-worker.js').then((registration) => registration.update()).catch(() => {});
       });
     }
   </script>
