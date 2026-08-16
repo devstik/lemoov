@@ -755,7 +755,7 @@ async function fetchVisitorRegion(){
 function getVisitorRegion(){
   return visitorRegionMemory;
 }
-document.addEventListener("DOMContentLoaded", ()=>{
+document.addEventListener("DOMContentLoaded", async ()=>{
   const span = document.getElementById("heroMicroCopy");
   if (span){
     span.textContent = heroHighlights[0];
@@ -766,8 +766,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
   initTrackingIfConsented();
   initCookieBanner();
   bindAccountLinks();
-  hydrateClientSession();
+  await hydrateClientSession();
   initPwaInstallButton();
+  if (new URLSearchParams(location.search).get("account") === "1") {
+    history.replaceState(null, "", `${location.pathname}${location.hash || ""}`);
+    await openAccountModal();
+  }
 });
 
 window.addEventListener("beforeinstallprompt", (event) => {
@@ -4642,7 +4646,7 @@ async function openAccountModal() {
 }
 
 function bindAccountLinks() {
-  document.querySelectorAll('a[href*="cliente-login"]').forEach((link) => {
+  document.querySelectorAll('a[href*="cliente-login"], [data-open-account]').forEach((link) => {
     if (link._lemoovAccountBound) return;
     link._lemoovAccountBound = true;
     link.addEventListener("click", async (event) => {

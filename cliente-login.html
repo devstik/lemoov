@@ -446,7 +446,7 @@
 
   <header class="account-app-header">
     <a class="account-app-header__action" href="catalogo-produtos.html" aria-label="Voltar ao catálogo"><i class="fas fa-arrow-left"></i></a>
-    <a class="account-app-header__logo" href="index.html"><img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness"></a>
+    <a class="account-app-header__logo" href="catalogo-produtos.html"><img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness"></a>
     <a class="account-app-header__action" href="catalogo-produtos.html?cart=1" aria-label="Ir ao carrinho"><i class="fas fa-cart-shopping"></i></a>
   </header>
 
@@ -652,11 +652,11 @@
   </div>
 
   <div class="back-link">
-    <a href="/">← Voltar ao site</a>
+    <a href="catalogo-produtos.html">← Voltar ao catálogo</a>
   </div>
 
   <nav class="account-bottom-nav" aria-label="Navegação principal">
-    <a href="index.html"><i class="fas fa-house"></i><span>Home</span></a>
+    <a href="catalogo-produtos.html"><i class="fas fa-house"></i><span>Home</span></a>
     <a href="catalogo-produtos.html"><i class="fas fa-grip"></i><span>Categorias</span></a>
     <a href="cliente-login.html" data-active="true"><i class="fas fa-user"></i><span>Conta</span></a>
   </nav>
@@ -825,7 +825,7 @@
         return;
       }
       btn.classList.add('ok'); btn.textContent = '✓ Acesso liberado';
-      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
+      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html?account=1';
       setTimeout(() => { location.href = redirect; }, 600);
     } catch {
       showAlert('loginAlert', 'Erro de conexão. Tente novamente.');
@@ -923,7 +923,7 @@
         return;
       }
       btn.classList.add('ok'); btn.textContent = '✓ Conta criada!';
-      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
+      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html?account=1';
       showAlert('cadastroAlert', 'Conta criada com sucesso! Redirecionando…', 'ok');
       setTimeout(() => { location.href = redirect; }, 1200);
     } catch {
@@ -1002,7 +1002,7 @@
         return;
       }
       btn.classList.add('ok'); btn.textContent = '✓ E-mail confirmado!';
-      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
+      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html?account=1';
       setTimeout(() => { location.href = redirect; }, 900);
     } catch {
       showAlert('verifyAlert', 'Erro de conexão. Tente novamente.');
@@ -1034,7 +1034,7 @@
         return;
       }
       btn.classList.add('ok'); btn.textContent = '✓ Senha alterada!';
-      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html';
+      const redirect = new URLSearchParams(location.search).get('redirect') || '/catalogo-produtos.html?account=1';
       setTimeout(() => { location.href = redirect; }, 900);
     } catch {
       showAlert('resetAlert', 'Erro de conexão. Tente novamente.');
