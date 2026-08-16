@@ -1601,6 +1601,20 @@ function computeColorPrice(prod, colorObj){
     animation:ptFadeIn .4s .6s both;
   }
 
+  #payment-transition .pt-card{position:relative;z-index:2;width:min(440px,calc(100vw - 32px));padding:34px 34px 28px;border:1px solid rgba(255,255,255,.46);border-radius:26px;color:#263019;text-align:center;background:rgba(255,255,255,.96);box-shadow:0 28px 80px rgba(0,0,0,.3);animation:ptCircleIn .5s .12s cubic-bezier(.22,1,.36,1) both;}
+  #payment-transition .pt-card::before{content:'';position:absolute;inset:7px;border:1px solid rgba(143,183,24,.18);border-radius:20px;pointer-events:none;}
+  #payment-transition .pt-logo{width:154px;height:54px;margin:0 auto 16px;display:block;object-fit:contain;filter:brightness(.28) sepia(.25) hue-rotate(28deg);}
+  #payment-transition .pt-security{width:max-content;margin:0 auto 14px;padding:6px 10px;border-radius:999px;color:#617d0d;background:#f0f6df;font-size:.68rem;font-weight:850;letter-spacing:.04em;text-transform:uppercase;}
+  #payment-transition .pt-security i{margin-right:5px;}
+  #payment-transition .pt-card h2{margin:0;color:#172216;font-size:clamp(1.35rem,4vw,1.75rem);line-height:1.16;}
+  #payment-transition .pt-card p{margin:10px auto 20px;max-width:360px;color:#657064;font-size:.86rem;line-height:1.55;}
+  #payment-transition .pt-card .pt-bar-wrap{width:100%;height:7px;margin:0 0 20px;background:#e9eddf;}
+  #payment-transition .pt-card .pt-bar{width:38%;background:linear-gradient(90deg,#6f9b00,#b7d744);}
+  #payment-transition .pt-provider{display:flex;align-items:center;justify-content:center;gap:9px;padding:12px;border-radius:12px;color:#384335;background:#f7f5ef;font-size:.76rem;}
+  #payment-transition .pt-provider i{color:#7da20e;}
+  #payment-transition .pt-card small{display:block;margin-top:12px;color:#8a9188;font-size:.68rem;}
+  @media(max-width:520px){#payment-transition .pt-card{padding:28px 22px 24px;border-radius:22px;}#payment-transition .pt-logo{width:136px;margin-bottom:12px;}}
+
   dialog.app-message-dialog:not([open]){ display:none !important; }
   dialog.app-message-dialog{
     width:min(420px, calc(100vw - 34px));
@@ -2716,11 +2730,11 @@ function renderGrid(){
           ${noteHtml}
           <div class="product-card__options">
             <div class="product-card__colors">
-              <legend class="product-card__legend">Cor:</legend>
+              <legend class="product-card__legend">Cores</legend>
               <div class="swatches" data-options-colors></div>
             </div>
             <div class="product-card__sizes">
-              <legend class="product-card__legend">Tamanho:</legend>
+              <legend class="product-card__legend">Tamanhos</legend>
               <div class="sizes__wrap" data-options-sizes></div>
             </div>
           </div>
@@ -3678,6 +3692,9 @@ async function initiateCheckout() {
       atualizarCart();
       await autoLoadDeliveryFromClient();
       atualizarCart();
+      // O clique em pagamento já aconteceu antes do login; retoma o fluxo
+      // automaticamente para não exigir um segundo toque no rodapé mobile.
+      await initiateCheckout();
     });
     return;
   }
@@ -4809,7 +4826,7 @@ function openLoginModal(onSuccess) {
       setCurrentClientSession(data.client);
       dlg.close();
       atualizarCart();
-      if (typeof onSuccess === 'function') onSuccess();
+      if (typeof onSuccess === 'function') await onSuccess();
     } catch(_) { amMsg('amLoginMsg', 'Erro de conexão. Tente novamente.'); }
     finally { btn.disabled = false; btn.textContent = 'Entrar'; }
   });
@@ -4859,7 +4876,7 @@ function openLoginModal(onSuccess) {
       setCurrentClientSession(data.client);
       dlg.close();
       atualizarCart();
-      if (typeof onSuccess === 'function') onSuccess();
+      if (typeof onSuccess === 'function') await onSuccess();
     } catch(_) { amMsg('amCadastroMsg', 'Erro de conexão. Tente novamente.'); }
     finally { btn.disabled = false; btn.textContent = 'Criar conta'; }
   });
@@ -5820,19 +5837,22 @@ function openCheckoutModal(){
     dlg.className = "checkout-modal";
     dlg.innerHTML = `
       <div class="checkout__header">
-        <div>
+        <div class="checkout__brand">
+          <img class="checkout__brand-logo" src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness">
+          <div>
           <div class="checkout__title">Finalizar Pedido</div>
           <p class="checkout__muted checkout__subtitle">
             Seus dados pessoais e de pagamento são coletados com segurança pela InfinitePay.
           </p>
+          </div>
         </div>
         <div class="checkout__progress" aria-label="Etapas da finalização"><span>1 Carrinho</span><i></i><span data-current="true">2 Entrega</span><i></i><span>3 Pagamento</span></div>
-        <button type="button" class="btn btn--ghost" id="btnCloseCheckout">Fechar</button>
+        <button type="button" class="checkout__close" id="btnCloseCheckout" aria-label="Fechar checkout">&times;</button>
       </div>
       <form id="checkoutForm" novalidate>
         <div class="checkout__body">
           <div class="checkout__summary">
-            <strong>Resumo do pedido</strong>
+            <strong class="checkout__section-title"><i class="fas fa-bag-shopping" aria-hidden="true"></i> Resumo do pedido</strong>
             <p class="checkout__muted" style="margin:4px 0 0;">
               Revise antes de gerar o pagamento. O estoque só é baixado quando o pagamento for confirmado.
             </p>
@@ -5864,7 +5884,7 @@ function openCheckoutModal(){
           <div class="checkout__grid">
             <div class="checkout__step">
               <div class="full">
-                <strong>1. Seus dados</strong>
+                <strong class="checkout__section-title"><span>1</span> Seus dados</strong>
                 <p class="checkout__muted" style="margin:4px 0 0;">
                   Usados para identificar seu pedido e pré-preencher o checkout.
                 </p>
@@ -5911,7 +5931,7 @@ function openCheckoutModal(){
 
             <div class="checkout__step">
               <div class="full">
-                <strong>2. Pagamento via InfinitePay</strong>
+                <strong class="checkout__section-title"><span>2</span> Pagamento via InfinitePay</strong>
                 <p class="checkout__muted" style="margin:4px 0 0;">
                   Você será redirecionado para o ambiente seguro da InfinitePay. Endereço e dados do cartão são preenchidos lá.
                 </p>
@@ -5927,7 +5947,7 @@ function openCheckoutModal(){
 
         <div class="checkout__footer">
           <button type="button" class="btn btn--ghost" id="btnCancelarCheckout">Cancelar</button>
-          <button type="submit" class="btn btn--primary" id="btnEnviarPedido">Ir para pagamento</button>
+          <button type="submit" class="btn btn--primary" id="btnEnviarPedido"><i class="fas fa-lock" aria-hidden="true"></i> Ir para pagamento</button>
         </div>
       </form>
     `;
@@ -6321,13 +6341,15 @@ function showPaymentTransition(){
   div.id = "payment-transition";
   div.innerHTML = `
     <div class="pt-stars">${lights}</div>
-    <div class="pt-diamond"></div>
-    <div class="pt-circle">
-      <div class="pt-ordem">LEMOOV FITNESS</div>
-      <div class="pt-lock">🔒</div>
-      <div class="pt-bar-wrap"><div class="pt-bar"></div></div>
+    <div class="pt-card" role="status" aria-live="polite">
+      <img class="pt-logo" src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness">
+      <div class="pt-security"><i class="fas fa-shield-halved" aria-hidden="true"></i> Ambiente seguro</div>
+      <h2>Preparando seu pagamento</h2>
+      <p>Estamos conectando seu pedido à InfinitePay. Você poderá escolher PIX, cartão ou parcelamento na próxima tela.</p>
+      <div class="pt-bar-wrap" aria-hidden="true"><div class="pt-bar"></div></div>
+      <div class="pt-provider"><i class="fas fa-lock" aria-hidden="true"></i><span>Pagamento processado pela <strong>InfinitePay</strong></span></div>
+      <small>Não feche nem atualize esta página.</small>
     </div>
-    <div class="pt-msg">Redirecionando para pagamento seguro…</div>
   `;
   document.body.appendChild(div);
 }
