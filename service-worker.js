@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'lemoov-v20';
+const CACHE_VERSION = 'lemoov-v22';
 const APP_SHELL = [
   '/catalogo-produtos.html',
   '/cliente-login.html',
@@ -14,6 +14,10 @@ const APP_SHELL = [
   '/image/icons/apple-touch-icon-v2.png',
   '/image/icons/favicon-bege-32.png',
   '/image/icons/favicon-bege-48.png',
+  '/image/icons/favicon-light-ui-32.png',
+  '/image/icons/favicon-light-ui-48.png',
+  '/image/icons/favicon-dark-ui-32.png',
+  '/image/icons/favicon-dark-ui-48.png',
   '/image/icons/apple-splash-1170x2532.png',
   '/image/icons/apple-splash-1290x2796.png',
   '/image/icons/apple-splash-1242x2688.png',

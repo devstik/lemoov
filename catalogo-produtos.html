@@ -21,8 +21,9 @@
   <link rel="apple-touch-startup-image" href="image/icons/apple-splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
   <link rel="apple-touch-startup-image" href="image/icons/apple-splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" />
   <link rel="apple-touch-startup-image" href="image/icons/apple-splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" />
-  <link rel="icon" type="image/png" sizes="32x32" href="image/icons/favicon-bege-32.png" />
-  <link rel="icon" type="image/png" sizes="48x48" href="image/icons/favicon-bege-48.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="image/icons/favicon-light-ui-32.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="image/icons/favicon-light-ui-32.png" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/png" sizes="32x32" href="image/icons/favicon-dark-ui-32.png" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="styles.css?v=19" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2232,6 +2233,22 @@
       }
       .add-label-short {
         display: inline;
+      }
+    }
+    @supports (padding-top: env(safe-area-inset-top)) {
+      @media (max-width: 767px) {
+        .catalog-landing .header {
+          padding-top: env(safe-area-inset-top, 0px);
+        }
+        .catalog-landing .catalog-filters {
+          padding-top: env(safe-area-inset-top, 0px);
+        }
+        .catalog-landing .catalog-filters__header {
+          min-height: 52px;
+        }
+        .catalog-landing {
+          scroll-padding-top: calc(112px + env(safe-area-inset-top, 0px));
+        }
       }
     }
   </style>
