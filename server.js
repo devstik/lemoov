@@ -121,6 +121,7 @@ const sessions = new Map();
 const SESSION_TTL_MS = 60 * 60 * 1000;
 const clientSessions = new Map();
 const CLIENT_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const CLIENT_SESSION_SIGNING_SECRET = process.env.CLIENT_SESSION_SECRET || process.env.SESSION_SECRET || `${ADMIN_PASS}:lemoov-client-session`;
 const resetTokens = new Map();
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const verificationCodes = new Map();
@@ -1511,6 +1512,42 @@ function clientSessionCookie(token, maxAgeSeconds) {
   return `lemoov_client_session=${encodeURIComponent(token)}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure}`;
 }
 
+function createClientSession(session) {
+  const normalized = {
+    clientId: session.clientId,
+    nome: String(session.nome || ''),
+    email: String(session.email || ''),
+    telefone: String(session.telefone || ''),
+    cpf: String(session.cpf || ''),
+    createdAt: Number(session.createdAt) || Date.now()
+  };
+  const payload = Buffer.from(JSON.stringify(normalized)).toString('base64url');
+  const signature = crypto.createHmac('sha256', CLIENT_SESSION_SIGNING_SECRET).update(payload).digest('base64url');
+  const token = `${payload}.${signature}`;
+  clientSessions.set(token, normalized);
+  return token;
+}
+
+function resolveClientSession(token) {
+  if (!token) return null;
+  const cached = clientSessions.get(token);
+  if (cached && Date.now() - cached.createdAt <= CLIENT_SESSION_TTL_MS) return cached;
+  const [payload, signature, extra] = String(token).split('.');
+  if (!payload || !signature || extra) return null;
+  const expected = crypto.createHmac('sha256', CLIENT_SESSION_SIGNING_SECRET).update(payload).digest('base64url');
+  const actualBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) return null;
+  try {
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!session?.clientId || !session.createdAt || Date.now() - Number(session.createdAt) > CLIENT_SESSION_TTL_MS) return null;
+    clientSessions.set(token, session);
+    return session;
+  } catch (_) {
+    return null;
+  }
+}
+
 function authRequired(req, res, next) {
   const cookies = parseCookies(req);
   const token = cookies.lemoov_session;
@@ -1533,14 +1570,12 @@ function authRequired(req, res, next) {
 function clientAuthRequired(req, res, next) {
   const cookies = parseCookies(req);
   const token = cookies.lemoov_client_session;
-  if (token && clientSessions.has(token)) {
-    const session = clientSessions.get(token);
-    if (session && Date.now() - session.createdAt <= CLIENT_SESSION_TTL_MS) {
-      req.clientSession = session;
-      return next();
-    }
-    clientSessions.delete(token);
+  const session = resolveClientSession(token);
+  if (session) {
+    req.clientSession = session;
+    return next();
   }
+  if (token) clientSessions.delete(token);
   return res.status(401).json({ ok: false, error: 'não autenticado' });
 }
 
@@ -1568,9 +1603,8 @@ app.get('/cliente-login.html', (_req, res) => {
 app.get('/api/client/me', (req, res) => {
   const cookies = parseCookies(req);
   const token = cookies.lemoov_client_session;
-  if (!token || !clientSessions.has(token)) return res.status(401).json({ ok: false, error: 'não autenticado' });
-  const session = clientSessions.get(token);
-  if (!session || Date.now() - session.createdAt > CLIENT_SESSION_TTL_MS) {
+  const session = resolveClientSession(token);
+  if (!session) {
     if (token) clientSessions.delete(token);
     return res.status(401).json({ ok: false, error: 'sessão expirada' });
   }
@@ -1623,8 +1657,7 @@ app.post('/api/client/login', async (req, res) => {
       return res.status(401).json({ ok: false, error: 'E-mail ou senha incorretos.' });
     }
     const client = rows[0];
-    const token = crypto.randomBytes(24).toString('hex');
-    clientSessions.set(token, { clientId: client.id, nome: client.nome, email: client.email, telefone: client.telefone || '', cpf: client.cpf || '', createdAt: Date.now() });
+    const token = createClientSession({ clientId: client.id, nome: client.nome, email: client.email, telefone: client.telefone || '', cpf: client.cpf || '', createdAt: Date.now() });
     res.setHeader('Set-Cookie', clientSessionCookie(token, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
     return res.json({ ok: true, client: { id: client.id, nome: client.nome, email: client.email, telefone: client.telefone || '', cpf: client.cpf || '' } });
   } catch (e) {
@@ -1662,9 +1695,8 @@ app.post('/api/client/register', async (req, res) => {
       await sendVerificationEmail(emailNorm, String(nome).trim(), code).catch((e) => console.error('[verify-email]', e.message));
       return res.status(201).json({ ok: true, needsVerification: true, verifyToken });
     }
-    const token = crypto.randomBytes(24).toString('hex');
     const cpfClean = String(cpf || '').replace(/\D/g, '') || '';
-    clientSessions.set(token, { clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: cpfClean, createdAt: Date.now() });
+    const token = createClientSession({ clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: cpfClean, createdAt: Date.now() });
     res.setHeader('Set-Cookie', clientSessionCookie(token, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
     return res.status(201).json({ ok: true, client: { id: clientId, nome: String(nome).trim(), email: emailNorm, telefone: String(telefone || '').replace(/\D/g, ''), cpf: cpfClean } });
   } catch (e) {
@@ -2001,8 +2033,7 @@ app.post('/api/client/verify-email', async (req, res) => {
   if (String(code).trim() !== entry.code)
     return res.status(400).json({ ok: false, error: 'Código incorreto.' });
   verificationCodes.delete(String(verifyToken));
-  const sessionToken = crypto.randomBytes(24).toString('hex');
-  clientSessions.set(sessionToken, { clientId: entry.clientId, nome: entry.nome, email: entry.email, telefone: entry.telefone, cpf: entry.cpf || '', createdAt: Date.now() });
+  const sessionToken = createClientSession({ clientId: entry.clientId, nome: entry.nome, email: entry.email, telefone: entry.telefone, cpf: entry.cpf || '', createdAt: Date.now() });
   res.setHeader('Set-Cookie', clientSessionCookie(sessionToken, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
   return res.json({ ok: true, client: { id: entry.clientId, nome: entry.nome, email: entry.email, cpf: entry.cpf || '' } });
 });
@@ -2050,10 +2081,9 @@ app.post('/api/client/reset-password', async (req, res) => {
     const senhaHash = hashClientPwd(String(novaSenha));
     await mysqlPool.execute('UPDATE lemoov_clients SET senha_hash = ? WHERE id = ?', [senhaHash, entry.clientId]);
     resetTokens.delete(String(token));
-    const sessionToken = crypto.randomBytes(24).toString('hex');
     const [rows] = await mysqlPool.execute('SELECT nome, email, telefone FROM lemoov_clients WHERE id = ?', [entry.clientId]);
     const client = rows[0] || {};
-    clientSessions.set(sessionToken, { clientId: entry.clientId, nome: client.nome || '', email: entry.email, telefone: client.telefone || '', createdAt: Date.now() });
+    const sessionToken = createClientSession({ clientId: entry.clientId, nome: client.nome || '', email: entry.email, telefone: client.telefone || '', createdAt: Date.now() });
     res.setHeader('Set-Cookie', clientSessionCookie(sessionToken, Math.floor(CLIENT_SESSION_TTL_MS / 1000)));
     return res.json({ ok: true });
   } catch (e) {
@@ -2218,8 +2248,7 @@ if (process.env.NODE_ENV !== 'production') {
   app.get('/api/dev/test-session', (req, res) => {
     const nome = req.query.nome || 'Cliente Teste';
     const email = req.query.email || 'teste@lemoov.com.br';
-    const token = crypto.randomBytes(24).toString('hex');
-    clientSessions.set(token, { clientId: 999, nome, email, telefone: req.query.telefone || '85999990000', createdAt: Date.now() });
+    const token = createClientSession({ clientId: 999, nome, email, telefone: req.query.telefone || '85999990000', createdAt: Date.now() });
     res.setHeader('Set-Cookie', clientSessionCookie(token, 3600));
     const redirect = req.query.redirect || '/catalogo-produtos.html';
     res.send(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${redirect}"></head><body>
