@@ -17,8 +17,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Lemoov" />
-  <link rel="apple-touch-icon" href="image/icons/apple-touch-icon.png" />
-  <link rel="icon" type="image/png" sizes="192x192" href="image/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="image/icons/apple-touch-icon-v2.png" />
+  <link rel="apple-touch-startup-image" href="image/icons/apple-splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
+  <link rel="apple-touch-startup-image" href="image/icons/apple-splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" />
+  <link rel="apple-touch-startup-image" href="image/icons/apple-splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" />
+  <link rel="icon" type="image/png" sizes="32x32" href="image/icons/favicon-bege-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="image/icons/favicon-bege-48.png" />
   <link rel="stylesheet" href="styles.css?v=19" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,6 +48,28 @@
       background: #383838;
       border-bottom: 1px solid rgba(235, 216, 199, 0.42);
       isolation: isolate;
+    }
+    .app-launch-screen { display: none; }
+    @media (display-mode: standalone) {
+      .app-launch-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 20000;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+        background: #EBD8C7;
+        pointer-events: none;
+        animation: app-launch-out .8s ease .45s both;
+      }
+      .app-launch-screen img {
+        width: min(78vw, 460px);
+        height: auto;
+      }
+    }
+    @keyframes app-launch-out {
+      0%, 45% { opacity: 1; visibility: visible; }
+      100% { opacity: 0; visibility: hidden; }
     }
     .site-banner::after {
       content: "";
@@ -2211,6 +2237,9 @@
   </style>
 </head>
 <body class="catalog-landing">
+  <div class="app-launch-screen" aria-hidden="true">
+    <img src="image/logo_lemoov_semfundo.png" alt="" />
+  </div>
 
   <div class="site-banner">
     <a class="catalog-cover" href="#grid" aria-label="Ver coleção">
@@ -2540,7 +2569,7 @@
     </button>
   </nav>
 
-  <script src="script.js?v=38"></script>
+  <script src="script.js?v=39"></script>
   <script>
     (function(){
       const categoriesBtn = document.getElementById('bottomNavCategories');

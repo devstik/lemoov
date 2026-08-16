@@ -4238,11 +4238,6 @@ function renderAccountPanel({ client, addresses, orders }) {
           <div class="account__profile-value">${escapeHTML(formatPhoneForInput(safeClient.telefone || "") || "—")}</div>
           <button type="button" class="account__profile-action" data-account-edit>Editar</button>
         </div>
-        <div class="account__profile-row">
-          <div class="account__profile-label">Código do cliente</div>
-          <div class="account__profile-value">#${escapeHTML(safeClient.id || "—")}</div>
-          <span></span>
-        </div>
       </div>
       <div class="account__edit" id="accountProfileEdit">
         <form class="account__form" id="accountProfileForm">

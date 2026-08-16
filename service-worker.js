@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'lemoov-v17';
+const CACHE_VERSION = 'lemoov-v20';
 const APP_SHELL = [
   '/catalogo-produtos.html',
   '/cliente-login.html',
@@ -9,6 +9,14 @@ const APP_SHELL = [
   '/image/logo_lemoov_icon.png',
   '/image/icons/icon-192.png',
   '/image/icons/icon-512.png',
+  '/image/icons/icon-maskable-192-v2.png',
+  '/image/icons/icon-maskable-512-v2.png',
+  '/image/icons/apple-touch-icon-v2.png',
+  '/image/icons/favicon-bege-32.png',
+  '/image/icons/favicon-bege-48.png',
+  '/image/icons/apple-splash-1170x2532.png',
+  '/image/icons/apple-splash-1290x2796.png',
+  '/image/icons/apple-splash-1242x2688.png',
 ];
 
 self.addEventListener('install', (event) => {
