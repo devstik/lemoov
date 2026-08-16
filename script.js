@@ -2479,7 +2479,26 @@ function renderCatalogFilters(){
       btn.setAttribute("aria-label", info.label);
       btn.dataset.selected = filtroCoresAtivas.has(key) ? "true" : "false";
       btn.style.setProperty("--swatch-color", info.hex);
+      // Mantém o seletor perfeitamente circular mesmo em WebViews/PWAs que
+      // aplicam tamanho mínimo ou esticam botões dentro de contêineres flex.
+      ["width", "height", "min-width", "min-height", "max-width", "max-height"].forEach((prop) => {
+        btn.style.setProperty(prop, "32px", "important");
+      });
+      btn.style.setProperty("flex", "0 0 32px", "important");
+      btn.style.setProperty("aspect-ratio", "1 / 1", "important");
+      btn.style.setProperty("border-radius", "50%", "important");
+      btn.style.setProperty("padding", "0", "important");
+      btn.style.setProperty("box-sizing", "border-box", "important");
       btn.innerHTML = `<span class="swatch__dot"></span>`;
+      const dot = btn.firstElementChild;
+      if (dot) {
+        ["width", "height", "min-width", "min-height", "max-width", "max-height"].forEach((prop) => {
+          dot.style.setProperty(prop, "22px", "important");
+        });
+        dot.style.setProperty("flex", "0 0 22px", "important");
+        dot.style.setProperty("aspect-ratio", "1 / 1", "important");
+        dot.style.setProperty("border-radius", "50%", "important");
+      }
       btn.addEventListener("click", () => {
         if (filtroCoresAtivas.has(key)) filtroCoresAtivas.delete(key); else filtroCoresAtivas.add(key);
         btn.dataset.selected = filtroCoresAtivas.has(key) ? "true" : "false";
@@ -4339,6 +4358,13 @@ function bindAccountModal(dlg) {
           body: JSON.stringify(payload)
         });
         const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          setCurrentClientSession(null);
+          if (dlg.open) dlg.close();
+          showAppMessage("Sua sessão expirou. Entre novamente para salvar o endereço.");
+          openLoginModal(() => openAccountModal());
+          return;
+        }
         if (!res.ok || !data.ok) {
           if (statusEl) statusEl.textContent = data.error || "Não foi possível salvar o endereço.";
           return;
@@ -4524,14 +4550,15 @@ function bindAccountModal(dlg) {
 }
 
 async function openAccountModal() {
-  if (!currentClientSession) {
-    const session = await checkClientSession();
-    if (!session.ok) {
-      window.location.href = "cliente-login.html";
-      return;
-    }
-    setCurrentClientSession(session.client);
+  // A conta pode estar no cache local enquanto o cookie do servidor expirou.
+  // Confirma a autenticação real antes de permitir alterações persistentes.
+  const session = await checkClientSession({ force: true });
+  if (!session.ok) {
+    setCurrentClientSession(null);
+    openLoginModal(() => openAccountModal());
+    return;
   }
+  setCurrentClientSession(session.client);
 
   let dlg = document.getElementById("accountModal");
   if (!dlg) {
