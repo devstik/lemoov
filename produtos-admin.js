@@ -6,6 +6,12 @@ function fmtR(v){ return Number(v||0).toLocaleString('pt-BR',{style:'currency',c
 function fmtD(iso){ if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) }
 function sLabel(s){ return ({reservado:'Reservado',confirmado:'Confirmado',enviado:'Enviado',entregue:'Entregue',cancelado:'Cancelado'})[s]||s||'Reservado' }
 function sPill(s){ return `<span class="status-pill s-${s||'reservado'}">${sLabel(s)}</span>` }
+// Sugestão de código de barras (Code128) pra produtos/combos que ainda não têm um —
+// como os ids não são únicos entre produtos/combos/atacado, prefixamos por tipo.
+function suggestBarcode(tipo,id){
+  const prefix=({produto:'LMP',combo:'LMC',atacado:'LMA'})[tipo]||'LM';
+  return `${prefix}${String(Number(id)||0).padStart(6,'0')}`;
+}
 function normalizeCouponCode(v){return String(v||'').trim().toUpperCase().replace(/\s+/g,'')}
 function orderCoupon(p){return normalizeCouponCode(p?.cupom||p?.couponCode||p?.pedidoPayload?.cupom||'')}
 function orderDiscount(p){return Number(p?.desconto||p?.discountTotal||p?.pedidoPayload?.desconto||0)||0}
@@ -121,6 +127,7 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   btn.classList.add('active');
   const panel = $(`tab-${tab}`);
   if(panel) panel.classList.add('active');
+  document.body.classList.toggle('caixa-fullscreen',tab==='caixa');
   if(tab==='combos') loadCombos();
   if(tab==='atacado') loadAtacado();
   if(tab==='pedidos') { loadCupons(); loadPedidos(); }
@@ -128,7 +135,16 @@ $$('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
   if(tab==='estoque') refreshStockScreen();
   if(tab==='relatorio') loadRelatorio();
   if(tab==='crm') loadCRM();
-  if(tab==='qrcode') qrgInitUI();
+  if(tab==='qrcode') { qrgInitUI(); etiquetasInitUI(); }
+  if(tab==='caixa') initCaixa();
+}));
+
+// Sub-abas dentro de QR Code (Gerador / Etiquetas)
+$$('.qr-subtab').forEach(btn=>btn.addEventListener('click',()=>{
+  const sub=btn.dataset.qrsubtab;
+  $$('.qr-subtab').forEach(b=>b.classList.toggle('active',b===btn));
+  $('qrg-panel-gerador').classList.toggle('active',sub==='gerador');
+  $('qrg-panel-etiquetas').classList.toggle('active',sub==='etiquetas');
 }));
 
 // ── Logout ───────────────────────────────────────────────────
@@ -242,6 +258,9 @@ function renderProdForm(p){
         <div class="fg"><label class="fl">Preço promo (R$)</label><input class="fc" type="number" step="0.01" id="f_promo" /></div>
       </div>
       <div class="frow">
+        <div class="fg"><label class="fl">Código de barras</label><input class="fc" id="f_barcode" placeholder="Gerado automaticamente ao salvar" /></div>
+      </div>
+      <div class="frow">
         <div class="fg"><label class="fl">Tamanhos (vírgula)</label><input class="fc" id="f_tam" placeholder="P, M, G, GG" /></div>
         <div class="fg" style="display:flex;align-items:center;gap:14px;padding-top:18px;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;cursor:pointer">
@@ -289,6 +308,7 @@ function renderProdForm(p){
   $('f_cat').value=p?.categoria||'';
   $('f_preco').value=p?.preco??'';
   $('f_promo').value=p?.precoPromo??'';
+  $('f_barcode').value=p?.barcode||(p?.id?suggestBarcode('produto',p.id):'');
   $('f_tam').value=tamTxt;
   $('f_soldout').checked=Boolean(p?.soldOut);
   const fAtivo=$('f_ativo');
@@ -558,6 +578,7 @@ async function salvarProd(id){
     const payload={
       nome:$('f_nome').value.trim(), categoria:$('f_cat').value.trim(),
       preco:Number($('f_preco').value), precoPromo:$('f_promo').value?Number($('f_promo').value):null,
+      barcode:$('f_barcode').value.trim()||undefined,
       tamanhos, soldOut:$('f_soldout').checked, ativo:$('f_ativo')?.dataset.state!=='off',
       lancamento:$('f_lancamento')?.dataset.state==='on',
       video:$('f_video_path')?.value||undefined,
@@ -760,6 +781,9 @@ function renderComboForm(combo){
         <div class="fg"><label class="fl">Preço (R$) *</label><input class="fc" type="number" step="0.01" id="cb_preco" required /></div>
         <div class="fg"><label class="fl">Preço promo (R$)</label><input class="fc" type="number" step="0.01" id="cb_promo" /></div>
       </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Código de barras</label><input class="fc" id="cb_barcode" placeholder="Gerado automaticamente ao salvar" /></div>
+      </div>
       <div class="fg" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         <div class="toggle-wrap" id="cb_ativo" data-state="on" role="switch" aria-checked="true">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -791,6 +815,7 @@ function renderComboForm(combo){
   $('cb_cat').value=combo?.categoria||'Combo';
   $('cb_preco').value=combo?.preco??'';
   $('cb_promo').value=combo?.precoPromo??'';
+  $('cb_barcode').value=combo?.barcode||(combo?.id?suggestBarcode('combo',combo.id):'');
   $('cb_desc').value=combo?.desc?.texto||combo?.descricao||'';
   function setToggle(el,lbl,on,onText,offText){
     el.dataset.state=on?'on':'off'; el.setAttribute('aria-checked',String(on));
@@ -914,6 +939,7 @@ async function salvarCombo(id){
       categoria:$('cb_cat').value.trim()||'Combo',
       preco:Number($('cb_preco').value),
       precoPromo:$('cb_promo').value?Number($('cb_promo').value):null,
+      barcode:$('cb_barcode').value.trim()||undefined,
       ativo:$('cb_ativo').dataset.state!=='off',
       lancamento:$('cb_lancamento').dataset.state==='on',
       desc:($('cb_desc').value||'').trim()?{texto:($('cb_desc').value||'').trim()}:undefined,
@@ -1045,7 +1071,10 @@ function renderAtacadoForm(p){
       </div>
       <div class="frow">
         <div class="fg"><label class="fl">Preço (R$)</label><input class="fc" type="number" step="0.01" min="0" id="a_preco" placeholder="Vazio = Sob consulta" /></div>
-        <div class="fg" style="display:flex;align-items:center;gap:14px;padding-top:18px">
+        <div class="fg"><label class="fl">Código de barras</label><input class="fc" id="a_barcode" placeholder="Gerado automaticamente ao salvar" /></div>
+      </div>
+      <div class="frow">
+        <div class="fg" style="display:flex;align-items:center;gap:14px;padding-top:4px">
           <div class="toggle-wrap" id="a_ativo" data-state="on" role="switch" aria-checked="true">
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
             <span id="a_ativo_lbl" style="font-size:13px;font-weight:600;color:#22c55e">Visível no site</span>
@@ -1082,6 +1111,7 @@ function renderAtacadoForm(p){
   $('a_nome').value=p?.nome||'';
   $('a_cat').value=p?.categoria||'';
   $('a_preco').value=p?.preco??'';
+  $('a_barcode').value=p?.barcode||(p?.id?suggestBarcode('atacado',p.id):'');
   $('a_desc').value=p?.descricao||'';
   const aAtivo=$('a_ativo'), aAtivoLbl=$('a_ativo_lbl');
   function setAAtivo(on){
@@ -1294,6 +1324,7 @@ async function salvarAtacado(id){
     const payload={
       nome:$('a_nome').value.trim(), categoria:$('a_cat').value.trim(),
       preco:$('a_preco').value?Number($('a_preco').value):null,
+      barcode:$('a_barcode').value.trim()||undefined,
       ativo:$('a_ativo')?.dataset.state!=='off',
       descricao:($('a_desc').value||'').trim(),
       video:$('a_video_path')?.value||undefined,

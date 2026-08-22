@@ -7,6 +7,14 @@
   <link rel="icon" type="image/png" sizes="32x32" href="image/icons/favicon-light-ui-32.png">
   <link rel="icon" type="image/png" sizes="32x32" href="image/icons/favicon-light-ui-32.png" media="(prefers-color-scheme: light)">
   <link rel="icon" type="image/png" sizes="32x32" href="image/icons/favicon-dark-ui-32.png" media="(prefers-color-scheme: dark)">
+  <!-- PWA do Caixa — instalável separado do catálogo (ver caixa-manifest.json / caixa-sw.js) -->
+  <link rel="manifest" href="/caixa-manifest.json">
+  <meta name="theme-color" content="#383838">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Caixa">
+  <link rel="apple-touch-icon" href="image/icons/apple-touch-icon-v2.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,6 +36,10 @@
     <input type="text" placeholder="Buscar…" id="globalSearch" />
   </div>
   <nav class="sidebar-nav">
+    <button class="tab-btn tab-btn--caixa" data-tab="caixa" title="Caixa">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><line x1="12" y1="12" x2="12" y2="12.01"/></svg>
+      <span class="nav-label">Caixa</span>
+    </button>
     <button class="tab-btn active" data-tab="produtos" title="Produtos">
       <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="7" height="7" rx="1"/><rect x="15" y="3" width="7" height="7" rx="1"/><rect x="2" y="14" width="7" height="7" rx="1"/><rect x="15" y="14" width="7" height="7" rx="1"/></svg>
       <span class="nav-label">Produtos</span>
@@ -85,6 +97,88 @@
     </button>
   </div>
 </aside>
+
+<!-- ── CAIXA (PDV) ───────────────────────────────── -->
+<div id="tab-caixa" class="tab-panel">
+  <div class="caixa-app" id="caixaApp">
+    <div class="caixa-launch-screen" id="caixaLaunchScreen" aria-hidden="true">
+      <img src="image/logo_lemoov_semfundo.png" alt="">
+    </div>
+    <header class="caixa-topbar">
+      <div class="caixa-topbar__brand">
+        <img src="image/logo_lemoov_icon.png" alt="" class="caixa-topbar__logo">
+        <span>Caixa Lemoov</span>
+      </div>
+      <div class="caixa-topbar__clock" id="caixaClock"></div>
+      <button type="button" class="caixa-topbar__install" id="caixaInstallBtn" hidden>⬇ Instalar app</button>
+      <button type="button" class="caixa-topbar__exit" id="caixaExitBtn">✕ Sair do caixa</button>
+    </header>
+
+    <div class="caixa-main">
+      <div class="caixa-scan-col">
+        <div class="caixa-scan">
+          <label class="caixa-scan__label" for="caixaBarcodeInput">Escaneie o código de barras</label>
+          <input type="text" id="caixaBarcodeInput" class="caixa-scan__input" autocomplete="off" placeholder="Aguardando leitura…" />
+          <div id="caixaScanMsg" class="caixa-scan__msg"></div>
+        </div>
+
+        <div id="caixaPicker" class="caixa-picker" hidden></div>
+
+        <div class="caixa-cart">
+          <div class="caixa-cart__head">
+            <h2>Carrinho</h2>
+            <span id="caixaCartCount" class="caixa-cart__count">0 itens</span>
+          </div>
+          <div id="caixaCartList" class="caixa-cart__list">
+            <div class="caixa-cart__empty">Escaneie um produto pra começar a venda.</div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="caixa-summary">
+        <div class="caixa-summary__field">
+          <label for="caixaDesconto">Desconto (R$)</label>
+          <input type="number" id="caixaDesconto" min="0" step="0.01" value="0" />
+        </div>
+        <div class="caixa-summary__field">
+          <label for="caixaPagamento">Forma de pagamento</label>
+          <select id="caixaPagamento">
+            <option value="">Selecione</option>
+            <option value="PIX">PIX</option>
+            <option value="Cartão de Crédito">Cartão de Crédito</option>
+            <option value="Cartão de Débito">Cartão de Débito</option>
+            <option value="Dinheiro">Dinheiro</option>
+          </select>
+        </div>
+        <details class="caixa-summary__optional">
+          <summary>Dados do cliente (opcional)</summary>
+          <div class="caixa-summary__field"><label for="caixaClienteNome">Nome</label><input id="caixaClienteNome" type="text" /></div>
+          <div class="caixa-summary__field"><label for="caixaClienteTel">WhatsApp</label><input id="caixaClienteTel" type="text" /></div>
+        </details>
+        <div class="caixa-summary__totals">
+          <div class="caixa-summary__row"><span>Subtotal</span><span id="caixaSubtotal">R$ 0,00</span></div>
+          <div class="caixa-summary__row"><span>Desconto</span><span id="caixaDescontoLabel">R$ 0,00</span></div>
+          <div class="caixa-summary__row caixa-summary__row--total"><span>Total</span><span id="caixaTotal">R$ 0,00</span></div>
+        </div>
+        <div id="caixaFinishNotice" class="notice" style="display:none"></div>
+        <button type="button" class="caixa-finish-btn" id="caixaFinishBtn" disabled>Finalizar venda</button>
+      </aside>
+    </div>
+
+    <!-- Tela de comprovante, cobre tudo ao concluir a venda -->
+    <div class="caixa-receipt" id="caixaReceiptScreen" hidden>
+      <div class="caixa-receipt__card">
+        <div class="caixa-receipt__icon">✅</div>
+        <h2>Venda confirmada!</h2>
+        <p class="caixa-receipt__number" id="caixaReceiptNumero"></p>
+        <p class="caixa-receipt__total" id="caixaReceiptTotal"></p>
+        <img id="caixaReceiptQr" class="caixa-receipt__qr" alt="QR do comprovante" />
+        <p class="caixa-receipt__hint">Peça pro cliente escanear pra ver o comprovante e conhecer mais produtos Lemoov.</p>
+        <button type="button" class="caixa-finish-btn" id="caixaNewSaleBtn">Nova venda</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ── PRODUTOS ──────────────────────────────────── -->
 <div id="tab-produtos" class="tab-panel active">
@@ -366,11 +460,17 @@
   <div class="screen-hero">
     <div>
       <div class="screen-kicker">Ferramentas</div>
-      <h1 class="screen-title">Gerador de QR Code</h1>
-      <p class="screen-copy">QR Codes lidos pela câmera do celular — link, texto, WhatsApp e post para Instagram.</p>
+      <h1 class="screen-title">QR Code &amp; Etiquetas</h1>
+      <p class="screen-copy">QR Codes de marketing e etiquetas de produto com código de barras.</p>
     </div>
   </div>
 
+  <div class="stock-tabbar" style="margin-bottom:18px">
+    <button type="button" class="qr-subtab active" data-qrsubtab="gerador">Gerador de QR Code</button>
+    <button type="button" class="qr-subtab" data-qrsubtab="etiquetas">Etiquetas</button>
+  </div>
+
+  <div id="qrg-panel-gerador" class="qrg-subpanel active">
   <div class="qrg-layout">
 
     <!-- Esquerda -->
@@ -537,7 +637,66 @@
 
     </div>
   </div>
+  </div>
+
+  <div id="qrg-panel-etiquetas" class="qrg-subpanel">
+    <div class="etq-layout">
+      <div class="etq-left">
+        <div class="card">
+          <div class="card-head">
+            <h2>Selecionar produtos</h2>
+            <span class="stock-head-sub" id="etqCount"></span>
+          </div>
+          <div class="card-body" style="display:grid;gap:14px">
+            <div class="frow">
+              <div class="fg">
+                <label class="fl">Produto ou combo</label>
+                <select id="etqProd" class="fc"></select>
+              </div>
+              <div class="fg" style="max-width:110px">
+                <label class="fl">Etiquetas</label>
+                <input id="etqQty" class="fc" type="number" min="1" value="1" />
+              </div>
+            </div>
+            <button type="button" class="btn btn--secondary" id="etqAddBtn">+ Adicionar à lista de impressão</button>
+            <div id="etqNotice" class="notice" style="display:none"></div>
+            <div id="etqQueueList" class="etq-queue"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div style="font-size:12px;color:var(--muted);line-height:1.6">
+              Produtos sem código de barras cadastrado recebem um código automático
+              (<code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px">LMP000001</code> pra
+              produto, <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px">LMC000001</code>
+              pra combo).
+            </div>
+            <button type="button" class="btn btn--ghost btn--sm" id="etqBulkGenBtn">Gerar códigos para produtos sem código</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="etq-right">
+        <div class="card" style="text-align:center">
+          <div class="card-head"><h2>Pré-visualização</h2></div>
+          <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:14px">
+            <div class="etq-label-preview" id="etqPreview">
+              <div class="etq-label-preview__name" id="etqPreviewName">Selecione um produto</div>
+              <svg id="etqPreviewBarcode"></svg>
+              <div class="etq-label-preview__price" id="etqPreviewPrice"></div>
+            </div>
+            <p style="font-size:11px;color:var(--muted)">Tamanho real: 51,5mm × 31mm (impressora térmica de etiqueta)</p>
+          </div>
+        </div>
+        <button id="etqPrintBtn" class="btn btn--primary" style="width:100%">🖨️ Imprimir etiquetas</button>
+      </div>
+    </div>
+  </div>
 </div>
+
+<!-- Overlay de impressão de etiquetas — só aparece no @media print -->
+<div id="printLabelsOv"></div>
 
 <style>
   /* ── QR Code Generator ── */
@@ -561,6 +720,31 @@
   .qrg-color-dot{display:inline-block;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--brd);flex-shrink:0}
 
   @media(max-width:1100px){.qrg-layout{grid-template-columns:1fr}}
+
+  /* ── Sub-abas dentro de QR Code (Gerador / Etiquetas) ── */
+  .qrg-subpanel{display:none}
+  .qrg-subpanel.active{display:block}
+
+  /* ── Etiquetas ── */
+  .etq-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+  .etq-queue{display:grid;gap:8px}
+  .etq-queue-empty{color:var(--muted);font-size:13px}
+  .etq-queue-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--brd);border-radius:9px;background:var(--bg)}
+  .etq-queue-row__info{flex:1;min-width:0}
+  .etq-queue-row__name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .etq-queue-row__meta{font-size:11.5px;color:var(--muted)}
+  .etq-queue-row__qty{width:56px;padding:5px 6px;border:1px solid var(--brd);border-radius:6px;font-family:inherit;font-size:13px;text-align:center}
+  .etq-label-preview{
+    width:206px;height:124px;border:1.5px dashed var(--brd2);border-radius:6px;background:#fff;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px;box-sizing:border-box
+  }
+  .etq-label-preview__name{font-size:11px;font-weight:700;color:var(--t2);text-align:center;line-height:1.2;max-height:2.4em;overflow:hidden}
+  .etq-label-preview__price{font-size:15px;font-weight:800;color:var(--pd)}
+  #etqPreviewBarcode{max-width:100%;height:44px}
+  @media(max-width:1100px){.etq-layout{grid-template-columns:1fr}}
+
+  /* ── Overlay de impressão (etiquetas) — invisível fora do print ── */
+  #printLabelsOv{display:none}
 </style>
 
 <!-- ── RELATÓRIO ─────────────────────────────────── -->
@@ -672,7 +856,7 @@
 <div id="toastRoot"></div>
 <datalist id="colorToneOptions"></datalist>
 
-<script src="/produtos-admin.js?v=3"></script>
+<script src="/produtos-admin.js?v=4"></script>
 <script src="/producao-admin.js"></script>
 
 <!-- ── CLIENTES ── -->
@@ -834,6 +1018,13 @@
 
 <!-- ── QR CODE GENERATOR ──────────────────────────────────────── -->
 <script src="/produtos-admin-qr.js"></script>
+
+<!-- ── ETIQUETAS (código de barras) ──────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="/produtos-admin-etiquetas.js"></script>
+
+<!-- ── CAIXA (PDV) ────────────────────────────────────────────── -->
+<script src="/produtos-admin-caixa.js"></script>
 
 </body>
 </html>

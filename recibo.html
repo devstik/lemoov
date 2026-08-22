@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comprovante de compra — Lemoov Fitness</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" sizes="32x32" href="image/icons/favicon-light-ui-32.png">
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 32px 16px 60px;
+      background: radial-gradient(circle at 20% 0%, rgba(168,198,58,0.14), transparent 45%), linear-gradient(180deg, #fbf8f4 0%, #f2e6db 100%);
+    }
+    .receipt {
+      width: 100%;
+      max-width: 420px;
+      background: var(--surface-color);
+      border-radius: 22px;
+      box-shadow: var(--shadow-medium);
+      overflow: hidden;
+    }
+    .receipt__header {
+      padding: 26px 26px 22px;
+      background: linear-gradient(125deg, #292c27 0%, #41492d 62%, #769414 100%);
+      color: #fff;
+      text-align: center;
+    }
+    .receipt__header img { height: 40px; margin: 0 auto 14px; }
+    .receipt__status {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.14);
+      font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .receipt__status i { color: #A8C63A; }
+    .receipt__number { margin: 12px 0 2px; font-family: var(--font-heading); font-size: 1.3rem; }
+    .receipt__date { font-size: 0.78rem; color: rgba(255,255,255,0.72); }
+    .receipt__body { padding: 22px 26px 8px; }
+    .receipt__items { list-style: none; margin: 0 0 6px; padding: 0; }
+    .receipt__item {
+      display: flex; justify-content: space-between; gap: 12px; padding: 12px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .receipt__item-name { font-weight: 700; font-size: 0.9rem; color: var(--secondary-color); margin: 0 0 3px; }
+    .receipt__item-meta { font-size: 0.76rem; color: var(--text-muted); }
+    .receipt__item-total { font-weight: 700; font-size: 0.88rem; color: var(--secondary-color); white-space: nowrap; }
+    .receipt__totals { padding: 14px 0 4px; }
+    .receipt__row { display: flex; justify-content: space-between; font-size: 0.86rem; color: var(--text-muted); padding: 4px 0; }
+    .receipt__row--total { font-size: 1.15rem; font-weight: 800; color: var(--primary-dark); padding-top: 12px; margin-top: 6px; border-top: 1px solid var(--border-color); }
+    .receipt__payment {
+      margin: 14px 0 22px; padding: 12px 14px; border-radius: 12px; background: var(--bg-light);
+      display: flex; align-items: center; gap: 10px; font-size: 0.84rem; font-weight: 700; color: var(--secondary-color);
+    }
+    .receipt__payment i { color: var(--primary-dark); }
+    .receipt__cta {
+      display: block; margin: 0 26px 26px; padding: 15px; border-radius: 13px; text-align: center;
+      background: linear-gradient(135deg, #91bd08, #6f9b00); color: #fff; text-decoration: none;
+      font-weight: 800; font-size: 0.9rem; box-shadow: 0 10px 24px rgba(111,155,0,0.28);
+    }
+    .receipt__cta i { margin-right: 8px; }
+    .receipt__state { padding: 60px 26px; text-align: center; color: var(--text-muted); }
+    .receipt__state i { font-size: 1.6rem; color: var(--primary-color); margin-bottom: 10px; display: block; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="receipt__header">
+      <img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness">
+      <div class="receipt__status"><i class="fas fa-circle-check" aria-hidden="true"></i> Compra confirmada</div>
+      <p class="receipt__number" id="reciboNumero">Pedido</p>
+      <p class="receipt__date" id="reciboData"></p>
+    </div>
+    <div id="reciboLoading" class="receipt__state">
+      <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+      Carregando comprovante…
+    </div>
+    <div id="reciboErro" class="receipt__state" hidden>
+      <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+      Não encontramos esse comprovante.
+    </div>
+    <div id="reciboConteudo" hidden>
+      <div class="receipt__body">
+        <ul class="receipt__items" id="reciboItens"></ul>
+        <div class="receipt__totals">
+          <div class="receipt__row"><span>Subtotal</span><span id="reciboSubtotal"></span></div>
+          <div class="receipt__row" id="reciboDescontoRow" hidden><span>Desconto</span><span id="reciboDesconto"></span></div>
+          <div class="receipt__row receipt__row--total"><span>Total</span><span id="reciboTotal"></span></div>
+        </div>
+        <div class="receipt__payment" id="reciboPagamento" hidden>
+          <i class="fas fa-wallet" aria-hidden="true"></i>
+          <span id="reciboPagamentoTexto"></span>
+        </div>
+      </div>
+    </div>
+    <a class="receipt__cta" href="catalogo-produtos.html">
+      <i class="fas fa-bag-shopping" aria-hidden="true"></i> Conheça outros produtos Lemoov
+    </a>
+  </div>
+
+  <script>
+    (function () {
+      const formatBRL = (n) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const params = new URLSearchParams(location.search);
+      const numero = (params.get('pedido') || location.pathname.split('/').pop() || '').trim();
+
+      const loading = document.getElementById('reciboLoading');
+      const erro = document.getElementById('reciboErro');
+      const conteudo = document.getElementById('reciboConteudo');
+
+      function show(state) {
+        loading.hidden = state !== 'loading';
+        erro.hidden = state !== 'erro';
+        conteudo.hidden = state !== 'ok';
+      }
+
+      async function load() {
+        if (!numero) { show('erro'); return; }
+        try {
+          const res = await fetch(`/api/recibo/${encodeURIComponent(numero)}`);
+          const data = await res.json();
+          if (!res.ok || !data.ok) { show('erro'); return; }
+          render(data.recibo);
+          show('ok');
+        } catch (_e) {
+          show('erro');
+        }
+      }
+
+      function render(r) {
+        document.getElementById('reciboNumero').textContent = `Pedido #${r.pedido}`;
+        if (r.recebidoEm) {
+          const d = new Date(r.recebidoEm);
+          document.getElementById('reciboData').textContent = d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+        }
+        const itensEl = document.getElementById('reciboItens');
+        itensEl.innerHTML = (r.itens || []).map((it) => `
+          <li class="receipt__item">
+            <div>
+              <p class="receipt__item-name">${escapeHTML(it.nome)}</p>
+              <p class="receipt__item-meta">${[it.cor, it.tamanho].filter(Boolean).map(escapeHTML).join(' · ') || '&nbsp;'} · Qtd: ${it.quantidade}</p>
+            </div>
+            <span class="receipt__item-total">${formatBRL(it.precoUnitario * it.quantidade)}</span>
+          </li>`).join('');
+        document.getElementById('reciboSubtotal').textContent = formatBRL(r.subtotal);
+        document.getElementById('reciboTotal').textContent = formatBRL(r.total);
+        if (r.desconto > 0) {
+          document.getElementById('reciboDescontoRow').hidden = false;
+          document.getElementById('reciboDesconto').textContent = `- ${formatBRL(r.desconto)}`;
+        }
+        if (r.pagamento) {
+          document.getElementById('reciboPagamento').hidden = false;
+          document.getElementById('reciboPagamentoTexto').textContent = r.pagamento;
+        }
+      }
+
+      function escapeHTML(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]));
+      }
+
+      load();
+    })();
+  </script>
+</body>
+</html>

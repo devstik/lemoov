@@ -4036,6 +4036,38 @@ app.post('/api/admin/pedido', authRequired, async (req, res) => {
   }
 });
 
+// Comprovante público de venda (Caixa/PDV) — sem login, acessado via QR code impresso
+// no momento da venda. Só expõe o necessário pro cliente conferir a compra; nunca dados
+// de contato/endereço ou campos internos de estoque.
+app.get('/api/recibo/:numero', async (req, res) => {
+  try {
+    const pedido = await readPedidoStore(req.params.numero);
+    if (!pedido) return res.status(404).json({ ok: false, error: 'Pedido não encontrado' });
+    res.json({
+      ok: true,
+      recibo: {
+        pedido: pedido.pedido,
+        itens: (pedido.itens || []).map((it) => ({
+          nome: it.nome,
+          cor: it.cor || '',
+          tamanho: it.tamanho || it.tamanhoSelecionado || '',
+          quantidade: it.quantidade,
+          precoUnitario: it.precoUnitario,
+        })),
+        subtotal: pedido.subtotal,
+        desconto: pedido.desconto,
+        taxa: pedido.taxa,
+        total: pedido.total,
+        pagamento: pedido.pagamento || '',
+        recebidoEm: pedido.recebidoEm,
+      },
+    });
+  } catch (e) {
+    console.error('[GET /api/recibo]', e.message);
+    res.status(500).json({ ok: false, error: 'Erro ao buscar comprovante' });
+  }
+});
+
 // Prevent proxy/CDN caching of HTML pages so updates reach users immediately
 app.use((req, res, next) => {
   if (req.path === '/' || req.path.endsWith('.html')) {
