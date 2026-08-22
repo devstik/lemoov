@@ -20,6 +20,17 @@
   let lightboxOpen = false;
   let cart = loadCart();
 
+  // Estado dos filtros/ordenação da área de produtos (mesmo padrão do catalogo-produtos.html)
+  let filtroCategoriasAtivas = new Set();
+  let filtroCoresAtivas = new Set();
+  let filtroPrecoMin = null;
+  let filtroPrecoMax = null;
+  let ordenacaoAtual = "destaque";
+
+  function normalizeColorKey(value) {
+    return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
   function loadCart() {
     try {
       const raw = localStorage.getItem(CART_STORAGE_KEY);
@@ -41,6 +52,7 @@
       produtos = [];
     }
     if (!Array.isArray(produtos)) produtos = [];
+    renderCatalogFilters();
     renderGrid();
     renderCart();
   }
@@ -50,7 +62,8 @@
   }
   function resolvePath(src) {
     if (!src) return "";
-    return src.startsWith("http") ? src : "/" + src;
+    if (src.startsWith("http") || src.startsWith("/")) return src;
+    return "/" + src;
   }
   function getImagemProduto(p, corIndex = 0) {
     const cores = getCoresAtivas(p);
@@ -97,15 +110,219 @@
     return { get: () => clampQty(input.value), set };
   }
 
+  // ── Filtros da sidebar + ordenação (mesmo padrão do catalogo-produtos.html) ──
+  function matchesSidebarFilters(p) {
+    if (filtroCoresAtivas.size) {
+      const cores = getCoresAtivas(p);
+      const tem = cores.some((c) => filtroCoresAtivas.has(normalizeColorKey(c?.nome)));
+      if (!tem) return false;
+    }
+    if ((filtroPrecoMin != null || filtroPrecoMax != null) && typeof p.preco === "number") {
+      if (filtroPrecoMin != null && p.preco < filtroPrecoMin) return false;
+      if (filtroPrecoMax != null && p.preco > filtroPrecoMax) return false;
+    }
+    return true;
+  }
+
+  function ordenar(lista) {
+    const arr = [...lista];
+    switch (ordenacaoAtual) {
+      case "preco-asc": return arr.sort((a, b) => (Number(a.preco) || Infinity) - (Number(b.preco) || Infinity));
+      case "preco-desc": return arr.sort((a, b) => (Number(b.preco) || -Infinity) - (Number(a.preco) || -Infinity));
+      case "nome-az": return arr.sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"));
+      case "nome-za": return arr.sort((a, b) => String(b.nome).localeCompare(String(a.nome), "pt-BR"));
+      default: return arr;
+    }
+  }
+
+  function updateSearchState(count) {
+    const input = el("#atacadoSearch");
+    const clearBtn = el("#atacadoSearchClear");
+    const meta = el("#atacadoSearchMeta");
+    const query = buscaAtual.trim();
+    if (input && input.value !== buscaAtual) input.value = buscaAtual;
+    if (clearBtn) clearBtn.dataset.visible = query ? "true" : "false";
+    if (!meta) return;
+    meta.textContent = query ? `${count} resultado${count === 1 ? "" : "s"} para "${query}"` : "";
+  }
+
+  function buildSwatchButton(cor, selected) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "swatch";
+    btn.title = cor?.nome || "";
+    btn.setAttribute("aria-label", cor?.nome || "");
+    btn.dataset.selected = selected ? "true" : "false";
+    const dot = document.createElement("span");
+    dot.className = "swatch__dot";
+    dot.style.setProperty("--swatch-color", cor?.swatch || "#e6e6e6");
+    btn.appendChild(dot);
+    return btn;
+  }
+
+  // ── Sidebar de filtros ───────────────────────────────────────
+  function renderFilterCategorias() {
+    const wrap = el("#atacadoFilterCategorias");
+    if (!wrap) return;
+    const counts = {};
+    produtos.forEach((p) => { if (p.categoria) counts[p.categoria] = (counts[p.categoria] || 0) + 1; });
+    const categorias = Object.keys(counts).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    wrap.innerHTML = "";
+    const allLabel = document.createElement("label");
+    allLabel.innerHTML = `<input type="checkbox" data-cat-all ${filtroCategoriasAtivas.size ? "" : "checked"}> Todos os produtos <span class="catalog-filters__count">${produtos.length}</span>`;
+    wrap.appendChild(allLabel);
+    categorias.forEach((cat) => {
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" data-cat="${escapeHTML(cat)}" ${filtroCategoriasAtivas.has(cat) ? "checked" : ""}> ${escapeHTML(cat)} <span class="catalog-filters__count">${counts[cat]}</span>`;
+      wrap.appendChild(label);
+    });
+    wrap.querySelectorAll("input[type=checkbox]").forEach((input) => {
+      input.addEventListener("change", () => {
+        const allInput = wrap.querySelector("input[data-cat-all]");
+        if (input.hasAttribute("data-cat-all")) {
+          wrap.querySelectorAll("input[data-cat]").forEach((i) => { i.checked = false; });
+          filtroCategoriasAtivas = new Set();
+        } else {
+          const marcadas = Array.from(wrap.querySelectorAll("input[data-cat]:checked")).map((i) => i.dataset.cat);
+          if (!marcadas.length) {
+            allInput.checked = true;
+            filtroCategoriasAtivas = new Set();
+          } else {
+            allInput.checked = false;
+            filtroCategoriasAtivas = new Set(marcadas);
+          }
+        }
+        renderGrid();
+      });
+    });
+  }
+
+  function renderFilterCores() {
+    const wrap = el("#atacadoFilterCores");
+    if (!wrap) return;
+    const map = new Map();
+    produtos.forEach((p) => getCoresAtivas(p).forEach((c) => {
+      const key = normalizeColorKey(c?.nome);
+      if (key && !map.has(key)) map.set(key, c);
+    }));
+    wrap.innerHTML = "";
+    map.forEach((cor, key) => {
+      const btn = buildSwatchButton(cor, filtroCoresAtivas.has(key));
+      btn.addEventListener("click", () => {
+        if (filtroCoresAtivas.has(key)) filtroCoresAtivas.delete(key); else filtroCoresAtivas.add(key);
+        btn.dataset.selected = filtroCoresAtivas.has(key) ? "true" : "false";
+        renderGrid();
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function renderFilterPreco() {
+    const precos = produtos.map((p) => Number(p.preco)).filter((v) => Number.isFinite(v) && v > 0);
+    const min = precos.length ? Math.floor(Math.min(...precos)) : 0;
+    const max = precos.length ? Math.ceil(Math.max(...precos)) : 0;
+    const inputMin = el("#atacadoFilterPrecoMin");
+    const inputMax = el("#atacadoFilterPrecoMax");
+    const labelMin = el("#atacadoFilterPrecoMinLabel");
+    const labelMax = el("#atacadoFilterPrecoMaxLabel");
+    const fill = el("#atacadoFilterPrecoFill");
+    if (!inputMin || !inputMax) return;
+    const updateFill = () => {
+      if (!fill) return;
+      const range = (max - min) || 1;
+      const leftPct = ((Number(inputMin.value) - min) / range) * 100;
+      const rightPct = 100 - ((Number(inputMax.value) - min) / range) * 100;
+      fill.style.left = `${leftPct}%`;
+      fill.style.right = `${rightPct}%`;
+    };
+    inputMin.min = String(min); inputMax.min = String(min);
+    inputMin.max = String(max); inputMax.max = String(max);
+    inputMin.value = String(filtroPrecoMin ?? min);
+    inputMax.value = String(filtroPrecoMax ?? max);
+    if (labelMin) labelMin.textContent = formatBRL(inputMin.value);
+    if (labelMax) labelMax.textContent = formatBRL(inputMax.value);
+    updateFill();
+    inputMin.oninput = () => {
+      if (Number(inputMin.value) > Number(inputMax.value)) inputMin.value = inputMax.value;
+      filtroPrecoMin = Number(inputMin.value);
+      if (labelMin) labelMin.textContent = formatBRL(inputMin.value);
+      updateFill();
+      renderGrid();
+    };
+    inputMax.oninput = () => {
+      if (Number(inputMax.value) < Number(inputMin.value)) inputMax.value = inputMin.value;
+      filtroPrecoMax = Number(inputMax.value);
+      if (labelMax) labelMax.textContent = formatBRL(inputMax.value);
+      updateFill();
+      renderGrid();
+    };
+  }
+
+  function renderCatalogFilters() {
+    renderFilterCategorias();
+    renderFilterCores();
+    renderFilterPreco();
+  }
+
+  function initCatalogFiltersDrawer() {
+    const sidebar = el("#atacadoFilters");
+    if (!sidebar) return;
+    const backdrop = el("#atacadoFiltersBackdrop");
+    const triggers = [el("#atacadoFiltersTrigger"), el("#bottomNavFilters")].filter(Boolean);
+    const closeBtn = el("#atacadoFiltersClose");
+    const clearBtn = el("#atacadoFiltersClear");
+
+    function openDrawer() {
+      sidebar.dataset.open = "true";
+      if (backdrop) backdrop.dataset.open = "true";
+      document.body.style.overflow = "hidden";
+    }
+    function closeDrawer() {
+      sidebar.dataset.open = "false";
+      if (backdrop) backdrop.dataset.open = "false";
+      document.body.style.overflow = "";
+    }
+    triggers.forEach((t) => t.addEventListener("click", openDrawer));
+    if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+    if (backdrop) backdrop.addEventListener("click", closeDrawer);
+    if (clearBtn) clearBtn.addEventListener("click", () => {
+      filtroCategoriasAtivas = new Set();
+      filtroCoresAtivas = new Set();
+      filtroPrecoMin = null;
+      filtroPrecoMax = null;
+      renderCatalogFilters();
+      renderGrid();
+    });
+  }
+
+  function initCatalogToolbar() {
+    const sortSelect = el("#atacadoSort");
+    if (!sortSelect) return;
+    sortSelect.value = ordenacaoAtual;
+    sortSelect.addEventListener("change", () => {
+      ordenacaoAtual = sortSelect.value;
+      renderGrid();
+    });
+  }
+
   // ── Grid ─────────────────────────────────────────────────────
   function renderGrid() {
     const grid = el("#atacadoGrid");
     if (!grid) return;
-    let lista = produtos;
-    if (buscaAtual.trim()) lista = lista.filter((p) => matchesSearch(p, buscaAtual.trim()));
 
-    const meta = el("#atacadoSearchMeta");
-    if (meta) meta.textContent = lista.length ? `${lista.length} produto${lista.length > 1 ? "s" : ""}` : "";
+    let lista = produtos;
+    if (filtroCategoriasAtivas.size) lista = lista.filter((p) => filtroCategoriasAtivas.has(p.categoria));
+    if (buscaAtual.trim()) lista = lista.filter((p) => matchesSearch(p, buscaAtual.trim()));
+    lista = lista.filter(matchesSidebarFilters);
+    lista = ordenar(lista);
+
+    updateSearchState(lista.length);
+    const toolbarCount = el("#atacadoResultCount");
+    if (toolbarCount) {
+      toolbarCount.textContent = `${lista.length} produto${lista.length === 1 ? "" : "s"} encontrado${lista.length === 1 ? "" : "s"}`;
+    }
+
+    grid.innerHTML = "";
 
     if (!lista.length) {
       grid.innerHTML = `<div class="atacado-empty">${
@@ -114,56 +331,102 @@
       return;
     }
 
-    grid.innerHTML = lista.map((p, i) => {
-      const img = getImagemProduto(p, 0);
-      const cores = getCoresAtivas(p);
-      const media = getMediaList(p, 0);
-      const photoCount = media.filter((m) => m.type === "image").length;
-      const hasVideo = media.some((m) => m.type === "video");
-      const hintParts = [];
-      if (photoCount > 1) hintParts.push(`<i class="fas fa-images" aria-hidden="true"></i> ${photoCount}`);
-      if (hasVideo) hintParts.push(`<i class="fas fa-video" aria-hidden="true"></i>`);
-      const precoHtml = p.preco
-        ? `<span class="atacado-card__price">${formatBRL(p.preco)}</span>`
-        : `<span class="atacado-card__price atacado-card__price--consult">Sob consulta</span>`;
-      return `
-        <article class="atacado-card" data-index="${i}">
-          <div class="atacado-card__media">
-            ${img ? `<img src="${escapeHTML(img)}" alt="${escapeHTML(p.nome)}" loading="lazy" decoding="async">`
-                  : `<div class="atacado-card__noimg">Sem foto</div>`}
-            ${hintParts.length ? `<span class="atacado-card__hint">${hintParts.join(" ")}</span>` : ""}
-          </div>
-          <div class="atacado-card__info">
-            <h3 class="atacado-card__name">${escapeHTML(p.nome)}</h3>
-            ${precoHtml}
-            ${cores.length ? `<div class="atacado-card__swatches">${cores.slice(0, 6).map((c) =>
-              `<span class="atacado-swatch" style="--sw:${escapeHTML(c.swatch || "#e6e6e6")}" title="${escapeHTML(c.nome || "")}"></span>`
-            ).join("")}</div>` : ""}
-          </div>
-          <div class="atacado-card__actions">
-            <div class="atacado-qty" data-qty>
-              <button type="button" class="atacado-qty__btn" data-qty-dec aria-label="Diminuir quantidade">−</button>
-              <input type="number" class="atacado-qty__input" data-qty-input value="1" min="1" inputmode="numeric" />
-              <button type="button" class="atacado-qty__btn" data-qty-inc aria-label="Aumentar quantidade">+</button>
-            </div>
-            <button type="button" class="atacado-card__add" data-add>
-              <i class="fas fa-cart-plus" aria-hidden="true"></i> Adicionar
-            </button>
-          </div>
-        </article>`;
-    }).join("");
+    lista.forEach((p) => {
+      const article = document.createElement("article");
+      article.className = "product-card";
 
-    els(".atacado-card", grid).forEach((card) => {
-      const p = lista[Number(card.dataset.index)];
-      card.querySelector(".atacado-card__media")?.addEventListener("click", () => openModal(p));
-      card.querySelector(".atacado-card__name")?.addEventListener("click", () => openModal(p));
-      const qty = wireQtyStepper(card);
-      const addBtn = card.querySelector("[data-add]");
-      addBtn?.addEventListener("click", () => {
-        addToCart(p, 0, qty.get());
+      let selectedColorIndex = 0;
+      const cores = getCoresAtivas(p);
+      const img0 = getImagemProduto(p, 0);
+      const precoHtml = p.preco
+        ? `<span class="current-price">${formatBRL(p.preco)}</span>`
+        : `<span class="price-consult">Sob consulta</span>`;
+
+      article.innerHTML = `
+        <div class="product-card__media" data-clickable="true">
+          ${img0 ? `<img src="${escapeHTML(img0)}" alt="${escapeHTML(p.nome)}" loading="lazy" decoding="async">`
+                : `<div class="atacado-card__noimg">Sem foto</div>`}
+          <span class="product-card__photo-hint" data-photo-hint>Clique para ver mais fotos</span>
+        </div>
+        <div class="product-card__info">
+          <h3 class="product-card__name" data-card-name>${escapeHTML(p.nome)}</h3>
+          <div class="product-card__price">${precoHtml}</div>
+          ${cores.length ? `
+          <div class="product-card__options">
+            <div class="product-card__colors">
+              <span class="product-card__legend">Cores</span>
+              <div class="swatches" data-options-colors></div>
+            </div>
+          </div>` : ""}
+        </div>
+        <div class="product-card__actions">
+          <div class="atacado-qty" data-qty>
+            <button type="button" class="atacado-qty__btn" data-qty-dec aria-label="Diminuir quantidade">−</button>
+            <input type="number" class="atacado-qty__input" data-qty-input value="1" min="1" inputmode="numeric" />
+            <button type="button" class="atacado-qty__btn" data-qty-inc aria-label="Aumentar quantidade">+</button>
+          </div>
+          <button type="button" class="product-card__btn-add" data-add>
+            <i class="fas fa-cart-plus" aria-hidden="true"></i> Adicionar
+          </button>
+        </div>`;
+
+      const mediaFigure = article.querySelector(".product-card__media");
+      const mainImg = mediaFigure.querySelector("img");
+      const photoHint = article.querySelector("[data-photo-hint]");
+      const nameEl = article.querySelector("[data-card-name]");
+      const colorsWrap = article.querySelector("[data-options-colors]");
+
+      function updatePhotoHint(colorIdx) {
+        const media = getMediaList(p, colorIdx);
+        const photoCount = media.filter((m) => m.type === "image").length;
+        const show = photoCount > 1 || cores.length > 1;
+        if (photoHint) photoHint.dataset.visible = show ? "true" : "false";
+      }
+      updatePhotoHint(0);
+
+      const media0 = getMediaList(p, 0);
+      if (media0.some((m) => m.type === "video")) {
+        const vbtn = document.createElement("button");
+        vbtn.type = "button";
+        vbtn.className = "product-card__video-badge";
+        vbtn.setAttribute("aria-label", "Ver vídeo do produto");
+        mediaFigure.appendChild(vbtn);
+        vbtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const media = getMediaList(p, selectedColorIndex);
+          openModal(p, media.length - 1, selectedColorIndex);
+        });
+      }
+
+      if (colorsWrap && cores.length) {
+        cores.forEach((c, idx) => {
+          const btn = buildSwatchButton(c, idx === 0);
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            selectedColorIndex = idx;
+            colorsWrap.querySelectorAll(".swatch").forEach((s) => { s.dataset.selected = "false"; });
+            btn.dataset.selected = "true";
+            const newImg = getImagemProduto(p, idx);
+            if (mainImg && newImg) mainImg.src = newImg;
+            updatePhotoHint(idx);
+          });
+          colorsWrap.appendChild(btn);
+        });
+      }
+
+      mediaFigure.addEventListener("click", () => openModal(p, 0, selectedColorIndex));
+      nameEl.addEventListener("click", () => openModal(p, 0, selectedColorIndex));
+
+      const qty = wireQtyStepper(article);
+      const addBtn = article.querySelector("[data-add]");
+      addBtn.addEventListener("click", () => {
+        addToCart(p, selectedColorIndex, qty.get());
         qty.set(1);
         flashAdded(addBtn);
       });
+
+      grid.appendChild(article);
     });
   }
 
@@ -176,10 +439,10 @@
   }
 
   // ── Modal de produto ─────────────────────────────────────────
-  function openModal(p) {
+  function openModal(p, initialMediaIndex = 0, initialColorIndex = 0) {
     modalProduto = p;
-    modalCorIndex = 0;
-    modalMediaIndex = 0;
+    modalCorIndex = initialColorIndex;
+    modalMediaIndex = initialMediaIndex;
     renderModal();
     const modal = el("#atacadoModal");
     if (modal && typeof modal.showModal === "function") modal.showModal();
@@ -337,6 +600,11 @@
   function renderCart() {
     const countEl = el("#atacadoCartCount");
     if (countEl) countEl.textContent = String(cartCount());
+    const bottomBadge = el("#atacadoBottomCartBadge");
+    if (bottomBadge) {
+      bottomBadge.textContent = String(cartCount());
+      bottomBadge.dataset.count = String(cartCount());
+    }
 
     const list = el("#atacadoCartList");
     const whatsBtn = el("#atacadoCartWhats");
@@ -568,6 +836,12 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
     setTimeout(() => el("#atacadoCatalogTitle")?.focus({ preventScroll: true }), 350);
   }
+  function showPresentation() {
+    const main = el("#atacadoMain");
+    if (!main) return;
+    main.dataset.stage = "presentation";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
   function showGateError(msg) {
     const box = el("#atacadoGateError");
     if (!box) return;
@@ -717,8 +991,19 @@
 
   function bootstrap() {
     initGate();
+    initCatalogFiltersDrawer();
+    initCatalogToolbar();
     const search = el("#atacadoSearch");
     search?.addEventListener("input", () => { buscaAtual = search.value || ""; renderGrid(); });
+    el("#atacadoSearchClear")?.addEventListener("click", () => {
+      buscaAtual = "";
+      if (search) search.value = "";
+      renderGrid();
+      search?.focus();
+    });
+    el("#atacadoBreadcrumbHome")?.addEventListener("click", showPresentation);
+    el("#bottomNavHome")?.addEventListener("click", showPresentation);
+    el("#bottomNavCart")?.addEventListener("click", openCart);
     el("#atacadoModalClose")?.addEventListener("click", closeModal);
     // Só fecha pelo botão ✕ — clique fora e tecla Esc não fecham o modal.
     el("#atacadoModal")?.addEventListener("cancel", (e) => e.preventDefault());
