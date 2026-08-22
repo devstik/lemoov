@@ -120,6 +120,12 @@
           <label class="caixa-scan__label" for="caixaBarcodeInput">Escaneie o código de barras</label>
           <input type="text" id="caixaBarcodeInput" class="caixa-scan__input" autocomplete="off" placeholder="Aguardando leitura…" />
           <div id="caixaScanMsg" class="caixa-scan__msg"></div>
+          <div class="caixa-scan__divider"><span>ou</span></div>
+          <label class="caixa-scan__label" for="caixaProductSearch">Buscar produto pelo nome</label>
+          <div class="caixa-search-wrap">
+            <input type="text" id="caixaProductSearch" class="caixa-search__input" autocomplete="off" placeholder="Digite o nome do produto…" />
+            <div id="caixaSearchResults" class="caixa-search__results" hidden></div>
+          </div>
         </div>
 
         <div id="caixaPicker" class="caixa-picker" hidden></div>
@@ -150,6 +156,12 @@
             <option value="Dinheiro">Dinheiro</option>
           </select>
         </div>
+        <div class="caixa-summary__field">
+          <label for="caixaEvento">Evento / feira (opcional)</label>
+          <select id="caixaEvento">
+            <option value="">Loja / sem evento</option>
+          </select>
+        </div>
         <details class="caixa-summary__optional">
           <summary>Dados do cliente (opcional)</summary>
           <div class="caixa-summary__field"><label for="caixaClienteNome">Nome</label><input id="caixaClienteNome" type="text" /></div>
@@ -172,9 +184,12 @@
         <h2>Venda confirmada!</h2>
         <p class="caixa-receipt__number" id="caixaReceiptNumero"></p>
         <p class="caixa-receipt__total" id="caixaReceiptTotal"></p>
-        <img id="caixaReceiptQr" class="caixa-receipt__qr" alt="QR do comprovante" />
-        <p class="caixa-receipt__hint">Peça pro cliente escanear pra ver o comprovante e conhecer mais produtos Lemoov.</p>
         <button type="button" class="caixa-finish-btn" id="caixaNewSaleBtn">Nova venda</button>
+        <button type="button" class="caixa-receipt__qr-toggle" id="caixaQrToggleBtn">📄 Mostrar comprovante (QR)</button>
+        <div class="caixa-receipt__qr-wrap" id="caixaQrWrap" hidden>
+          <img id="caixaReceiptQr" class="caixa-receipt__qr" alt="QR do comprovante" />
+          <p class="caixa-receipt__hint">Peça pro cliente escanear pra ver o comprovante e conhecer mais produtos Lemoov.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -969,6 +984,23 @@
   <div class="card">
     <div class="card-body" id="clientesBody">
       <div class="form-empty">Carregando clientes…</div>
+    </div>
+  </div>
+
+  <!-- Eventos/feiras — usados no Caixa (PDV) pra marcar de onde veio cada venda -->
+  <div class="card mb-card">
+    <div class="card-head">
+      <h2>Eventos / feiras</h2>
+      <span class="stock-head-sub">Aparecem como opção no Caixa</span>
+    </div>
+    <div class="card-body">
+      <div class="frow" style="align-items:flex-end">
+        <div class="fg"><label class="fl">Nome do evento</label><input class="fc" id="evtNome" placeholder="Feira de Natal 2026" /></div>
+        <div class="fg" style="max-width:180px"><label class="fl">Data (opcional)</label><input class="fc" type="date" id="evtData" /></div>
+        <button type="button" class="btn btn--primary" id="btnAddEvento">+ Adicionar</button>
+      </div>
+      <div id="evtNotice" class="notice" style="display:none;margin-top:10px"></div>
+      <div id="evtList" style="margin-top:14px;display:flex;flex-direction:column;gap:8px"></div>
     </div>
   </div>
 </div>

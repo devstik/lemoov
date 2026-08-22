@@ -213,6 +213,13 @@ async function initDatabase() {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     `);
     await mysqlPool.execute(`
+      CREATE TABLE IF NOT EXISTS lemoov_eventos (
+        id INT NOT NULL PRIMARY KEY,
+        data LONGTEXT NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    `);
+    await mysqlPool.execute(`
       CREATE TABLE IF NOT EXISTS lemoov_atacado_leads (
         id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
         nome VARCHAR(200) NOT NULL,
@@ -469,6 +476,62 @@ function ensureAtacadoIds(list) {
     return { ...item, id: maxId };
   });
 }
+function ensureEventoIds(list) {
+  let maxId = 0;
+  list.forEach((item) => {
+    const id = Number(item?.id);
+    if (Number.isFinite(id)) maxId = Math.max(maxId, id);
+  });
+  return list.map((item) => {
+    const id = Number(item?.id);
+    if (Number.isFinite(id)) return { ...item, id };
+    maxId += 1;
+    return { ...item, id: maxId };
+  });
+}
+async function readEventosStore(conn = null) {
+  requireMysqlStorage();
+  await initDatabase();
+  const db = conn || mysqlPool;
+  const [rows] = await db.execute('SELECT id, data FROM lemoov_eventos ORDER BY id');
+  return rows.map((row) => {
+    const item = JSON.parse(row.data);
+    return { ...item, id: Number(item.id || row.id) };
+  });
+}
+async function writeEventosStore(list, conn = null) {
+  requireMysqlStorage();
+  const canonical = ensureEventoIds(list);
+  await initDatabase();
+  if (conn) {
+    await conn.execute('DELETE FROM lemoov_eventos');
+    for (const item of canonical) {
+      await conn.execute(
+        'INSERT INTO lemoov_eventos (id, data) VALUES (?, ?)',
+        [Number(item.id), JSON.stringify(item)]
+      );
+    }
+    return;
+  }
+  const localConn = await mysqlPool.getConnection();
+  try {
+    await localConn.beginTransaction();
+    await localConn.execute('DELETE FROM lemoov_eventos');
+    for (const item of canonical) {
+      await localConn.execute(
+        'INSERT INTO lemoov_eventos (id, data) VALUES (?, ?)',
+        [Number(item.id), JSON.stringify(item)]
+      );
+    }
+    await localConn.commit();
+  } catch (e) {
+    try { await localConn.rollback(); } catch (_rollbackError) {}
+    throw e;
+  } finally {
+    localConn.release();
+  }
+}
+
 async function readAtacadoStore(conn = null) {
   requireMysqlStorage();
   await initDatabase();
@@ -3565,6 +3628,62 @@ app.delete('/api/admin/atacado/:id', authRequired, async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error('[DELETE /api/admin/atacado]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Eventos/feiras — cadastrados na aba Clientes, usados no Caixa (PDV) pra marcar
+// de qual evento veio cada venda. Lista simples, sem tela própria no menu.
+app.get('/api/admin/eventos', authRequired, async (_req, res) => {
+  try {
+    res.json(await readEventosStore());
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/admin/eventos', authRequired, async (req, res) => {
+  try {
+    const nome = String(req.body?.nome || '').trim();
+    if (!nome) return res.status(400).json({ ok: false, error: 'Informe o nome do evento.' });
+    const eventos = ensureEventoIds(await readEventosStore());
+    const nextId = eventos.reduce((max, e) => Math.max(max, Number(e.id) || 0), 0) + 1;
+    const item = {
+      id: nextId, nome, data: req.body?.data || '', ativo: req.body?.ativo !== false,
+      createdAt: new Date().toISOString(),
+    };
+    eventos.push(item);
+    await writeEventosStore(eventos);
+    res.json({ ok: true, item });
+  } catch (e) {
+    console.error('[POST /api/admin/eventos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.put('/api/admin/eventos/:id', authRequired, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const eventos = ensureEventoIds(await readEventosStore());
+    const idx = eventos.findIndex((e) => Number(e.id) === id);
+    if (idx === -1) return res.status(404).json({ ok: false, error: 'Evento não encontrado' });
+    eventos[idx] = { ...eventos[idx], ...req.body, id, updatedAt: new Date().toISOString() };
+    await writeEventosStore(eventos);
+    res.json({ ok: true, item: eventos[idx] });
+  } catch (e) {
+    console.error('[PUT /api/admin/eventos]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.delete('/api/admin/eventos/:id', authRequired, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const eventos = ensureEventoIds(await readEventosStore());
+    await writeEventosStore(eventos.filter((e) => Number(e.id) !== id));
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[DELETE /api/admin/eventos]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

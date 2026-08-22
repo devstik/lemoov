@@ -3498,6 +3498,78 @@ function bindClientesAdminUI(){
   }
   bindNcCep();
   bindNovoCliente();
+  bindEventosAdminUI();
+}
+
+// ── Eventos/feiras (usados no Caixa pra marcar de onde veio a venda) ────────
+async function loadEventosAdmin(){
+  const list=$('evtList');
+  if(!list) return;
+  try{
+    const r=await fetch('/api/admin/eventos');
+    if(r.status===401){redirect401();return}
+    const eventos=r.ok?await r.json():[];
+    renderEventosList(eventos);
+  }catch(_e){
+    list.innerHTML='<div class="form-empty">Falha ao carregar eventos.</div>';
+  }
+}
+function renderEventosList(eventos){
+  const list=$('evtList');
+  if(!list) return;
+  if(!eventos.length){
+    list.innerHTML='<div class="form-empty">Nenhum evento cadastrado ainda.</div>';
+    return;
+  }
+  list.innerHTML=[...eventos].sort((a,b)=>(b.id||0)-(a.id||0)).map(e=>`
+    <div class="stock-row" data-id="${e.id}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--brd);border-radius:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13.5px;${e.ativo===false?'color:var(--muted);text-decoration:line-through':''}">${esc(e.nome)}</div>
+        ${e.data?`<div style="font-size:11.5px;color:var(--muted)">${new Date(e.data+'T00:00:00').toLocaleDateString('pt-BR')}</div>`:''}
+      </div>
+      <button type="button" class="btn btn--ghost btn--sm" data-toggle="${e.id}">${e.ativo===false?'Reativar':'Desativar'}</button>
+      <button type="button" class="btn btn--danger btn--sm" data-rm="${e.id}">Excluir</button>
+    </div>`).join('');
+  $$('#evtList [data-toggle]').forEach(btn=>btn.addEventListener('click', async ()=>{
+    const id=btn.dataset.toggle;
+    const ativo=btn.textContent.trim()==='Desativar'?false:true;
+    await fetch(`/api/admin/eventos/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ativo})});
+    loadEventosAdmin();
+  }));
+  $$('#evtList [data-rm]').forEach(btn=>btn.addEventListener('click', async ()=>{
+    if(!confirm('Excluir esse evento?')) return;
+    await fetch(`/api/admin/eventos/${btn.dataset.rm}`,{method:'DELETE'});
+    loadEventosAdmin();
+  }));
+}
+function bindEventosAdminUI(){
+  document.querySelectorAll('.tab-btn[data-tab="clientes"]').forEach(btn=>{
+    if(btn.dataset.eventosBound) return;
+    btn.dataset.eventosBound='1';
+    btn.addEventListener('click', loadEventosAdmin);
+  });
+  const addBtn=$('btnAddEvento');
+  if(addBtn&&!addBtn.dataset.eventosBound){
+    addBtn.dataset.eventosBound='1';
+    addBtn.addEventListener('click', async ()=>{
+      const nome=($('evtNome').value||'').trim();
+      const notice=$('evtNotice');
+      if(!nome){ if(notice){notice.textContent='Informe o nome do evento.';notice.style.color='#dc2626';notice.style.display='block';} return; }
+      addBtn.disabled=true;
+      try{
+        const r=await fetch('/api/admin/eventos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,data:$('evtData').value||''})});
+        const d=await r.json().catch(()=>({}));
+        if(!r.ok||!d.ok) throw new Error(d.error||'Falha ao adicionar evento.');
+        $('evtNome').value=''; $('evtData').value='';
+        if(notice) notice.style.display='none';
+        await loadEventosAdmin();
+      }catch(e){
+        if(notice){notice.textContent=e.message;notice.style.color='#dc2626';notice.style.display='block';}
+      }finally{
+        addBtn.disabled=false;
+      }
+    });
+  }
 }
 
 // CEP autofill no cadastro de cliente (admin)

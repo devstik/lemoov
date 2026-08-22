@@ -59,6 +59,44 @@
     openPicker(p);
   }
 
+  // ── Busca manual por nome (pra quem não tem leitor de código de barras) ──
+  function renderSearchResults(list) {
+    const wrap = $('caixaSearchResults');
+    if (!list.length) {
+      wrap.innerHTML = '<div class="caixa-search__empty">Nenhum produto encontrado.</div>';
+    } else {
+      wrap.innerHTML = list.slice(0, 12).map((p, i) => {
+        const img = resolveImg(p.cores?.[0]?.imagens?.[0] || p.cores?.[0]?.imagem || '');
+        const price = p.precoPromo ?? p.preco;
+        return `
+          <div class="caixa-search__result" data-i="${i}">
+            ${img ? `<img class="caixa-search__result-img" src="${esc(img)}" alt="">` : '<div class="caixa-search__result-img"></div>'}
+            <div class="caixa-search__result-info">
+              <div class="caixa-search__result-name">${esc(p.nome)}${p.tipoProduto === 'combo' ? ' (combo)' : ''}</div>
+              <div class="caixa-search__result-price">${typeof price === 'number' ? fmtR(price) : 'Sob consulta'}</div>
+            </div>
+          </div>`;
+      }).join('');
+      els('[data-i]', wrap).forEach((row) => {
+        row.addEventListener('click', () => {
+          const p = list[Number(row.dataset.i)];
+          wrap.hidden = true;
+          $('caixaProductSearch').value = '';
+          openPicker(p);
+        });
+      });
+    }
+    wrap.hidden = false;
+  }
+
+  function handleProductSearch() {
+    const q = ($('caixaProductSearch').value || '').trim().toLowerCase();
+    const wrap = $('caixaSearchResults');
+    if (!q) { wrap.hidden = true; wrap.innerHTML = ''; return; }
+    const matches = caixaSellable().filter((p) => (p.nome || '').toLowerCase().includes(q));
+    renderSearchResults(matches);
+  }
+
   // ── Picker (cor/tamanho) ──────────────────────────────────
   function openPicker(p) {
     const cores = Array.isArray(p.cores) && p.cores.length ? p.cores : [{ nome: '', estoque: {} }];
@@ -243,11 +281,14 @@
       const total = Math.max(0, sub - desconto);
       const nome = ($('caixaClienteNome')?.value || '').trim() || 'Cliente balcão';
       const telefone = ($('caixaClienteTel')?.value || '').trim();
+      const eventoSel = $('caixaEvento');
+      const eventoNome = eventoSel?.selectedOptions?.[0]?.dataset.nome || '';
       const payload = {
         cliente: { nome, telefone },
         status: 'confirmado',
         pagamento: $('caixaPagamento')?.value || '',
         origem: 'loja_fisica',
+        evento: eventoNome || undefined,
         obs: '',
         itens: caixaCart,
         itensEstoque: caixaCart.map((it) => ({
@@ -280,33 +321,53 @@
     }
   }
 
+  let _lastReceipt = null; // { numero, qrLoaded }
+
+  // O QR do comprovante é secundário — só é gerado se o operador clicar em
+  // "Mostrar comprovante", não trava a tela toda vez que uma venda é fechada.
   async function showReceipt(numero, total) {
+    _lastReceipt = { numero, qrLoaded: false };
     $('caixaReceiptNumero').textContent = `Pedido #${numero}`;
     $('caixaReceiptTotal').textContent = fmtR(total);
-    const qrImg = $('caixaReceiptQr');
-    qrImg.removeAttribute('src');
+    $('caixaReceiptQr').removeAttribute('src');
+    $('caixaQrWrap').hidden = true;
+    $('caixaQrToggleBtn').textContent = '📄 Mostrar comprovante (QR)';
+    $('caixaReceiptScreen').hidden = false;
+  }
+
+  async function toggleReceiptQr() {
+    const wrap = $('caixaQrWrap');
+    const toggleBtn = $('caixaQrToggleBtn');
+    const showing = !wrap.hidden;
+    if (showing) { wrap.hidden = true; toggleBtn.textContent = '📄 Mostrar comprovante (QR)'; return; }
+    wrap.hidden = false;
+    toggleBtn.textContent = 'Ocultar comprovante';
+    if (!_lastReceipt || _lastReceipt.qrLoaded) return;
     try {
-      const url = `${location.origin}/recibo.html?pedido=${encodeURIComponent(numero)}`;
+      const url = `${location.origin}/recibo.html?pedido=${encodeURIComponent(_lastReceipt.numero)}`;
       const r = await fetch('/api/qrcode/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: url, size: 500, fg: '#292c27', bg: '#ffffff' }),
       });
       const d = await r.json().catch(() => ({}));
-      if (d.ok && d.dataUrl) qrImg.src = d.dataUrl;
+      if (d.ok && d.dataUrl) { $('caixaReceiptQr').src = d.dataUrl; _lastReceipt.qrLoaded = true; }
     } catch (_e) { /* QR é um extra — a venda já foi confirmada mesmo sem ele */ }
-    $('caixaReceiptScreen').hidden = false;
   }
 
   function resetSale() {
     caixaCart = [];
     caixaPending = null;
+    _lastReceipt = null;
     $('caixaPicker').hidden = true;
     $('caixaDesconto').value = 0;
     $('caixaPagamento').value = '';
     $('caixaClienteNome').value = '';
     $('caixaClienteTel').value = '';
+    // Evento fica selecionado entre vendas de propósito — o mesmo evento vale
+    // pra várias vendas seguidas até o operador trocar manualmente.
     showScanMsg('', '');
     $('caixaReceiptScreen').hidden = true;
+    $('caixaQrWrap').hidden = true;
     renderCart();
     $('caixaBarcodeInput')?.focus();
   }
@@ -354,6 +415,22 @@
     navigator.serviceWorker.register('/caixa-sw.js', { scope: '/produtos-admin.html' }).catch(() => {});
   }
 
+  // ── Eventos (opcional, marca de qual feira/evento veio a venda) ──────
+  async function loadCaixaEventos() {
+    const sel = $('caixaEvento');
+    if (!sel) return;
+    try {
+      const r = await fetch('/api/admin/eventos');
+      if (!r.ok) return;
+      const eventos = await r.json();
+      const current = sel.value;
+      sel.innerHTML = '<option value="">Loja / sem evento</option>' + eventos
+        .filter((e) => e.ativo !== false)
+        .map((e) => `<option value="${e.id}" data-nome="${esc(e.nome)}">${esc(e.nome)}</option>`).join('');
+      if (current && Array.from(sel.options).some((o) => o.value === current)) sel.value = current;
+    } catch (_e) { /* sem eventos cadastrados ainda — tudo bem, fica só "Loja" */ }
+  }
+
   // ── Init ───────────────────────────────────────────────────
   window.initCaixa = function initCaixa() {
     if (!_caixaClockTimer) {
@@ -361,6 +438,7 @@
       _caixaClockTimer = setInterval(tickClock, 1000);
     }
     renderCart();
+    loadCaixaEventos();
     $('caixaBarcodeInput')?.focus();
     if (_caixaUIBound) return;
     _caixaUIBound = true;
@@ -369,15 +447,30 @@
       if (e.key === 'Enter') { e.preventDefault(); handleScan(); }
     });
     $('caixaBarcodeInput')?.addEventListener('blur', () => {
-      // Mantém o leitor sempre em foco enquanto a tela de caixa estiver ativa.
-      if (document.body.classList.contains('caixa-fullscreen') && $('caixaReceiptScreen').hidden) {
-        setTimeout(() => { if (document.body.classList.contains('caixa-fullscreen')) $('caixaBarcodeInput')?.focus(); }, 50);
-      }
+      // Mantém o leitor sempre pronto pra próxima leitura — mas só rouba o foco de
+      // volta se o operador não estiver de propósito preenchendo outro campo
+      // (busca por nome, desconto, pagamento, cliente, evento etc).
+      setTimeout(() => {
+        if (!document.body.classList.contains('caixa-fullscreen')) return;
+        if (!$('caixaReceiptScreen').hidden) return;
+        const active = document.activeElement;
+        const isOtherField = active && active.id !== 'caixaBarcodeInput'
+          && ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(active.tagName);
+        if (isOtherField) return;
+        $('caixaBarcodeInput')?.focus();
+      }, 50);
+    });
+    $('caixaProductSearch')?.addEventListener('input', handleProductSearch);
+    document.addEventListener('click', (e) => {
+      const wrap = $('caixaSearchResults');
+      if (!wrap || wrap.hidden) return;
+      if (!e.target.closest('.caixa-search-wrap')) wrap.hidden = true;
     });
     $('caixaDesconto')?.addEventListener('input', updateTotals);
     $('caixaPagamento')?.addEventListener('change', updateTotals);
     $('caixaFinishBtn')?.addEventListener('click', finalizarVenda);
     $('caixaNewSaleBtn')?.addEventListener('click', resetSale);
+    $('caixaQrToggleBtn')?.addEventListener('click', toggleReceiptQr);
     $('caixaExitBtn')?.addEventListener('click', () => {
       document.querySelector('.tab-btn[data-tab="produtos"]')?.click();
     });
