@@ -156,10 +156,19 @@
   }
 
   function printLabels() {
+    // Se a lista de impressão está vazia mas há um produto selecionado, adiciona ele
+    // automaticamente — sem isso, clicar em "Imprimir" sem antes clicar em "+ Adicionar"
+    // não fazia nada visível (só um aviso de texto fácil de não notar).
     if (!etqQueue.length) {
-      const notice = $('etqNotice');
-      if (notice) { notice.textContent = 'Adicione ao menos um produto à lista.'; notice.style.display = 'block'; }
-      return;
+      const p = currentSelected();
+      if (p) {
+        addToQueue();
+      } else {
+        const notice = $('etqNotice');
+        if (notice) { notice.textContent = 'Selecione um produto antes de imprimir.'; notice.style.display = 'block'; }
+        toast('Selecione um produto antes de imprimir.', 'error');
+        return;
+      }
     }
     const ov = $('printLabelsOv');
     if (!ov) return;
@@ -167,12 +176,22 @@
     etqQueue.forEach((it) => {
       for (let i = 0; i < it.qty; i++) labels.push(it);
     });
-    ov.innerHTML = labels.map((it, i) => `
+    // O rolo sai 2 etiquetas por linha — se sobrar uma etiqueta ímpar no final,
+    // repete a última em vez de deixar a segunda posição da linha em branco
+    // (o rolo avança a linha inteira de qualquer forma).
+    if (labels.length % 2 !== 0) labels.push(labels[labels.length - 1]);
+
+    const labelHtml = (it, i) => `
       <div class="print-label">
         <div class="print-label__name">${esc(it.nome)}</div>
         <svg data-label-barcode="${i}"></svg>
         <div class="print-label__price">${it.preco != null ? fmtR(it.preco) : 'Sob consulta'}</div>
-      </div>`).join('');
+      </div>`;
+    const rows = [];
+    for (let i = 0; i < labels.length; i += 2) {
+      rows.push(`<div class="print-row">${labelHtml(labels[i], i)}${labelHtml(labels[i + 1], i + 1)}</div>`);
+    }
+    ov.innerHTML = rows.join('');
     labels.forEach((it, i) => renderBarcode(ov.querySelector(`[data-label-barcode="${i}"]`), it.barcode));
     window.print();
   }

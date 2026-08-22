@@ -1,8 +1,11 @@
-/* Caixa (PDV) — tela cheia estilo app. Lê código de barras (leitor funciona como
-   teclado: digita o código + Enter), monta o carrinho, aplica desconto/forma de
-   pagamento e finaliza a venda como pedido confirmado — reaproveitando o mesmo
-   endpoint /api/admin/pedido usado pelo "Novo Pedido". Ao confirmar, mostra um QR
-   de comprovante (gerado via /api/qrcode/generate) que aponta pra /recibo.html. */
+/* Caixa (PDV) — tela cheia estilo app, com duas sub-abas: "Caixa" (venda) e
+   "Comprovantes de vendas" (histórico). Na venda: lê código de barras (leitor
+   funciona como teclado: digita o código + Enter) ou busca por nome, monta o
+   carrinho, aplica desconto/forma de pagamento, e "Gravar" salva como pedido
+   confirmado — reaproveitando o mesmo endpoint /api/admin/pedido usado pelo
+   "Novo Pedido" — e já volta pro caixa pronto pra próxima venda. "Limpar"
+   descarta o carrinho atual sem gravar. O comprovante (QR + link + WhatsApp)
+   fica disponível depois na aba de Comprovantes, por venda. */
 (function () {
   const $ = (id) => document.getElementById(id);
   const els = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
@@ -268,13 +271,16 @@
   }
 
   // ── Finalizar venda ────────────────────────────────────────
-  async function finalizarVenda() {
+  // "Gravar" salva a venda e volta direto pro caixa pronto pra próxima — sem
+  // tela de confirmação bloqueando. O comprovante fica disponível depois na
+  // aba "Comprovantes de vendas".
+  async function gravarVenda() {
     const btn = $('caixaFinishBtn');
     const notice = $('caixaFinishNotice');
     if (notice) notice.style.display = 'none';
     btn.disabled = true;
     const original = btn.textContent;
-    btn.textContent = 'Finalizando…';
+    btn.textContent = 'Gravando…';
     try {
       const sub = cartSubtotal();
       const desconto = Math.min(sub, Math.max(0, Number($('caixaDesconto')?.value) || 0));
@@ -308,12 +314,13 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.ok) throw new Error(d.error || 'Falha ao finalizar a venda.');
+      if (!r.ok || !d.ok) throw new Error(d.error || 'Falha ao gravar a venda.');
       if (typeof loadProdutos === 'function') await loadProdutos();
       if (typeof loadCombos === 'function') await loadCombos();
-      await showReceipt(d.pedido, total);
+      toast(`Venda #${d.pedido} gravada — ${fmtR(total)}`, 'success');
+      clearSale();
     } catch (e) {
-      if (notice) { notice.textContent = e.message || 'Falha ao finalizar a venda.'; notice.style.display = 'block'; }
+      if (notice) { notice.textContent = e.message || 'Falha ao gravar a venda.'; notice.style.display = 'block'; }
     } finally {
       btn.disabled = false;
       btn.textContent = original;
@@ -321,43 +328,10 @@
     }
   }
 
-  let _lastReceipt = null; // { numero, qrLoaded }
-
-  // O QR do comprovante é secundário — só é gerado se o operador clicar em
-  // "Mostrar comprovante", não trava a tela toda vez que uma venda é fechada.
-  async function showReceipt(numero, total) {
-    _lastReceipt = { numero, qrLoaded: false };
-    $('caixaReceiptNumero').textContent = `Pedido #${numero}`;
-    $('caixaReceiptTotal').textContent = fmtR(total);
-    $('caixaReceiptQr').removeAttribute('src');
-    $('caixaQrWrap').hidden = true;
-    $('caixaQrToggleBtn').textContent = '📄 Mostrar comprovante (QR)';
-    $('caixaReceiptScreen').hidden = false;
-  }
-
-  async function toggleReceiptQr() {
-    const wrap = $('caixaQrWrap');
-    const toggleBtn = $('caixaQrToggleBtn');
-    const showing = !wrap.hidden;
-    if (showing) { wrap.hidden = true; toggleBtn.textContent = '📄 Mostrar comprovante (QR)'; return; }
-    wrap.hidden = false;
-    toggleBtn.textContent = 'Ocultar comprovante';
-    if (!_lastReceipt || _lastReceipt.qrLoaded) return;
-    try {
-      const url = `${location.origin}/recibo.html?pedido=${encodeURIComponent(_lastReceipt.numero)}`;
-      const r = await fetch('/api/qrcode/generate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: url, size: 500, fg: '#292c27', bg: '#ffffff' }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (d.ok && d.dataUrl) { $('caixaReceiptQr').src = d.dataUrl; _lastReceipt.qrLoaded = true; }
-    } catch (_e) { /* QR é um extra — a venda já foi confirmada mesmo sem ele */ }
-  }
-
-  function resetSale() {
+  // "Limpar" descarta o carrinho/formulário atual sem gravar nada.
+  function clearSale() {
     caixaCart = [];
     caixaPending = null;
-    _lastReceipt = null;
     $('caixaPicker').hidden = true;
     $('caixaDesconto').value = 0;
     $('caixaPagamento').value = '';
@@ -366,10 +340,90 @@
     // Evento fica selecionado entre vendas de propósito — o mesmo evento vale
     // pra várias vendas seguidas até o operador trocar manualmente.
     showScanMsg('', '');
-    $('caixaReceiptScreen').hidden = true;
-    $('caixaQrWrap').hidden = true;
     renderCart();
     $('caixaBarcodeInput')?.focus();
+  }
+
+  // ── Comprovantes de vendas (lista + envio individual) ────────────────
+  let _caixaReceiptsCache = [];
+
+  async function loadCaixaReceipts() {
+    const list = $('caixaReceiptsList');
+    if (!list) return;
+    try {
+      const r = await fetch('/api/pedidos');
+      if (r.status === 401) { redirect401?.(); return; }
+      const pedidos = r.ok ? await r.json() : [];
+      _caixaReceiptsCache = pedidos
+        .filter((p) => p.origem === 'loja_fisica')
+        .sort((a, b) => new Date(b.recebidoEm || 0) - new Date(a.recebidoEm || 0));
+      renderCaixaReceipts(_caixaReceiptsCache);
+    } catch (_e) {
+      list.innerHTML = '<div class="caixa-cart__empty">Falha ao carregar as vendas.</div>';
+    }
+  }
+
+  function renderCaixaReceipts(pedidos) {
+    const list = $('caixaReceiptsList');
+    const count = $('caixaReceiptsCount');
+    if (count) count.textContent = pedidos.length ? `${pedidos.length} venda${pedidos.length > 1 ? 's' : ''}` : '';
+    if (!pedidos.length) {
+      list.innerHTML = '<div class="caixa-cart__empty">Nenhuma venda registrada pelo caixa ainda.</div>';
+      return;
+    }
+    list.innerHTML = pedidos.map((p, i) => {
+      const data = p.recebidoEm ? new Date(p.recebidoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+      const meta = [data, p.cliente?.nome, p.evento, p.pagamento].filter(Boolean).join(' · ');
+      return `
+        <div class="caixa-receipts__row" data-i="${i}">
+          <div class="caixa-receipts__row-main">
+            <div class="caixa-receipts__row-number">Pedido #${esc(p.pedido)}</div>
+            <div class="caixa-receipts__row-meta">${esc(meta)}</div>
+          </div>
+          <div class="caixa-receipts__row-total">${fmtR(p.total)}</div>
+          <button type="button" class="caixa-receipts__row-btn" data-open="${i}">Comprovante</button>
+        </div>`;
+    }).join('');
+    els('[data-open]', list).forEach((btn) => {
+      btn.addEventListener('click', () => openComprovanteDialog(pedidos[Number(btn.dataset.open)]));
+    });
+  }
+
+  function filterCaixaReceipts() {
+    const q = ($('caixaReceiptsSearch')?.value || '').trim().toLowerCase();
+    if (!q) { renderCaixaReceipts(_caixaReceiptsCache); return; }
+    renderCaixaReceipts(_caixaReceiptsCache.filter((p) => [p.pedido, p.cliente?.nome, p.evento]
+      .filter(Boolean).some((v) => String(v).toLowerCase().includes(q))));
+  }
+
+  async function openComprovanteDialog(pedido) {
+    const dlg = $('caixaComprovanteDlg');
+    const url = `${location.origin}/recibo.html?pedido=${encodeURIComponent(pedido.pedido)}`;
+    $('caixaComprovanteNumero').textContent = `Pedido #${pedido.pedido}`;
+    $('caixaComprovanteTotal').textContent = fmtR(pedido.total);
+    $('caixaComprovanteLink').value = url;
+    $('caixaComprovanteQr').removeAttribute('src');
+
+    const wppBtn = $('caixaComprovanteWpp');
+    const phoneDigits = String(pedido.cliente?.telefone || '').replace(/\D/g, '');
+    if (phoneDigits) {
+      const waPhone = phoneDigits.startsWith('55') ? phoneDigits : `55${phoneDigits}`;
+      const msg = encodeURIComponent(`Olá! Aqui está o comprovante da sua compra na Lemoov: ${url}`);
+      wppBtn.href = `https://wa.me/${waPhone}?text=${msg}`;
+      wppBtn.hidden = false;
+    } else {
+      wppBtn.hidden = true;
+    }
+
+    if (typeof dlg.showModal === 'function') dlg.showModal();
+    try {
+      const r = await fetch('/api/qrcode/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: url, size: 500, fg: '#292c27', bg: '#ffffff' }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok && d.dataUrl) $('caixaComprovanteQr').src = d.dataUrl;
+    } catch (_e) { /* QR é um extra — o link/WhatsApp continuam funcionando sem ele */ }
   }
 
   // ── PWA: instalar app do Caixa ───────────────────────────────
@@ -452,7 +506,8 @@
       // (busca por nome, desconto, pagamento, cliente, evento etc).
       setTimeout(() => {
         if (!document.body.classList.contains('caixa-fullscreen')) return;
-        if (!$('caixaReceiptScreen').hidden) return;
+        if (!$('caixaPanelVenda')?.classList.contains('active')) return;
+        if ($('caixaComprovanteDlg')?.open) return;
         const active = document.activeElement;
         const isOtherField = active && active.id !== 'caixaBarcodeInput'
           && ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(active.tagName);
@@ -468,12 +523,35 @@
     });
     $('caixaDesconto')?.addEventListener('input', updateTotals);
     $('caixaPagamento')?.addEventListener('change', updateTotals);
-    $('caixaFinishBtn')?.addEventListener('click', finalizarVenda);
-    $('caixaNewSaleBtn')?.addEventListener('click', resetSale);
-    $('caixaQrToggleBtn')?.addEventListener('click', toggleReceiptQr);
+    $('caixaFinishBtn')?.addEventListener('click', gravarVenda);
+    $('caixaClearBtn')?.addEventListener('click', clearSale);
     $('caixaExitBtn')?.addEventListener('click', () => {
       document.querySelector('.tab-btn[data-tab="produtos"]')?.click();
     });
+
+    els('.caixa-subtab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const sub = btn.dataset.caixasubtab;
+        els('.caixa-subtab').forEach((b) => b.classList.toggle('active', b === btn));
+        $('caixaPanelVenda').classList.toggle('active', sub === 'venda');
+        $('caixaPanelComprovantes').classList.toggle('active', sub === 'comprovantes');
+        if (sub === 'comprovantes') loadCaixaReceipts();
+        else $('caixaBarcodeInput')?.focus();
+      });
+    });
+    $('caixaReceiptsSearch')?.addEventListener('input', filterCaixaReceipts);
+    $('caixaComprovanteClose')?.addEventListener('click', () => $('caixaComprovanteDlg')?.close());
+    $('caixaComprovanteDlg')?.addEventListener('cancel', (e) => e.preventDefault());
+    $('caixaComprovanteCopy')?.addEventListener('click', async () => {
+      const input = $('caixaComprovanteLink');
+      input.select();
+      try { await navigator.clipboard.writeText(input.value); } catch (_e) { document.execCommand('copy'); }
+      const btn = $('caixaComprovanteCopy');
+      const original = btn.textContent;
+      btn.textContent = 'Copiado!';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    });
+
     bindInstallButton();
     if (isStandalone()) $('caixaInstallBtn').hidden = true;
   };

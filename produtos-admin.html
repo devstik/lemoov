@@ -114,6 +114,12 @@
       <button type="button" class="caixa-topbar__exit" id="caixaExitBtn">✕ Sair do caixa</button>
     </header>
 
+    <nav class="caixa-subtabs">
+      <button type="button" class="caixa-subtab active" data-caixasubtab="venda">Caixa</button>
+      <button type="button" class="caixa-subtab" data-caixasubtab="comprovantes">Comprovantes de vendas</button>
+    </nav>
+
+    <div id="caixaPanelVenda" class="caixa-panel active">
     <div class="caixa-main">
       <div class="caixa-scan-col">
         <div class="caixa-scan">
@@ -173,27 +179,44 @@
           <div class="caixa-summary__row caixa-summary__row--total"><span>Total</span><span id="caixaTotal">R$ 0,00</span></div>
         </div>
         <div id="caixaFinishNotice" class="notice" style="display:none"></div>
-        <button type="button" class="caixa-finish-btn" id="caixaFinishBtn" disabled>Finalizar venda</button>
+        <div class="caixa-summary__actions">
+          <button type="button" class="caixa-clear-btn" id="caixaClearBtn">Limpar</button>
+          <button type="button" class="caixa-finish-btn" id="caixaFinishBtn" disabled>Gravar</button>
+        </div>
       </aside>
     </div>
+    </div>
 
-    <!-- Tela de comprovante, cobre tudo ao concluir a venda -->
-    <div class="caixa-receipt" id="caixaReceiptScreen" hidden>
-      <div class="caixa-receipt__card">
-        <div class="caixa-receipt__icon">✅</div>
-        <h2>Venda confirmada!</h2>
-        <p class="caixa-receipt__number" id="caixaReceiptNumero"></p>
-        <p class="caixa-receipt__total" id="caixaReceiptTotal"></p>
-        <button type="button" class="caixa-finish-btn" id="caixaNewSaleBtn">Nova venda</button>
-        <button type="button" class="caixa-receipt__qr-toggle" id="caixaQrToggleBtn">📄 Mostrar comprovante (QR)</button>
-        <div class="caixa-receipt__qr-wrap" id="caixaQrWrap" hidden>
-          <img id="caixaReceiptQr" class="caixa-receipt__qr" alt="QR do comprovante" />
-          <p class="caixa-receipt__hint">Peça pro cliente escanear pra ver o comprovante e conhecer mais produtos Lemoov.</p>
+    <div id="caixaPanelComprovantes" class="caixa-panel">
+      <div class="caixa-receipts">
+        <div class="caixa-receipts__toolbar">
+          <input type="text" id="caixaReceiptsSearch" class="caixa-search__input" autocomplete="off" placeholder="Buscar por número, cliente ou evento…" />
+          <span class="caixa-receipts__count" id="caixaReceiptsCount"></span>
+        </div>
+        <div id="caixaReceiptsList" class="caixa-receipts__list">
+          <div class="caixa-cart__empty">Carregando vendas…</div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Comprovante de uma venda — QR + link, aberto a partir da lista de Comprovantes -->
+<dialog id="caixaComprovanteDlg" class="caixa-comprovante-dlg">
+  <button type="button" class="caixa-comprovante-dlg__close" id="caixaComprovanteClose">✕</button>
+  <div class="caixa-comprovante-dlg__body">
+    <p class="caixa-comprovante-dlg__number" id="caixaComprovanteNumero"></p>
+    <p class="caixa-comprovante-dlg__total" id="caixaComprovanteTotal"></p>
+    <img id="caixaComprovanteQr" class="caixa-comprovante-dlg__qr" alt="QR do comprovante">
+    <div class="caixa-comprovante-dlg__link">
+      <input type="text" id="caixaComprovanteLink" readonly>
+      <button type="button" id="caixaComprovanteCopy">Copiar</button>
+    </div>
+    <a id="caixaComprovanteWpp" class="caixa-comprovante-dlg__wpp" target="_blank" rel="noopener" hidden>
+      <span>📲 Enviar por WhatsApp</span>
+    </a>
+  </div>
+</dialog>
 
 <!-- ── PRODUTOS ──────────────────────────────────── -->
 <div id="tab-produtos" class="tab-panel active">
