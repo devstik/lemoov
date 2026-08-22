@@ -350,6 +350,7 @@
         </div>
         <div class="product-card__info">
           <h3 class="product-card__name" data-card-name>${escapeHTML(p.nome)}</h3>
+          ${p.descricao ? `<p class="product-card__desc">${escapeHTML(p.descricao)}</p>` : ""}
           <div class="product-card__price">${precoHtml}</div>
           ${cores.length ? `
           <div class="product-card__options">

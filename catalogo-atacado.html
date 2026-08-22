@@ -145,18 +145,15 @@
     .atacado-presentation__cta:hover { transform: translateY(-2px); background: #b7d34c; }
     .atacado-presentation__cta i { transition: transform .18s ease; }
     .atacado-presentation__cta:hover i { transform: translateX(3px); }
-    .atacado-products-intro {
-      width: min(100% - 40px, 1180px);
-      margin: 0 auto;
-      padding-top: 54px;
-    }
-    .atacado-products-intro h2 {
+    .catalog-heading { margin: 0 0 18px; }
+    .catalog-heading h2 {
       font-family: var(--font-heading);
-      font-size: clamp(28px, 4vw, 40px);
+      font-size: clamp(1.55rem, 2vw, 2rem);
       color: var(--secondary-color);
-      margin: 0 0 8px;
+      margin: 0 0 4px;
     }
-    .atacado-products-intro p { color: var(--text-muted); margin: 0; }
+    .catalog-heading p { color: var(--text-muted); margin: 0; font-size: 0.92rem; }
+    .catalog-heading h2:focus { outline: none; }
 
     .atacado-wrap { width: min(100% - 40px, 1180px); margin-inline: auto; padding: 24px 0 60px; }
 
@@ -347,11 +344,17 @@
     .product-card__photo-hint[data-visible="true"] { display: inline-flex; }
     .product-card__info { padding: 10px 12px 11px; gap: 4px; }
     .product-card__name { font-size: 0.88rem; margin-bottom: 0; cursor: pointer; }
+    .product-card__desc {
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+      font-size: 0.7rem; line-height: 1.25; color: var(--text-muted); margin: 0;
+    }
     .product-card__price { font-size: 0.96rem; line-height: 1.2; color: var(--primary-dark); margin-top: 4px; }
     .product-card__price .price-consult { color: var(--text-muted); font-weight: 600; font-size: 0.82rem; }
-    .product-card__options { display: block; margin-top: 6px; padding-top: 7px; border-top: 1px solid var(--border-color); gap: 0; }
-    .product-card__colors { min-width: 0; }
-    .product-card__legend { font-size: 0.66rem; margin: 0 0 6px; color: var(--secondary-color); line-height: 1; font-weight: 700; }
+    .product-card__options { margin-top: 6px; padding-top: 7px; border-top: 1px solid var(--border-color); }
+    .product-card__colors {
+      min-width: 0; display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; column-gap: 7px;
+    }
+    .product-card__legend { font-size: 0.66rem; margin: 0; color: var(--secondary-color); line-height: 1; font-weight: 700; }
     .product-card__info .swatches {
       min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; overflow-x: auto;
       scrollbar-width: none; padding: 2px 1px;
@@ -388,6 +391,8 @@
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
       .product-card__info { padding: 9px 9px 10px; }
       .product-card__name { font-size: 0.78rem; }
+      .product-card__colors { display: block; }
+      .product-card__legend { display: block; margin: 0 0 6px; font-size: 0.58rem; }
       .product-card__actions { padding: 0 9px 10px; flex-direction: column; }
       .product-card__actions .atacado-qty { align-self: flex-start; }
     }
@@ -432,12 +437,69 @@
       border-right: 1px solid var(--border-color); text-align: center; font-size: 13px;
       font-family: var(--font-body); color: var(--secondary-color);
     }
-    /* Botão de carrinho no header — visível somente na etapa do catálogo */
-    .atacado-cart-toggle {
-      position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
-      display: none;
+    /* Header — na etapa do catálogo, mesma composição do catalogo-produtos.html
+       (logo + busca + carrinho); na apresentação, mantém o header simples original. */
+    .catalog-search--header,
+    .header__cart.atacado-cart-toggle { display: none; }
+    #atacadoMain[data-stage="catalog"] .header {
+      background: linear-gradient(110deg, rgba(56,56,56,0.98) 0%, rgba(47,51,38,0.97) 58%, rgba(111,133,34,0.96) 100%);
+      border-bottom: 2px solid rgba(235,216,199,0.46);
+      box-shadow: 0 10px 28px rgba(56,56,56,0.18);
     }
-    #atacadoMain[data-stage="catalog"] .atacado-cart-toggle { display: inline-flex; }
+    #atacadoMain[data-stage="catalog"] .header__wrap {
+      display: grid;
+      grid-template-columns: 220px minmax(280px, 640px) auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: clamp(16px, 3vw, 40px);
+      min-height: 76px;
+    }
+    #atacadoMain[data-stage="catalog"] .logo {
+      position: static; left: auto; transform: none; margin: 0; text-align: left; flex-grow: 0;
+    }
+    #atacadoMain[data-stage="catalog"] .logo a { color: #A8C63A; }
+    #atacadoMain[data-stage="catalog"] .catalog-search--header {
+      display: block; width: 100%; margin: 0; border-radius: 12px;
+      background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+    }
+    #atacadoMain[data-stage="catalog"] .catalog-search--header .catalog-search__field {
+      min-height: 48px; border-color: rgba(168,198,58,0.36); background: #fff;
+    }
+    #atacadoMain[data-stage="catalog"] .nav { margin-left: auto; }
+    #atacadoMain[data-stage="catalog"] .header__cart.atacado-cart-toggle {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 40px; padding: 0 14px; border-radius: 999px; border: 0; cursor: pointer;
+      background: linear-gradient(120deg, var(--primary-color), var(--primary-dark));
+      color: var(--secondary-color); font-weight: 800; font-size: 0.78rem; text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    #atacadoMain[data-stage="catalog"] .header__cart .badge {
+      position: static; margin-left: 2px; background: var(--secondary-color); color: #fff;
+    }
+    @media (max-width: 1023px) {
+      #atacadoMain[data-stage="catalog"] .header__wrap {
+        grid-template-columns: 170px minmax(200px, 1fr) auto;
+        gap: 12px;
+      }
+      #atacadoMain[data-stage="catalog"] .logo img { height: 44px; }
+    }
+    @media (max-width: 767px) {
+      #atacadoMain[data-stage="catalog"] .header__wrap {
+        min-height: 104px;
+        grid-template-columns: minmax(0, 1fr) 44px;
+        grid-template-rows: 56px 40px;
+        gap: 4px 10px;
+      }
+      #atacadoMain[data-stage="catalog"] .logo { grid-column: 1; grid-row: 1; justify-self: start; }
+      #atacadoMain[data-stage="catalog"] .nav { grid-column: 2; grid-row: 1; justify-self: end; margin-left: 0; }
+      #atacadoMain[data-stage="catalog"] .catalog-search--header { grid-column: 1 / -1; grid-row: 2; }
+      #atacadoMain[data-stage="catalog"] .catalog-search--header .catalog-search__field { min-height: 42px; }
+      #atacadoMain[data-stage="catalog"] .header__cart.atacado-cart-toggle span:not(.badge) { display: none; }
+      #atacadoMain[data-stage="catalog"] .header__cart.atacado-cart-toggle {
+        width: 40px; min-width: 40px; padding: 0; position: relative;
+      }
+      #atacadoMain[data-stage="catalog"] .header__cart .badge { position: absolute; top: 0; right: -2px; }
+    }
 
     #atacadoModal {
       border: none; border-radius: 18px; padding: 0; max-width: 820px; width: min(92vw, 820px);
@@ -691,10 +753,22 @@
       <h1 class="logo" style="margin:auto;">
         <a href="index.html"><img src="image/logo_lemoov_semfundo.png" alt="Lemoov Fitness" height="52" loading="eager"></a>
       </h1>
-      <button id="atacadoCartBtn" class="btn-icon atacado-cart-toggle" aria-label="Abrir carrinho de atacado" type="button">
-        <i class="fas fa-shopping-bag" aria-hidden="true"></i>
-        <span id="atacadoCartCount" class="badge">0</span>
-      </button>
+      <section class="catalog-search catalog-search--header" aria-label="Pesquisar produtos">
+        <div class="catalog-search__field">
+          <span class="catalog-search__icon" aria-hidden="true"><i class="fas fa-magnifying-glass"></i></span>
+          <input id="atacadoSearch" type="search" autocomplete="off" placeholder="Buscar peça ou cor" aria-label="Buscar peça ou cor" />
+          <button class="catalog-search__clear" id="atacadoSearchClear" type="button" aria-label="Limpar busca">
+            <i class="fas fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+      </section>
+      <nav class="nav" aria-label="Ações principais">
+        <button id="atacadoCartBtn" class="header__link header__cart atacado-cart-toggle" aria-label="Abrir carrinho de atacado" type="button">
+          <i class="fas fa-shopping-bag" aria-hidden="true"></i>
+          <span>Carrinho</span>
+          <span id="atacadoCartCount" class="badge">0</span>
+        </button>
+      </nav>
     </div>
   </header>
 
@@ -763,12 +837,6 @@
   </main>
 
   <main id="atacadoCatalog">
-  <div class="atacado-products-intro">
-    <span class="atacado-story__eyebrow">Coleção Lemoov</span>
-    <h2 id="atacadoCatalogTitle" tabindex="-1">Escolha as peças para a sua loja</h2>
-    <p>Consulte fotos, cores, especificações e valores de atacado.</p>
-  </div>
-
   <div class="atacado-wrap catalog-breadcrumb">
     <button type="button" class="catalog-breadcrumb__back" id="atacadoBreadcrumbHome">
       <i class="fas fa-arrow-left" aria-hidden="true"></i> Início
@@ -817,21 +885,16 @@
     <div class="catalog-filters__backdrop" id="atacadoFiltersBackdrop"></div>
 
     <div class="catalog-content">
+      <div class="catalog-heading">
+        <h2 id="atacadoCatalogTitle" tabindex="-1">Escolha as peças para a sua loja</h2>
+        <p>Consulte fotos, cores, especificações e valores de atacado.</p>
+      </div>
+
       <section class="catalog-mobile-tools" aria-label="Ferramentas do catálogo">
         <span class="catalog-search__meta" id="atacadoSearchMeta"></span>
         <button type="button" class="catalog-filters__trigger" id="atacadoFiltersTrigger">
           <i class="fas fa-sliders" aria-hidden="true"></i> Filtros
         </button>
-      </section>
-
-      <section class="catalog-search" aria-label="Pesquisar produtos">
-        <div class="catalog-search__field">
-          <span class="catalog-search__icon" aria-hidden="true"><i class="fas fa-magnifying-glass"></i></span>
-          <input id="atacadoSearch" type="search" autocomplete="off" placeholder="Buscar peça ou cor" aria-label="Buscar peça ou cor" />
-          <button class="catalog-search__clear" id="atacadoSearchClear" type="button" aria-label="Limpar busca">
-            <i class="fas fa-xmark" aria-hidden="true"></i>
-          </button>
-        </div>
       </section>
 
       <div class="catalog-toolbar">
