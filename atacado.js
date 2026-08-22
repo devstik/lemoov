@@ -31,6 +31,49 @@
     return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
+  // Transforma a descri\u00e7\u00e3o em texto livre do produto num bloco elegante: par\u00e1grafos de
+  // introdu\u00e7\u00e3o normais, e uma se\u00e7\u00e3o "R\u00f3tulo:" seguida de linhas vira uma lista com marcadores.
+  function formatAtacadoDesc(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return "";
+    const lines = raw.split(/\r?\n/).map((l) => l.trim());
+    let html = "";
+    let mode = "paragraph";
+    let paraBuf = [];
+    let listOpen = false;
+
+    const closeParagraph = () => {
+      if (paraBuf.length) {
+        html += `<p>${escapeHTML(paraBuf.join(" "))}</p>`;
+        paraBuf = [];
+      }
+    };
+    const closeList = () => {
+      if (listOpen) { html += "</ul>"; listOpen = false; }
+    };
+
+    lines.forEach((line) => {
+      if (!line) { closeParagraph(); return; }
+      const headingMatch = /^([A-Za-z\u00c0-\u00ff][^:]{1,38}):\s*$/.exec(line);
+      if (headingMatch) {
+        closeParagraph();
+        closeList();
+        html += `<span class="atacado-modal__detail-label">${escapeHTML(headingMatch[1])}</span>`;
+        mode = "list";
+        return;
+      }
+      if (mode === "list") {
+        if (!listOpen) { html += `<ul class="atacado-modal__detail-list">`; listOpen = true; }
+        html += `<li>${escapeHTML(line)}</li>`;
+      } else {
+        paraBuf.push(line);
+      }
+    });
+    closeParagraph();
+    closeList();
+    return html || `<p>${escapeHTML(raw)}</p>`;
+  }
+
   function loadCart() {
     try {
       const raw = localStorage.getItem(CART_STORAGE_KEY);
@@ -459,11 +502,15 @@
     const p = modalProduto;
     const cores = getCoresAtivas(p);
 
+    const eyebrow = el("#atacadoModalEyebrow");
+    if (eyebrow) eyebrow.textContent = p.categoria || "Coleção Lemoov";
     el("#atacadoModalNome").textContent = p.nome;
-    el("#atacadoModalDesc").textContent = p.descricao || "";
+    el("#atacadoModalDesc").innerHTML = formatAtacadoDesc(p.descricao);
     el("#atacadoModalPreco").textContent = p.preco ? formatBRL(p.preco) : "Preço sob consulta";
     renderGallery();
 
+    const colorsSection = el("#atacadoModalColorsWrap");
+    if (colorsSection) colorsSection.style.display = cores.length ? "" : "none";
     const colorsWrap = el("#atacadoModalColors");
     colorsWrap.innerHTML = cores.map((c, idx) =>
       `<li><button type="button" class="atacado-swatch-btn" data-idx="${idx}" data-selected="${idx === modalCorIndex}" title="${escapeHTML(c.nome || "")}">
