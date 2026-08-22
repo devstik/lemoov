@@ -193,7 +193,18 @@
     }
     ov.innerHTML = rows.join('');
     labels.forEach((it, i) => renderBarcode(ov.querySelector(`[data-label-barcode="${i}"]`), it.barcode));
+
+    // Mostra a contagem antes de imprimir, pra qualquer número estranho ficar visível
+    // na hora — e não só depois de gastar etiqueta física tentando descobrir por quê.
+    toast(`Imprimindo ${labels.length} etiqueta${labels.length > 1 ? 's' : ''} em ${rows.length} linha${rows.length > 1 ? 's' : ''} do rolo.`, 'success');
+
     window.print();
+
+    // A lista não fica acumulando entre impressões — cada clique em "Imprimir"
+    // começa uma lista nova. Antes disso, testar imprimir de novo somava em cima
+    // do que já estava na lista (por isso a contagem ia crescendo a cada tentativa).
+    etqQueue = [];
+    renderQueue();
   }
 
   window.addEventListener('afterprint', () => {
