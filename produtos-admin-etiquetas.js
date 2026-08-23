@@ -23,6 +23,100 @@
     return suggestBarcode('produto', p.id);
   }
 
+  // ── Impressão direta via ZPL (Zebra Browser Print) ────────────────────
+  // Desenha a etiqueta na própria impressora (dots, não pixels de tela) — não
+  // depende de tamanho de página, driver, calibração de "página" do navegador
+  // nem cabeçalho/rodapé de impressão. Precisa do Zebra Browser Print instalado
+  // (programa grátis da Zebra) rodando na máquina com a impressora conectada.
+  let zebraDevice = null;
+
+  function updatePrinterStatus(state, text) {
+    const el = $('etqPrinterStatus');
+    const label = $('etqPrinterStatusText');
+    if (el) el.dataset.state = state;
+    if (label) label.textContent = text;
+    const zplBtn = $('etqPrintZplBtn');
+    if (zplBtn) zplBtn.disabled = state !== 'ok';
+  }
+
+  function initZebraPrinter() {
+    if (typeof BrowserPrint === 'undefined') {
+      updatePrinterStatus('error', 'Zebra Browser Print não carregou (sem internet ou bloqueado). Use "Imprimir pelo navegador".');
+      return;
+    }
+    updatePrinterStatus('', 'Procurando impressora Zebra…');
+    BrowserPrint.getDefaultDevice('printer', (device) => {
+      zebraDevice = device;
+      updatePrinterStatus('ok', `Impressora conectada: ${device.name || 'Zebra'}`);
+    }, () => {
+      zebraDevice = null;
+      updatePrinterStatus('error', 'Nenhuma impressora Zebra encontrada. Confira o Zebra Browser Print (instalado e aberto) e o cabo USB.');
+    });
+  }
+
+  // Remove caracteres que quebrariam o parser de comandos ZPL (^ e ~ são
+  // prefixo de comando/controle) — troca por espaço em vez de cortar o texto.
+  function escapeZPL(text) {
+    return String(text || '').replace(/[\^~]/g, ' ');
+  }
+
+  // Etiqueta 51,5mm x 31mm a 203dpi ≈ 412 x 248 dots (1mm ≈ 8 dots).
+  function buildZplLabel(item) {
+    const nome = escapeZPL(item.nome).slice(0, 70);
+    const preco = escapeZPL(item.preco != null ? fmtR(item.preco) : 'Sob consulta');
+    const barcode = escapeZPL(item.barcode);
+    return [
+      '^XA',
+      '^CI28', // UTF-8, pros acentos do nome do produto
+      '^PW412',
+      '^LL248',
+      '^FO10,8^A0N,22,22^FB392,2,2,C,0^FD' + nome + '^FS',
+      '^FO10,66^BY2,2,0',
+      '^BCN,64,Y,N,N',
+      '^FD' + barcode + '^FS',
+      '^FO10,180^A0N,34,34^FB392,1,0,C,0^FD' + preco + '^FS',
+      '^XZ',
+    ].join('');
+  }
+
+  function printViaZPL() {
+    if (!zebraDevice) {
+      toast('Nenhuma impressora Zebra conectada.', 'error');
+      return;
+    }
+    if (!etqQueue.length) {
+      const p = currentSelected();
+      if (p) addToQueue();
+      else {
+        const notice = $('etqNotice');
+        if (notice) { notice.textContent = 'Selecione um produto antes de imprimir.'; notice.style.display = 'block'; }
+        toast('Selecione um produto antes de imprimir.', 'error');
+        return;
+      }
+    }
+    const labels = [];
+    etqQueue.forEach((it) => {
+      for (let i = 0; i < it.qty; i++) labels.push(it);
+    });
+    const zpl = labels.map(buildZplLabel).join('');
+
+    const btn = $('etqPrintZplBtn');
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Enviando…';
+    zebraDevice.send(zpl, () => {
+      toast(`${labels.length} etiqueta${labels.length > 1 ? 's' : ''} enviada${labels.length > 1 ? 's' : ''} pra impressora.`, 'success');
+      etqQueue = [];
+      renderQueue();
+      btn.disabled = false;
+      btn.textContent = original;
+    }, (err) => {
+      toast(`Falha ao enviar pra impressora: ${err || 'erro desconhecido'}`, 'error');
+      btn.disabled = false;
+      btn.textContent = original;
+    });
+  }
+
   function populateProdSelect() {
     const sel = $('etqProd');
     if (!sel) return;
@@ -207,11 +301,13 @@
     populateProdSelect();
     updatePreview();
     renderQueue();
+    initZebraPrinter();
     if (_etqUIBound) return;
     _etqUIBound = true;
     $('etqProd')?.addEventListener('change', updatePreview);
     $('etqAddBtn')?.addEventListener('click', addToQueue);
     $('etqBulkGenBtn')?.addEventListener('click', bulkGenerateCodes);
+    $('etqPrintZplBtn')?.addEventListener('click', printViaZPL);
     $('etqPrintBtn')?.addEventListener('click', printLabels);
   };
 })();

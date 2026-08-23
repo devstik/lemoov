@@ -727,7 +727,18 @@
             <p style="font-size:11px;color:var(--muted)">Tamanho real: 51,5mm × 31mm (impressora térmica de etiqueta)</p>
           </div>
         </div>
-        <button id="etqPrintBtn" class="btn btn--primary" style="width:100%">🖨️ Imprimir etiquetas</button>
+
+        <div class="etq-printer-status" id="etqPrinterStatus">
+          <span class="etq-printer-status__dot" id="etqPrinterDot"></span>
+          <span id="etqPrinterStatusText">Procurando impressora Zebra…</span>
+        </div>
+
+        <button id="etqPrintZplBtn" class="btn btn--primary" style="width:100%" disabled>🖨️ Imprimir na Zebra (ZPL direto)</button>
+        <button id="etqPrintBtn" class="btn btn--ghost btn--sm" style="width:100%">Imprimir pelo navegador (alternativa)</button>
+        <p class="etq-printer-hint">
+          Precisa do <strong>Zebra Browser Print</strong> instalado no computador com a impressora conectada.
+          Sem ele, use "Imprimir pelo navegador".
+        </p>
       </div>
     </div>
   </div>
@@ -780,6 +791,17 @@
   .etq-label-preview__price{font-size:15px;font-weight:800;color:var(--pd)}
   #etqPreviewBarcode{max-width:100%;height:44px}
   @media(max-width:1100px){.etq-layout{grid-template-columns:1fr}}
+
+  .etq-printer-status{
+    display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;
+    background:var(--bg);border:1px solid var(--brd);font-size:12px;color:var(--muted);font-weight:600
+  }
+  .etq-printer-status__dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0}
+  .etq-printer-status[data-state="ok"]{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
+  .etq-printer-status[data-state="ok"] .etq-printer-status__dot{background:#22c55e}
+  .etq-printer-status[data-state="error"]{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+  .etq-printer-status[data-state="error"] .etq-printer-status__dot{background:#ef4444}
+  .etq-printer-hint{font-size:11px;color:var(--muted);line-height:1.5;text-align:center;margin:0}
 
   /* ── Overlay de impressão (etiquetas) — invisível fora do print ── */
   #printLabelsOv{display:none}
@@ -1076,6 +1098,7 @@
 
 <!-- ── ETIQUETAS (código de barras) ──────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/zebra-browser-print-min@3.0.216/BrowserPrint-3.0.216.min.js"></script>
 <script src="/produtos-admin-etiquetas.js"></script>
 
 <!-- ── CAIXA (PDV) ────────────────────────────────────────────── -->
