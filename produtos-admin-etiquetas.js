@@ -176,27 +176,18 @@
     etqQueue.forEach((it) => {
       for (let i = 0; i < it.qty; i++) labels.push(it);
     });
-    // O rolo sai 2 etiquetas por linha — se sobrar uma etiqueta ímpar no final,
-    // repete a última em vez de deixar a segunda posição da linha em branco
-    // (o rolo avança a linha inteira de qualquer forma).
-    if (labels.length % 2 !== 0) labels.push(labels[labels.length - 1]);
 
-    const labelHtml = (it, i) => `
+    ov.innerHTML = labels.map((it, i) => `
       <div class="print-label">
         <div class="print-label__name">${esc(it.nome)}</div>
         <svg data-label-barcode="${i}"></svg>
         <div class="print-label__price">${it.preco != null ? fmtR(it.preco) : 'Sob consulta'}</div>
-      </div>`;
-    const rows = [];
-    for (let i = 0; i < labels.length; i += 2) {
-      rows.push(`<div class="print-row">${labelHtml(labels[i], i)}${labelHtml(labels[i + 1], i + 1)}</div>`);
-    }
-    ov.innerHTML = rows.join('');
+      </div>`).join('');
     labels.forEach((it, i) => renderBarcode(ov.querySelector(`[data-label-barcode="${i}"]`), it.barcode));
 
     // Mostra a contagem antes de imprimir, pra qualquer número estranho ficar visível
     // na hora — e não só depois de gastar etiqueta física tentando descobrir por quê.
-    toast(`Imprimindo ${labels.length} etiqueta${labels.length > 1 ? 's' : ''} em ${rows.length} linha${rows.length > 1 ? 's' : ''} do rolo.`, 'success');
+    toast(`Imprimindo ${labels.length} etiqueta${labels.length > 1 ? 's' : ''}.`, 'success');
 
     window.print();
 
