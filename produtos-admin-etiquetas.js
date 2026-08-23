@@ -74,10 +74,10 @@
     const margin = 10;
     const fieldW = labelW - margin * 2; // 392 — largura de centralização comum a todos os campos
 
-    const nameH = 48;     // ^A0N,22,22 em até 2 linhas
-    const barcodeH = 84;  // barra (64) + linha de texto legível
-    const priceH = 34;    // ^A0N,34,34
-    const gap = 8;
+    const nameH = 58;     // ^A0N,28,28 em até 2 linhas
+    const barcodeH = 76;  // barra (56) + linha de texto legível
+    const priceH = 42;    // ^A0N,42,42
+    const gap = 6;
     const contentH = nameH + gap + barcodeH + gap + priceH;
     const topMargin = Math.max(0, Math.round((labelH - contentH) / 2));
 
@@ -90,11 +90,13 @@
       '^CI28', // UTF-8, pros acentos do nome do produto
       `^PW${labelW}`,
       `^LL${labelH}`,
-      `^FO${margin},${nameY}^A0N,22,22^FB${fieldW},2,2,C,0^FD${nome}^FS`,
+      '^LH0,0', // ignora qualquer origem/deslocamento lateral salvo na impressora
+      '^LS0',
+      `^FO${margin},${nameY}^A0N,28,28^FB${fieldW},2,1,C,0^FD${nome}^FS`,
       `^FO${margin},${barcodeY}^BY2,2,0`,
-      '^BCN,64,Y,N,N',
+      '^BCN,56,Y,N,N',
       `^FB${fieldW},1,0,C,0^FD${barcode}^FS`,
-      `^FO${margin},${priceY}^A0N,34,34^FB${fieldW},1,0,C,0^FD${preco}^FS`,
+      `^FO${margin},${priceY}^A0N,42,42^FB${fieldW},1,0,C,0^FD${preco}^FS`,
       '^XZ',
     ].join('');
   }

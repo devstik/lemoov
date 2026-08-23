@@ -725,18 +725,23 @@ body.caixa-fullscreen .caixa-app{display:flex}
    Uma etiqueta = uma página de impressão (51,5 x 31mm). A quantidade impressa
    é exatamente a quantidade da lista, sem duplicar nem parear nada. */
 @media print{
+  html,body{
+    width:51.5mm!important;height:31mm!important;margin:0!important;padding:0!important;
+  }
   body *{visibility:hidden}
   #printLabelsOv,#printLabelsOv *{visibility:visible}
   #printLabelsOv{
-    display:block!important;position:fixed;inset:0;z-index:99999;background:#fff;margin:0;padding:0
+    display:block!important;position:absolute;top:0;left:0;width:51.5mm;z-index:99999;
+    background:#fff;margin:0!important;padding:0!important
   }
   .print-label{
-    width:51.5mm;height:31mm;page-break-after:always;break-after:page;box-sizing:border-box;padding:2mm;margin:0;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1mm
+    width:51.5mm;height:31mm;page-break-after:always;break-after:page;box-sizing:border-box;
+    padding:1.2mm 1.5mm;margin:0!important;overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6mm
   }
-  .print-label__name{font-size:8pt;font-weight:700;text-align:center;line-height:1.15;max-height:2.3em;overflow:hidden;font-family:Arial,sans-serif}
-  .print-label__price{font-size:12pt;font-weight:800;font-family:Arial,sans-serif}
-  .print-label svg{max-width:100%;height:11mm}
+  .print-label__name{width:100%;font-size:10.5pt;font-weight:700;text-align:center;line-height:1.08;max-height:2.16em;overflow:hidden;font-family:Arial,sans-serif}
+  .print-label__price{width:100%;font-size:15pt;line-height:1;font-weight:800;text-align:center;font-family:Arial,sans-serif}
+  .print-label svg{display:block;width:100%;max-width:100%;height:10.5mm}
   @page{size:51.5mm 31mm;margin:0}
 }
 .nfe-summary strong{color:var(--text)}
