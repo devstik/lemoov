@@ -79,7 +79,8 @@
     const priceH = 42;    // ^A0N,42,42
     const gap = 6;
     const contentH = nameH + gap + barcodeH + gap + priceH;
-    const topMargin = Math.max(0, Math.round((labelH - contentH) / 2));
+    // Sobe o conjunto 1mm (aprox. 8 dots) para dar folga ao preço na borda inferior.
+    const topMargin = Math.max(0, Math.round((labelH - contentH) / 2) - 8);
 
     const nameY = topMargin;
     const barcodeY = nameY + nameH + gap;
