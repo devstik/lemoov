@@ -14,6 +14,10 @@
   let caixaPending = null; // { produto, colorIndex, tamanho, qty }
   let _caixaUIBound = false;
   let _caixaClockTimer = null;
+  let caixaCameraStream = null;
+  let caixaCameraFrame = 0;
+  let caixaBarcodeDetector = null;
+  let caixaCameraDetecting = false;
 
   function caixaSellable() {
     return typeof sellableItems === 'function' ? sellableItems() : [];
@@ -60,6 +64,77 @@
     }
     showScanMsg('', '');
     openPicker(p);
+  }
+
+  // ── Câmera do celular ─────────────────────────────────────
+  function stopCamera() {
+    if (caixaCameraFrame) cancelAnimationFrame(caixaCameraFrame);
+    caixaCameraFrame = 0;
+    caixaCameraDetecting = false;
+    caixaCameraStream?.getTracks().forEach((track) => track.stop());
+    caixaCameraStream = null;
+    const video = $('caixaCameraVideo');
+    if (video) video.srcObject = null;
+    const reader = $('caixaCameraReader');
+    if (reader) reader.hidden = true;
+    $('caixaCameraBtn')?.setAttribute('aria-expanded', 'false');
+  }
+
+  async function scanCameraFrame() {
+    const video = $('caixaCameraVideo');
+    if (!caixaCameraStream || !video || video.readyState < 2) {
+      if (caixaCameraStream) caixaCameraFrame = requestAnimationFrame(scanCameraFrame);
+      return;
+    }
+    if (!caixaCameraDetecting) {
+      caixaCameraDetecting = true;
+      try {
+        const results = await caixaBarcodeDetector.detect(video);
+        const code = String(results?.[0]?.rawValue || '').trim();
+        if (code) {
+          stopCamera();
+          $('caixaBarcodeInput').value = code;
+          handleScan();
+          return;
+        }
+      } catch (_e) { /* quadros sem código são esperados durante a leitura */ }
+      finally { caixaCameraDetecting = false; }
+    }
+    if (caixaCameraStream) caixaCameraFrame = requestAnimationFrame(scanCameraFrame);
+  }
+
+  async function startCamera() {
+    if (!window.isSecureContext) {
+      showScanMsg('A câmera precisa de conexão HTTPS segura.', 'error');
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof BarcodeDetector === 'undefined') {
+      showScanMsg('Este navegador não oferece leitura pela câmera. Use Chrome/Edge atualizado ou o leitor físico.', 'error');
+      return;
+    }
+    stopCamera();
+    try {
+      const supported = typeof BarcodeDetector.getSupportedFormats === 'function'
+        ? await BarcodeDetector.getSupportedFormats() : [];
+      const wanted = ['code_128', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code'];
+      const formats = wanted.filter((format) => !supported.length || supported.includes(format));
+      caixaBarcodeDetector = new BarcodeDetector(formats.length ? { formats } : undefined);
+      caixaCameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      const video = $('caixaCameraVideo');
+      video.srcObject = caixaCameraStream;
+      $('caixaCameraReader').hidden = false;
+      $('caixaCameraBtn').setAttribute('aria-expanded', 'true');
+      await video.play();
+      showScanMsg('Aponte a câmera para o código de barras.', '');
+      caixaCameraFrame = requestAnimationFrame(scanCameraFrame);
+    } catch (e) {
+      stopCamera();
+      const denied = e?.name === 'NotAllowedError';
+      showScanMsg(denied ? 'Permissão da câmera negada. Libere o acesso nas configurações do navegador.' : 'Não foi possível abrir a câmera deste aparelho.', 'error');
+    }
   }
 
   // ── Busca manual por nome (pra quem não tem leitor de código de barras) ──
@@ -259,12 +334,18 @@
     return caixaCart.reduce((s, it) => s + it.precoUnitario * it.quantidade, 0);
   }
 
+  function caixaDiscount(subtotal) {
+    const percentual = Math.min(100, Math.max(0, Number($('caixaDesconto')?.value) || 0));
+    const valor = Math.round((subtotal * percentual / 100) * 100) / 100;
+    return { percentual, valor };
+  }
+
   function updateTotals() {
     const sub = cartSubtotal();
-    const desconto = Math.min(sub, Math.max(0, Number($('caixaDesconto')?.value) || 0));
-    const total = Math.max(0, sub - desconto);
+    const desconto = caixaDiscount(sub);
+    const total = Math.max(0, sub - desconto.valor);
     $('caixaSubtotal').textContent = fmtR(sub);
-    $('caixaDescontoLabel').textContent = desconto > 0 ? `- ${fmtR(desconto)}` : fmtR(0);
+    $('caixaDescontoLabel').textContent = desconto.valor > 0 ? `- ${fmtR(desconto.valor)} (${desconto.percentual}%)` : fmtR(0);
     $('caixaTotal').textContent = fmtR(total);
     const pagamento = $('caixaPagamento')?.value;
     $('caixaFinishBtn').disabled = !(caixaCart.length && pagamento);
@@ -283,8 +364,8 @@
     btn.textContent = 'Gravando…';
     try {
       const sub = cartSubtotal();
-      const desconto = Math.min(sub, Math.max(0, Number($('caixaDesconto')?.value) || 0));
-      const total = Math.max(0, sub - desconto);
+      const desconto = caixaDiscount(sub);
+      const total = Math.max(0, sub - desconto.valor);
       const nome = ($('caixaClienteNome')?.value || '').trim() || 'Cliente balcão';
       const telefone = ($('caixaClienteTel')?.value || '').trim();
       const eventoSel = $('caixaEvento');
@@ -303,11 +384,12 @@
         })),
         subtotal: sub,
         taxa: 0,
-        desconto,
-        descontoManual: desconto,
+        desconto: desconto.valor,
+        descontoManual: desconto.valor,
+        descontoPercentual: desconto.percentual,
         cupom: '',
         cupomPercentual: 0,
-        descontos: desconto > 0 ? [{ type: 'manual', label: 'Desconto', amount: desconto }] : [],
+        descontos: desconto.valor > 0 ? [{ type: 'manual', label: `Desconto (${desconto.percentual}%)`, percent: desconto.percentual, amount: desconto.valor }] : [],
         total,
       };
       const r = await fetch('/api/admin/pedido', {
@@ -330,6 +412,7 @@
 
   // "Limpar" descarta o carrinho/formulário atual sem gravar nada.
   function clearSale() {
+    stopCamera();
     caixaCart = [];
     caixaPending = null;
     $('caixaPicker').hidden = true;
@@ -500,6 +583,8 @@
     $('caixaBarcodeInput')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); handleScan(); }
     });
+    $('caixaCameraBtn')?.addEventListener('click', startCamera);
+    $('caixaCameraClose')?.addEventListener('click', stopCamera);
     $('caixaBarcodeInput')?.addEventListener('blur', () => {
       // Mantém o leitor sempre pronto pra próxima leitura — mas só rouba o foco de
       // volta se o operador não estiver de propósito preenchendo outro campo
@@ -526,6 +611,7 @@
     $('caixaFinishBtn')?.addEventListener('click', gravarVenda);
     $('caixaClearBtn')?.addEventListener('click', clearSale);
     $('caixaExitBtn')?.addEventListener('click', () => {
+      stopCamera();
       document.querySelector('.tab-btn[data-tab="produtos"]')?.click();
     });
 
@@ -535,7 +621,7 @@
         els('.caixa-subtab').forEach((b) => b.classList.toggle('active', b === btn));
         $('caixaPanelVenda').classList.toggle('active', sub === 'venda');
         $('caixaPanelComprovantes').classList.toggle('active', sub === 'comprovantes');
-        if (sub === 'comprovantes') loadCaixaReceipts();
+        if (sub === 'comprovantes') { stopCamera(); loadCaixaReceipts(); }
         else $('caixaBarcodeInput')?.focus();
       });
     });
@@ -553,6 +639,7 @@
     });
 
     bindInstallButton();
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
     if (isStandalone()) $('caixaInstallBtn').hidden = true;
   };
 

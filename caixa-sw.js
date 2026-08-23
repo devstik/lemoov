@@ -5,10 +5,11 @@
 // Estratégia: rede sempre em primeiro lugar, com cache só como reserva pra
 // uma queda rápida de internet. Nunca cacheia /api — uma venda sempre precisa
 // falar com o servidor de verdade.
-const CACHE_VERSION = 'lemoov-caixa-v1';
+const CACHE_VERSION = 'lemoov-caixa-v2';
 const APP_SHELL = [
   '/produtos-admin.html',
   '/produtos-admin.css',
+  '/produtos-admin-caixa.js',
   '/image/logo_lemoov_icon.png',
   '/image/icons/icon-192.png',
   '/image/icons/icon-512.png',
