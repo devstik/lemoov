@@ -50,7 +50,7 @@
       const draft = JSON.parse(localStorage.getItem(CAIXA_DRAFT_KEY) || 'null');
       if (!draft || !Array.isArray(draft.cart)) return;
       caixaCart = draft.cart;
-      if ($('caixaDesconto')) $('caixaDesconto').value = draft.desconto || 0;
+      if ($('caixaDesconto')) $('caixaDesconto').value = Number(draft.desconto) ? draft.desconto : '';
       if ($('caixaPagamento')) $('caixaPagamento').value = draft.pagamento || '';
       if ($('caixaClienteNome')) $('caixaClienteNome').value = draft.clienteNome || '';
       if ($('caixaClienteTel')) $('caixaClienteTel').value = draft.clienteTel || '';
@@ -104,14 +104,49 @@
     el.className = 'caixa-scan__msg' + (kind ? ` caixa-scan__msg--${kind}` : '');
   }
 
-  function handleScan() {
+  function normalizedBarcode(value) {
+    const raw = String(value ?? '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!raw) return '';
+    // Leitores podem omitir ou acrescentar zeros à esquerda em códigos apenas
+    // numéricos. Para códigos alfanuméricos, preserva o conteúdo integral.
+    return /^\d+$/.test(raw) ? (raw.replace(/^0+(?=\d)/, '') || '0') : raw;
+  }
+
+  function productBarcodes(item) {
+    const generated = typeof suggestBarcode === 'function'
+      ? suggestBarcode(item.tipoProduto === 'combo' ? 'combo' : 'produto', item.comboId ?? item.id)
+      : '';
+    return [item.barcode, item.codigoBarras, item.codigo, item.sku, generated]
+      .filter((value) => value != null && String(value).trim() !== '');
+  }
+
+  function findProductByBarcode(code) {
+    const exact = code.toUpperCase();
+    const normalized = normalizedBarcode(code);
+    const items = caixaSellable();
+    return items.find((item) => productBarcodes(item).some((value) => String(value).trim().toUpperCase() === exact))
+      || items.find((item) => productBarcodes(item).some((value) => normalizedBarcode(value) === normalized))
+      || null;
+  }
+
+  async function handleScan() {
     const input = $('caixaBarcodeInput');
     const code = (input.value || '').trim();
     input.value = '';
     if (!code) return;
-    const p = caixaSellable().find((item) => item.barcode && item.barcode.toUpperCase() === code.toUpperCase());
+    let p = findProductByBarcode(code);
+    // Ao abrir diretamente pelo ícone do PWA, a tela pode ficar pronta alguns
+    // milissegundos antes das listas assíncronas de produtos e combos.
+    if (!p && (typeof loadProdutos === 'function' || typeof loadCombos === 'function')) {
+      showScanMsg('Atualizando produtos…', '');
+      await Promise.all([
+        typeof loadProdutos === 'function' ? loadProdutos() : Promise.resolve(),
+        typeof loadCombos === 'function' ? loadCombos() : Promise.resolve(),
+      ]).catch(() => null);
+      p = findProductByBarcode(code);
+    }
     if (!p) {
-      showScanMsg(`Nenhum produto encontrado pro código "${code}".`, 'error');
+      showScanMsg(`Código ${code} lido, mas não está vinculado a nenhum produto. Cadastre-o no campo “Código de barras” da peça.`, 'error');
       return;
     }
     showScanMsg('', '');
@@ -146,7 +181,7 @@
         if (code) {
           stopCamera();
           $('caixaBarcodeInput').value = code;
-          handleScan();
+          await handleScan();
           return;
         }
       } catch (_e) { /* quadros sem código são esperados durante a leitura */ }
@@ -471,7 +506,7 @@
     caixaCart = [];
     caixaPending = null;
     $('caixaPicker').hidden = true;
-    $('caixaDesconto').value = 0;
+    $('caixaDesconto').value = '';
     $('caixaPagamento').value = '';
     $('caixaClienteNome').value = '';
     $('caixaClienteTel').value = '';
