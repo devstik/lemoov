@@ -61,20 +61,40 @@
   }
 
   // Etiqueta 51,5mm x 31mm a 203dpi ≈ 412 x 248 dots (1mm ≈ 8 dots).
+  // Todo campo (nome, código de barras, preço) usa ^FB com a MESMA largura e
+  // margem esquerda/direita simétrica (10 dots de cada lado) pra centralizar
+  // na largura; as posições Y são calculadas pra sobrar a mesma margem em
+  // cima e embaixo, centralizando o bloco inteiro na altura.
   function buildZplLabel(item) {
     const nome = escapeZPL(item.nome).slice(0, 70);
     const preco = escapeZPL(item.preco != null ? fmtR(item.preco) : 'Sob consulta');
     const barcode = escapeZPL(item.barcode);
+
+    const labelW = 412, labelH = 248;
+    const margin = 10;
+    const fieldW = labelW - margin * 2; // 392 — largura de centralização comum a todos os campos
+
+    const nameH = 48;     // ^A0N,22,22 em até 2 linhas
+    const barcodeH = 84;  // barra (64) + linha de texto legível
+    const priceH = 34;    // ^A0N,34,34
+    const gap = 8;
+    const contentH = nameH + gap + barcodeH + gap + priceH;
+    const topMargin = Math.max(0, Math.round((labelH - contentH) / 2));
+
+    const nameY = topMargin;
+    const barcodeY = nameY + nameH + gap;
+    const priceY = barcodeY + barcodeH + gap;
+
     return [
       '^XA',
       '^CI28', // UTF-8, pros acentos do nome do produto
-      '^PW412',
-      '^LL248',
-      '^FO10,8^A0N,22,22^FB392,2,2,C,0^FD' + nome + '^FS',
-      '^FO10,66^BY2,2,0',
+      `^PW${labelW}`,
+      `^LL${labelH}`,
+      `^FO${margin},${nameY}^A0N,22,22^FB${fieldW},2,2,C,0^FD${nome}^FS`,
+      `^FO${margin},${barcodeY}^BY2,2,0`,
       '^BCN,64,Y,N,N',
-      '^FD' + barcode + '^FS',
-      '^FO10,180^A0N,34,34^FB392,1,0,C,0^FD' + preco + '^FS',
+      `^FB${fieldW},1,0,C,0^FD${barcode}^FS`,
+      `^FO${margin},${priceY}^A0N,34,34^FB${fieldW},1,0,C,0^FD${preco}^FS`,
       '^XZ',
     ].join('');
   }
