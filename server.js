@@ -78,7 +78,9 @@ app.use((_req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+  // O Caixa usa a câmera do próprio site para ler códigos de barras. Continua
+  // bloqueada para origens externas/iframes, assim como microfone e localização.
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(self), microphone=()');
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }

@@ -18,6 +18,48 @@
   let caixaCameraFrame = 0;
   let caixaBarcodeDetector = null;
   let caixaCameraDetecting = false;
+  let caixaWakeLock = null;
+  let caixaHistoryGuard = false;
+  const CAIXA_DRAFT_KEY = 'lemoov-caixa-venda-em-andamento';
+
+  function saveSaleDraft() {
+    try {
+      localStorage.setItem(CAIXA_DRAFT_KEY, JSON.stringify({
+        cart: caixaCart,
+        desconto: $('caixaDesconto')?.value || '0',
+        pagamento: $('caixaPagamento')?.value || '',
+        clienteNome: $('caixaClienteNome')?.value || '',
+        clienteTel: $('caixaClienteTel')?.value || '',
+        evento: $('caixaEvento')?.value || '',
+        savedAt: Date.now(),
+      }));
+    } catch (_e) { /* armazenamento indisponível não pode interromper uma venda */ }
+  }
+
+  function restoreSaleDraft() {
+    try {
+      const draft = JSON.parse(localStorage.getItem(CAIXA_DRAFT_KEY) || 'null');
+      if (!draft || !Array.isArray(draft.cart)) return;
+      caixaCart = draft.cart;
+      if ($('caixaDesconto')) $('caixaDesconto').value = draft.desconto || 0;
+      if ($('caixaPagamento')) $('caixaPagamento').value = draft.pagamento || '';
+      if ($('caixaClienteNome')) $('caixaClienteNome').value = draft.clienteNome || '';
+      if ($('caixaClienteTel')) $('caixaClienteTel').value = draft.clienteTel || '';
+    } catch (_e) { localStorage.removeItem(CAIXA_DRAFT_KEY); }
+  }
+
+  async function keepScreenAwake() {
+    if (!('wakeLock' in navigator) || document.hidden || !document.body.classList.contains('caixa-fullscreen')) return;
+    try {
+      caixaWakeLock = await navigator.wakeLock.request('screen');
+      caixaWakeLock.addEventListener('release', () => { caixaWakeLock = null; }, { once: true });
+    } catch (_e) { /* alguns aparelhos bloqueiam wake lock em modo economia */ }
+  }
+
+  function releaseScreenAwake() {
+    caixaWakeLock?.release().catch(() => {});
+    caixaWakeLock = null;
+  }
 
   function caixaSellable() {
     return typeof sellableItems === 'function' ? sellableItems() : [];
@@ -133,7 +175,9 @@
     } catch (e) {
       stopCamera();
       const denied = e?.name === 'NotAllowedError';
-      showScanMsg(denied ? 'Permissão da câmera negada. Libere o acesso nas configurações do navegador.' : 'Não foi possível abrir a câmera deste aparelho.', 'error');
+      showScanMsg(denied
+        ? 'O navegador bloqueou a câmera. Recarregue a página e tente novamente; se persistir, confira a permissão do site.'
+        : `Não foi possível abrir a câmera deste aparelho${e?.name ? ` (${e.name})` : ''}.`, 'error');
     }
   }
 
@@ -321,6 +365,7 @@
     }
     if (count) count.textContent = `${caixaCart.reduce((s, it) => s + it.quantidade, 0)} itens`;
     updateTotals();
+    saveSaleDraft();
   }
 
   function changeQty(i, delta) {
@@ -423,6 +468,7 @@
     // Evento fica selecionado entre vendas de propósito — o mesmo evento vale
     // pra várias vendas seguidas até o operador trocar manualmente.
     showScanMsg('', '');
+    localStorage.removeItem(CAIXA_DRAFT_KEY);
     renderCart();
     $('caixaBarcodeInput')?.focus();
   }
@@ -528,6 +574,9 @@
   function bindInstallButton() {
     const btn = $('caixaInstallBtn');
     if (!btn || isStandalone()) return;
+    // Mantém uma ação visível mesmo quando o Chrome ainda não entregou o
+    // beforeinstallprompt; nesse caso o clique orienta pelo menu do navegador.
+    btn.hidden = false;
     btn.addEventListener('click', async () => {
       if (deferredCaixaInstall) {
         deferredCaixaInstall.prompt();
@@ -574,8 +623,14 @@
       tickClock();
       _caixaClockTimer = setInterval(tickClock, 1000);
     }
+    if (!_caixaUIBound) restoreSaleDraft();
     renderCart();
     loadCaixaEventos();
+    keepScreenAwake();
+    if (!caixaHistoryGuard) {
+      caixaHistoryGuard = true;
+      history.pushState({ caixaGuard: true }, '', location.href);
+    }
     $('caixaBarcodeInput')?.focus();
     if (_caixaUIBound) return;
     _caixaUIBound = true;
@@ -606,12 +661,18 @@
       if (!wrap || wrap.hidden) return;
       if (!e.target.closest('.caixa-search-wrap')) wrap.hidden = true;
     });
-    $('caixaDesconto')?.addEventListener('input', updateTotals);
-    $('caixaPagamento')?.addEventListener('change', updateTotals);
+    $('caixaDesconto')?.addEventListener('input', () => { updateTotals(); saveSaleDraft(); });
+    $('caixaPagamento')?.addEventListener('change', saveSaleDraft);
+    $('caixaClienteNome')?.addEventListener('input', saveSaleDraft);
+    $('caixaClienteTel')?.addEventListener('input', saveSaleDraft);
+    $('caixaEvento')?.addEventListener('change', saveSaleDraft);
     $('caixaFinishBtn')?.addEventListener('click', gravarVenda);
     $('caixaClearBtn')?.addEventListener('click', clearSale);
     $('caixaExitBtn')?.addEventListener('click', () => {
+      if (!confirm('Sair do modo Caixa? A venda em andamento ficará salva para quando você voltar.')) return;
       stopCamera();
+      releaseScreenAwake();
+      caixaHistoryGuard = false;
       document.querySelector('.tab-btn[data-tab="produtos"]')?.click();
     });
 
@@ -639,7 +700,15 @@
     });
 
     bindInstallButton();
-    document.addEventListener('visibilitychange', () => { if (document.hidden) stopCamera(); });
+    window.addEventListener('popstate', () => {
+      if (!caixaHistoryGuard || !document.body.classList.contains('caixa-fullscreen')) return;
+      history.pushState({ caixaGuard: true }, '', location.href);
+      toast('Use “Sair do caixa” para fechar o PDV com segurança.', 'error');
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { stopCamera(); releaseScreenAwake(); }
+      else keepScreenAwake();
+    });
     if (isStandalone()) $('caixaInstallBtn').hidden = true;
   };
 

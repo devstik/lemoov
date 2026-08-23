@@ -1,6 +1,7 @@
 {
   "name": "Caixa Lemoov",
   "short_name": "Caixa",
+  "id": "/produtos-admin.html?view=caixa",
   "description": "Frente de caixa Lemoov — leitura de código de barras, carrinho e finalização de venda.",
   "start_url": "/produtos-admin.html?view=caixa",
   "scope": "/",
