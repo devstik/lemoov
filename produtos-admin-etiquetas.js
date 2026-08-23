@@ -1,6 +1,6 @@
 /* Etiquetas de produto (código de barras) — sub-aba dentro de QR Code.
-   Gera preview e imprime etiquetas em rolo térmico 51,5mm x 31mm com nome, código
-   de barras (Code128, via JsBarcode) e preço. */
+   Gera preview e imprime em rolo térmico com duas etiquetas 51,5mm x 31mm por
+   linha (largura total de 103mm), usando Code128 via JsBarcode. */
 (function () {
   const $ = (id) => document.getElementById(id);
   const els = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
@@ -60,7 +60,7 @@
     return String(text || '').replace(/[\^~]/g, ' ');
   }
 
-  // Etiqueta 51,5mm x 31mm a 203dpi ≈ 412 x 248 dots (1mm ≈ 8 dots).
+  // Linha com duas etiquetas de 51,5mm x 31mm a 203dpi ≈ 824 x 248 dots.
   // Todo campo (nome, código de barras, preço) usa ^FB com a MESMA largura e
   // margem esquerda/direita simétrica (10 dots de cada lado) pra centralizar
   // na largura; as posições Y são calculadas pra sobrar a mesma margem em
@@ -70,9 +70,9 @@
     const preco = escapeZPL(item.preco != null ? fmtR(item.preco) : 'Sob consulta');
     const barcode = escapeZPL(item.barcode);
 
-    const labelW = 412, labelH = 248;
+    const singleW = 412, labelW = 824, labelH = 248;
     const margin = 10;
-    const fieldW = labelW - margin * 2; // 392 — largura de centralização comum a todos os campos
+    const fieldW = singleW - margin * 2; // 392 — largura útil de cada etiqueta
 
     const nameH = 58;     // ^A0N,28,28 em até 2 linhas
     const barcodeH = 76;  // barra (56) + linha de texto legível
@@ -85,6 +85,14 @@
     const barcodeY = nameY + nameH + gap;
     const priceY = barcodeY + barcodeH + gap;
 
+    const drawCopy = (offsetX) => [
+      `^FO${offsetX + margin},${nameY}^A0N,28,28^FB${fieldW},2,1,C,0^FD${nome}^FS`,
+      `^FO${offsetX + margin},${barcodeY}^BY2,2,0`,
+      '^BCN,56,Y,N,N',
+      `^FB${fieldW},1,0,C,0^FD${barcode}^FS`,
+      `^FO${offsetX + margin},${priceY}^A0N,42,42^FB${fieldW},1,0,C,0^FD${preco}^FS`,
+    ];
+
     return [
       '^XA',
       '^CI28', // UTF-8, pros acentos do nome do produto
@@ -92,11 +100,8 @@
       `^LL${labelH}`,
       '^LH0,0', // ignora qualquer origem/deslocamento lateral salvo na impressora
       '^LS0',
-      `^FO${margin},${nameY}^A0N,28,28^FB${fieldW},2,1,C,0^FD${nome}^FS`,
-      `^FO${margin},${barcodeY}^BY2,2,0`,
-      '^BCN,56,Y,N,N',
-      `^FB${fieldW},1,0,C,0^FD${barcode}^FS`,
-      `^FO${margin},${priceY}^A0N,42,42^FB${fieldW},1,0,C,0^FD${preco}^FS`,
+      ...drawCopy(0),
+      ...drawCopy(singleW),
       '^XZ',
     ].join('');
   }
@@ -127,7 +132,7 @@
     const original = btn.textContent;
     btn.textContent = 'Enviando…';
     zebraDevice.send(zpl, () => {
-      toast(`${labels.length} etiqueta${labels.length > 1 ? 's' : ''} enviada${labels.length > 1 ? 's' : ''} pra impressora.`, 'success');
+      toast(`${labels.length} linha${labels.length > 1 ? 's' : ''} (${labels.length * 2} etiquetas) enviada${labels.length > 1 ? 's' : ''} pra impressora.`, 'success');
       etqQueue = [];
       renderQueue();
       btn.disabled = false;
@@ -293,17 +298,25 @@
       for (let i = 0; i < it.qty; i++) labels.push(it);
     });
 
-    ov.innerHTML = labels.map((it, i) => `
+    const labelMarkup = (it, id) => `
       <div class="print-label">
         <div class="print-label__name">${esc(it.nome)}</div>
-        <svg data-label-barcode="${i}"></svg>
+        <svg data-label-barcode="${id}"></svg>
         <div class="print-label__price">${it.preco != null ? fmtR(it.preco) : 'Sob consulta'}</div>
+      </div>`;
+    ov.innerHTML = labels.map((it, i) => `
+      <div class="print-label-sheet">
+        ${labelMarkup(it, `${i}-a`)}
+        ${labelMarkup(it, `${i}-b`)}
       </div>`).join('');
-    labels.forEach((it, i) => renderBarcode(ov.querySelector(`[data-label-barcode="${i}"]`), it.barcode));
+    labels.forEach((it, i) => {
+      renderBarcode(ov.querySelector(`[data-label-barcode="${i}-a"]`), it.barcode);
+      renderBarcode(ov.querySelector(`[data-label-barcode="${i}-b"]`), it.barcode);
+    });
 
     // Mostra a contagem antes de imprimir, pra qualquer número estranho ficar visível
     // na hora — e não só depois de gastar etiqueta física tentando descobrir por quê.
-    toast(`Imprimindo ${labels.length} etiqueta${labels.length > 1 ? 's' : ''}.`, 'success');
+    toast(`Imprimindo ${labels.length} linha${labels.length > 1 ? 's' : ''} (${labels.length * 2} etiquetas).`, 'success');
 
     window.print();
 
