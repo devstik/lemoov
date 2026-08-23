@@ -20,17 +20,26 @@
   let caixaCameraDetecting = false;
   let caixaWakeLock = null;
   let caixaHistoryGuard = false;
+  let caixaDraftEvento = '';
   const CAIXA_DRAFT_KEY = 'lemoov-caixa-venda-em-andamento';
 
   function saveSaleDraft() {
     try {
+      const desconto = $('caixaDesconto')?.value || '0';
+      const pagamento = $('caixaPagamento')?.value || '';
+      const clienteNome = $('caixaClienteNome')?.value || '';
+      const clienteTel = $('caixaClienteTel')?.value || '';
+      if (!caixaCart.length && Number(desconto) === 0 && !pagamento && !clienteNome && !clienteTel) {
+        localStorage.removeItem(CAIXA_DRAFT_KEY);
+        return;
+      }
       localStorage.setItem(CAIXA_DRAFT_KEY, JSON.stringify({
         cart: caixaCart,
-        desconto: $('caixaDesconto')?.value || '0',
-        pagamento: $('caixaPagamento')?.value || '',
-        clienteNome: $('caixaClienteNome')?.value || '',
-        clienteTel: $('caixaClienteTel')?.value || '',
-        evento: $('caixaEvento')?.value || '',
+        desconto,
+        pagamento,
+        clienteNome,
+        clienteTel,
+        evento: $('caixaEvento')?.value || caixaDraftEvento,
         savedAt: Date.now(),
       }));
     } catch (_e) { /* armazenamento indisponível não pode interromper uma venda */ }
@@ -45,6 +54,7 @@
       if ($('caixaPagamento')) $('caixaPagamento').value = draft.pagamento || '';
       if ($('caixaClienteNome')) $('caixaClienteNome').value = draft.clienteNome || '';
       if ($('caixaClienteTel')) $('caixaClienteTel').value = draft.clienteTel || '';
+      caixaDraftEvento = draft.evento || '';
     } catch (_e) { localStorage.removeItem(CAIXA_DRAFT_KEY); }
   }
 
@@ -609,11 +619,12 @@
       const r = await fetch('/api/admin/eventos');
       if (!r.ok) return;
       const eventos = await r.json();
-      const current = sel.value;
+      const current = sel.value || caixaDraftEvento;
       sel.innerHTML = '<option value="">Loja / sem evento</option>' + eventos
         .filter((e) => e.ativo !== false)
         .map((e) => `<option value="${e.id}" data-nome="${esc(e.nome)}">${esc(e.nome)}</option>`).join('');
       if (current && Array.from(sel.options).some((o) => o.value === current)) sel.value = current;
+      caixaDraftEvento = sel.value || '';
     } catch (_e) { /* sem eventos cadastrados ainda — tudo bem, fica só "Loja" */ }
   }
 

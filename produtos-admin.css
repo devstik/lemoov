@@ -730,8 +730,11 @@ body.caixa-fullscreen .caixa-app{display:flex}
   .caixa-main{display:block;min-height:auto}
   .caixa-scan-col{overflow:visible;min-height:auto}
   .caixa-cart{min-height:240px}
+  .caixa-cart__list{overflow:visible}
   .caixa-summary{border-left:none;border-top:1px solid var(--brd);overflow:visible}
   .caixa-summary__totals{margin-top:8px}
+  .caixa-receipts{flex:none;min-height:auto}
+  .caixa-receipts__list{flex:none;min-height:auto;overflow:visible}
 }
 @media(max-width:560px){
   .caixa-topbar{height:auto;min-height:56px;padding:8px 12px;gap:8px;flex-wrap:wrap}
