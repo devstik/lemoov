@@ -763,10 +763,32 @@
     try {
       if (!window.jspdf?.jsPDF) throw new Error("PDF indisponível");
       const doc = new window.jspdf.jsPDF({ unit: "mm", format: "a4", compress: true });
+      // Solicita páginas em uma coluna, com rolagem contínua, ao leitor de PDF.
+      doc.setDisplayMode("fullwidth", "continuous", "UseNone");
       const lista = ordenar([...produtos]);
       const logoSrc = el(".logo img")?.src || "image/logo_lemoov_semfundo.png";
-      const logo = await loadImageAsDataUrl(logoSrc);
+      let logo = await loadImageAsDataUrl(logoSrc);
       if (!logo) throw new Error("Logo indisponível");
+      // Compor a transparência sobre branco evita máscaras pretas no leitor de PDF.
+      const logoImage = new Image();
+      await new Promise((resolve, reject) => {
+        logoImage.onload = resolve;
+        logoImage.onerror = () => reject(new Error("Logo inválida"));
+        logoImage.src = logo;
+      });
+      const logoCanvas = document.createElement("canvas");
+      logoCanvas.width = logoImage.naturalWidth;
+      logoCanvas.height = logoImage.naturalHeight;
+      const logoContext = logoCanvas.getContext("2d");
+      logoContext.fillStyle = "#ffffff";
+      logoContext.fillRect(0, 0, logoCanvas.width, logoCanvas.height);
+      logoContext.drawImage(logoImage, 0, 0);
+      logo = logoCanvas.toDataURL("image/jpeg", 0.98);
+      const margin = 7;
+      const right = 203;
+      const cardWidth = 96;
+      const cardHeight = 121;
+      const textWidth = cardWidth - 8;
       const pages = Math.ceil(lista.length / 4);
       let missingPhotos = 0;
       const fitImage = (data, x, y, width, height) => {
@@ -791,46 +813,51 @@
         status.textContent = `Preparando catálogo completo: ${i + 1} de ${lista.length} produtos…`;
         if (i % 4 === 0) {
           if (i) doc.addPage();
-          fitImage(logo, 14, 10, 44, 23);
+          fitImage(logo, margin, 6, 48, 23);
           doc.setTextColor(35);
           doc.setFont("helvetica", "bold");
           doc.setFontSize(16);
-          doc.text("Catálogo de Atacado", 196, 17, { align: "right" });
+          doc.text("Catálogo de Atacado", right, 13, { align: "right" });
           doc.setFont("helvetica", "normal");
           doc.setFontSize(10);
-          doc.textWithLink("www.lemoov.com.br", 148, 24, { url: "https://www.lemoov.com.br" });
-          doc.textWithLink("WhatsApp: +55 (85) 8740-8457", 146, 31, { url: `https://wa.me/${WHATS_NUMBER}` });
+          doc.textWithLink("www.lemoov.com.br", right - doc.getTextWidth("www.lemoov.com.br"), 20, { url: "https://www.lemoov.com.br" });
+          const whatsLabel = "WhatsApp: +55 (85) 8740-8457";
+          const whatsX = right - doc.getTextWidth(whatsLabel);
+          doc.setTextColor(30, 110, 55);
+          doc.textWithLink(whatsLabel, whatsX, 27, { url: `https://wa.me/${WHATS_NUMBER}` });
+          doc.setDrawColor(30, 110, 55);
+          doc.line(whatsX, 27.7, right, 27.7);
           doc.setDrawColor(168, 198, 58);
-          doc.line(14, 38, 196, 38);
+          doc.line(margin, 32, right, 32);
           doc.setFontSize(9);
           doc.setTextColor(100);
-          doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")}`, 14, 287);
-          doc.text(`Página ${Math.floor(i / 4) + 1} de ${pages}`, 196, 287, { align: "right" });
+          doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")}`, margin, 291);
+          doc.text(`Página ${Math.floor(i / 4) + 1} de ${pages}`, right, 291, { align: "right" });
         }
         const p = lista[i];
-        const x = 14 + (i % 2) * 95;
-        const y = 45 + Math.floor((i % 4) / 2) * 118;
+        const x = margin + (i % 2) * (cardWidth + 4);
+        const y = 36 + Math.floor((i % 4) / 2) * (cardHeight + 4);
         doc.setDrawColor(220);
-        doc.roundedRect(x, y, 87, 111, 2, 2);
+        doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2);
         const photo = await loadImageAsDataUrl(getImagemProduto(p));
         let hasPhoto = false;
         if (photo) {
-          try { fitImage(photo, x + 5, y + 4, 77, 57); hasPhoto = true; } catch (_e) {}
+          try { fitImage(photo, x + 4, y + 3, textWidth, 72); hasPhoto = true; } catch (_e) {}
         }
         if (!hasPhoto) {
           missingPhotos++;
           doc.setFontSize(10);
           doc.setTextColor(120);
-          doc.text("Foto indisponível", x + 43.5, y + 32, { align: "center" });
+          doc.text("Foto indisponível", x + cardWidth / 2, y + 39, { align: "center" });
         }
         doc.setTextColor(35);
         doc.setFont("helvetica", "bold");
-        textBlock(p.nome, x + 5, y + 68, 77, 3, 11);
+        textBlock(p.nome, x + 4, y + 81, textWidth, 3, 11);
         doc.setFont("helvetica", "normal");
-        textBlock(p.categoria, x + 5, y + 84, 77, 1, 9);
-        textBlock(`Cores: ${getCoresAtivas(p).map(c => c.nome).filter(Boolean).join(", ") || "Sob consulta"}`, x + 5, y + 91, 77, 2, 9);
+        textBlock(p.categoria, x + 4, y + 97, textWidth, 1, 9);
+        textBlock(`Cores: ${getCoresAtivas(p).map(c => c.nome).filter(Boolean).join(", ") || "Sob consulta"}`, x + 4, y + 103, textWidth, 2, 9);
         doc.setFont("helvetica", "bold");
-        textBlock(p.preco ? formatBRL(p.preco) : "Preço sob consulta", x + 5, y + 105, 77, 1, 12);
+        textBlock(p.preco ? formatBRL(p.preco) : "Preço sob consulta", x + 4, y + 116, textWidth, 1, 12);
       }
       doc.save("catalogo-atacado-lemoov.pdf");
       status.textContent = `PDF gerado com ${lista.length} produtos.${missingPhotos ? ` ${missingPhotos} produto(s) sem foto disponível.` : ""}`;
