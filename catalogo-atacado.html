@@ -304,6 +304,10 @@
       display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
       gap: 10px 16px; margin: 0 0 16px;
     }
+    .catalog-toolbar { flex-wrap: wrap; }
+    .catalog-export { padding: 10px 14px; border: 0; border-radius: 8px; background: #26351c; color: #fff; font: inherit; font-size: .8rem; cursor: pointer; }
+    .catalog-export:disabled { opacity: .6; cursor: wait; }
+    .catalog-export-status { font-size: .8rem; color: var(--text-muted); }
     .catalog-toolbar__count { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; white-space: nowrap; margin-right: auto; }
     .catalog-toolbar__sort { display: flex; align-items: center; gap: 7px; font-size: 0.8rem; color: var(--secondary-color); font-weight: 700; }
     .catalog-toolbar__sort select {
@@ -960,6 +964,7 @@
 
       <div class="catalog-toolbar">
         <span class="catalog-toolbar__count" id="atacadoResultCount"></span>
+        <button type="button" class="catalog-export" id="atacadoExportPdf" title="Exportar todos os produtos do catálogo">Exportar catálogo em PDF</button>
         <label class="catalog-toolbar__sort">
           <span>Ordenar por</span>
           <select id="atacadoSort">
@@ -972,6 +977,7 @@
         </label>
       </div>
 
+      <p id="atacadoExportStatus" class="catalog-export-status" role="status" aria-live="polite"></p>
       <section id="atacadoGrid" class="grid" aria-label="Produtos de atacado"></section>
     </div>
   </div>
@@ -1061,6 +1067,6 @@
   </aside>
   </div>
 
-  <script src="atacado.js?v=6"></script>
+  <script src="atacado.js?v=7"></script>
 </body>
 </html>

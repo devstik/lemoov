@@ -750,6 +750,99 @@
     return "JPEG";
   }
 
+  async function exportCatalogPdf() {
+    const button = el("#atacadoExportPdf");
+    const status = el("#atacadoExportStatus");
+    if (button.disabled) return;
+    if (!produtos.length) {
+      status.textContent = "Não há produtos carregados para exportar.";
+      return;
+    }
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    try {
+      if (!window.jspdf?.jsPDF) throw new Error("PDF indisponível");
+      const doc = new window.jspdf.jsPDF({ unit: "mm", format: "a4", compress: true });
+      const lista = ordenar([...produtos]);
+      const logoSrc = el(".logo img")?.src || "image/logo_lemoov_semfundo.png";
+      const logo = await loadImageAsDataUrl(logoSrc);
+      if (!logo) throw new Error("Logo indisponível");
+      const pages = Math.ceil(lista.length / 4);
+      let missingPhotos = 0;
+      const fitImage = (data, x, y, width, height) => {
+        const size = doc.getImageProperties(data);
+        const scale = Math.min(width / size.width, height / size.height);
+        const w = size.width * scale;
+        const h = size.height * scale;
+        doc.addImage(data, dataUrlImageFormat(data), x + (width - w) / 2, y + (height - h) / 2, w, h, undefined, "FAST");
+      };
+      const textBlock = (text, x, y, width, maxLines, fontSize) => {
+        doc.setFontSize(fontSize);
+        const lines = doc.splitTextToSize(String(text || ""), width);
+        const visible = lines.slice(0, maxLines);
+        if (lines.length > maxLines) {
+          let last = visible[maxLines - 1];
+          while (last && doc.getTextWidth(last + "...") > width) last = last.slice(0, -1);
+          visible[maxLines - 1] = last + "...";
+        }
+        doc.text(visible, x, y);
+      };
+      for (let i = 0; i < lista.length; i++) {
+        status.textContent = `Preparando catálogo completo: ${i + 1} de ${lista.length} produtos…`;
+        if (i % 4 === 0) {
+          if (i) doc.addPage();
+          fitImage(logo, 14, 10, 44, 23);
+          doc.setTextColor(35);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(16);
+          doc.text("Catálogo de Atacado", 196, 17, { align: "right" });
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.textWithLink("www.lemoov.com.br", 148, 24, { url: "https://www.lemoov.com.br" });
+          doc.textWithLink("WhatsApp: +55 (85) 8740-8457", 146, 31, { url: `https://wa.me/${WHATS_NUMBER}` });
+          doc.setDrawColor(168, 198, 58);
+          doc.line(14, 38, 196, 38);
+          doc.setFontSize(9);
+          doc.setTextColor(100);
+          doc.text(`Gerado em ${new Date().toLocaleDateString("pt-BR")}`, 14, 287);
+          doc.text(`Página ${Math.floor(i / 4) + 1} de ${pages}`, 196, 287, { align: "right" });
+        }
+        const p = lista[i];
+        const x = 14 + (i % 2) * 95;
+        const y = 45 + Math.floor((i % 4) / 2) * 118;
+        doc.setDrawColor(220);
+        doc.roundedRect(x, y, 87, 111, 2, 2);
+        const photo = await loadImageAsDataUrl(getImagemProduto(p));
+        let hasPhoto = false;
+        if (photo) {
+          try { fitImage(photo, x + 5, y + 4, 77, 57); hasPhoto = true; } catch (_e) {}
+        }
+        if (!hasPhoto) {
+          missingPhotos++;
+          doc.setFontSize(10);
+          doc.setTextColor(120);
+          doc.text("Foto indisponível", x + 43.5, y + 32, { align: "center" });
+        }
+        doc.setTextColor(35);
+        doc.setFont("helvetica", "bold");
+        textBlock(p.nome, x + 5, y + 68, 77, 3, 11);
+        doc.setFont("helvetica", "normal");
+        textBlock(p.categoria, x + 5, y + 84, 77, 1, 9);
+        textBlock(`Cores: ${getCoresAtivas(p).map(c => c.nome).filter(Boolean).join(", ") || "Sob consulta"}`, x + 5, y + 91, 77, 2, 9);
+        doc.setFont("helvetica", "bold");
+        textBlock(p.preco ? formatBRL(p.preco) : "Preço sob consulta", x + 5, y + 105, 77, 1, 12);
+      }
+      doc.save("catalogo-atacado-lemoov.pdf");
+      status.textContent = `PDF gerado com ${lista.length} produtos.${missingPhotos ? ` ${missingPhotos} produto(s) sem foto disponível.` : ""}`;
+    } catch (error) {
+      console.error("Erro ao exportar catálogo", error);
+      status.textContent = "Não foi possível gerar o PDF. Verifique sua conexão e tente novamente.";
+    } finally {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    }
+  }
+
   // Monta um PDF com todos os itens do carrinho — foto, descrição, preço e quantidade —
   // pra funcionar bem com qualquer quantidade de itens (o WhatsApp só aceita 1 legenda por
   // envio, então várias fotos + texto separado se perdem; um único PDF resolve isso).
@@ -1041,6 +1134,7 @@
     initGate();
     initCatalogFiltersDrawer();
     initCatalogToolbar();
+    el("#atacadoExportPdf")?.addEventListener("click", exportCatalogPdf);
     const search = el("#atacadoSearch");
     search?.addEventListener("input", () => { buscaAtual = search.value || ""; renderGrid(); });
     el("#atacadoSearchClear")?.addEventListener("click", () => {
